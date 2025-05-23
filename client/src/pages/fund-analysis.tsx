@@ -10,26 +10,54 @@ import { Loader2 } from "lucide-react";
 
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Subcategories");
   
   // Called when category is changed from dropdown
   const handleCategoryChange = (category: string) => {
     console.log(`Selected category: ${category}`);
     setSelectedCategory(category);
+    // Reset subcategory when changing main category
+    setSelectedSubcategory("All Subcategories");
     // The useFunds hook will automatically fetch the funds for this category
   };
+  
+  // Get subcategories based on selected category
+  const getSubcategories = (): string[] => {
+    if (selectedCategory === "Equity") {
+      return ["All Subcategories", "Large Cap", "Mid Cap", "Small Cap", "Multi Cap", "ELSS", "Flexi Cap", "Focused"];
+    } else if (selectedCategory === "Debt") {
+      return ["All Subcategories", "Liquid", "Ultra Short", "Corporate Bond", "Banking and PSU", "Dynamic Bond"];
+    } else if (selectedCategory === "Hybrid") {
+      return ["All Subcategories", "Balanced Advantage", "Aggressive", "Conservative", "Multi-Asset"];
+    } else {
+      return ["All Subcategories"];
+    }
+  };
+  
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFund, setSelectedFund] = useState<any>(null);
   
   // Use useFunds hook with the selected category directly
   const { funds, isLoading, error, refetch } = useFunds(selectedCategory);
   
-  // Filter funds based on search query with null checks
-  const filteredFunds = funds?.filter(fund => 
-    fund && fund.fundName && fund.amcName && (
+  // Filter funds based on search query and subcategory with null checks
+  const filteredFunds = funds?.filter(fund => {
+    // First check for null/undefined values
+    if (!fund || !fund.fundName || !fund.amcName) return false;
+    
+    // Apply subcategory filter if not "All Subcategories"
+    if (selectedSubcategory !== "All Subcategories") {
+      if (!fund.subcategory || fund.subcategory !== selectedSubcategory) {
+        return false;
+      }
+    }
+    
+    // Apply search filter
+    return (
       fund.fundName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       fund.amcName.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  ) || [];
+    );
+  }) || [];
   
   const handleFundSelect = (fundId: number) => {
     const fund = funds?.find(f => f.id === fundId);
@@ -76,6 +104,26 @@ export default function FundAnalysis() {
                   </div>
                   
                   <div>
+                    <label className="text-sm font-medium text-neutral-700">Subcategory</label>
+                    <Select 
+                      value={selectedSubcategory} 
+                      onValueChange={setSelectedSubcategory}
+                      disabled={selectedCategory === "All Categories"}
+                    >
+                      <SelectTrigger className="w-full mt-1">
+                        <SelectValue placeholder="Select a subcategory" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSubcategories().map(subcategory => (
+                          <SelectItem key={subcategory} value={subcategory}>
+                            {subcategory}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
                     <label className="text-sm font-medium text-neutral-700">Search</label>
                     <Input
                       type="text"
@@ -87,7 +135,9 @@ export default function FundAnalysis() {
                   </div>
                   
                   <div className="pt-4">
-                    <label className="text-sm font-medium text-neutral-700 mb-2 block">Funds</label>
+                    <label className="text-sm font-medium text-neutral-700 mb-2 block">
+                      Funds <span className="text-primary ml-1 text-xs font-medium">({filteredFunds.length} found)</span>
+                    </label>
                     
                     {isLoading ? (
                       <div className="text-center py-4 flex flex-col items-center">
