@@ -40,16 +40,18 @@ export class BacktestingEngine {
         portfolio = await storage.getModelPortfolio(portfolioId);
       } else if (riskProfile) {
         // Get latest portfolio for risk profile
-        const portfolios = await db.execute(`
+        const portfolios = await pool.query(`
           SELECT * FROM model_portfolios 
           WHERE risk_profile = $1 
           ORDER BY created_at DESC 
           LIMIT 1
-        `, { 1: riskProfile });
+        `, [riskProfile]);
         
         if (portfolios.rows.length > 0) {
-          const portfolioId = portfolios.rows[0].id;
-          portfolio = await storage.getModelPortfolio(portfolioId);
+          const portfolioId = parseInt(portfolios.rows[0].id);
+          if (!isNaN(portfolioId)) {
+            portfolio = await storage.getModelPortfolio(portfolioId);
+          }
         }
       }
       
@@ -78,7 +80,7 @@ export class BacktestingEngine {
       
       // Calculate weights
       const weights = allocations.reduce((acc, allocation) => {
-        acc[allocation.fund.id] = allocation.allocation_percent / 100;
+        acc[allocation.fund.id] = parseFloat(allocation.allocationPercent) / 100;
         return acc;
       }, {} as Record<number, number>);
       
@@ -182,7 +184,7 @@ export class BacktestingEngine {
       
       return {
         portfolioId: portfolio.id,
-        riskProfile: portfolio.risk_profile,
+        riskProfile: portfolio.riskProfile,
         startDate,
         endDate,
         initialAmount,
@@ -250,13 +252,13 @@ export class BacktestingEngine {
    */
   private async getBenchmarkPerformance(indexName: string, startDate: Date, endDate: Date): Promise<{ date: Date; value: number }[]> {
     try {
-      const indexData = await db.execute(`
+      const indexData = await pool.query(`
         SELECT index_date, close_value
         FROM market_indices
         WHERE index_name = $1
         AND index_date BETWEEN $2 AND $3
         ORDER BY index_date
-      `, { 1: indexName, 2: startDate, 3: endDate });
+      `, [indexName, startDate, endDate]);
       
       return indexData.rows.map((row: any) => ({
         date: row.index_date,

@@ -1,4 +1,5 @@
 import { storage } from '../storage';
+import { pool } from '../db';
 import type { InsertElivateScore } from '@shared/schema';
 
 // ELIVATE Framework Service
