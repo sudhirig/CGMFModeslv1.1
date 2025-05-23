@@ -23,16 +23,20 @@ export function useFunds(category?: string) {
   const [endpoint, setEndpoint] = useState<string>("/api/funds");
   
   useEffect(() => {
-    if (category) {
+    if (category && category !== 'All Categories') {
       setEndpoint(`/api/funds?category=${encodeURIComponent(category)}`);
+      console.log(`Setting endpoint to: /api/funds?category=${encodeURIComponent(category)}`);
     } else {
       setEndpoint("/api/funds");
+      console.log("Setting endpoint to: /api/funds");
     }
   }, [category]);
   
   const { data, isLoading, error, refetch } = useQuery<Fund[]>({
     queryKey: [endpoint],
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Don't cache to ensure we always get fresh data
+    refetchOnMount: true, // Always refetch when component mounts
+    refetchOnWindowFocus: true, // Refetch when window gets focus
   });
   
   return {

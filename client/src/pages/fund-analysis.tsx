@@ -54,13 +54,9 @@ export default function FundAnalysis() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="All Categories">All Categories</SelectItem>
-                        <SelectItem value="Equity: Large Cap">Equity: Large Cap</SelectItem>
-                        <SelectItem value="Equity: Mid Cap">Equity: Mid Cap</SelectItem>
-                        <SelectItem value="Equity: Small Cap">Equity: Small Cap</SelectItem>
-                        <SelectItem value="Equity: Multi Cap">Equity: Multi Cap</SelectItem>
-                        <SelectItem value="Debt: Short Duration">Debt: Short Duration</SelectItem>
-                        <SelectItem value="Debt: Medium Duration">Debt: Medium Duration</SelectItem>
-                        <SelectItem value="Hybrid: Balanced">Hybrid: Balanced</SelectItem>
+                        <SelectItem value="Equity">Equity</SelectItem>
+                        <SelectItem value="Debt">Debt</SelectItem>
+                        <SelectItem value="Hybrid">Hybrid</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
