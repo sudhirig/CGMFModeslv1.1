@@ -84,8 +84,37 @@ export class PortfolioBuilder {
     }
   }
   
-  // Get asset allocation based on risk profile and market stance
-  private getAssetAllocation(riskProfile: RiskProfile, marketStance: string): AssetAllocation {
+  /**
+   * Get asset allocation based on risk profile and market stance
+   * Maps risk profile to standard allocation with market-specific adjustments
+   */
+  private getAssetAllocation(riskProfile: RiskProfile | string, marketStance: string): AssetAllocation {
+    // Normalize the risk profile to match our standard types
+    let normalizedProfile: RiskProfile = 'Balanced';
+    
+    // Convert any non-standard risk profile strings to our standard types
+    if (typeof riskProfile === 'string') {
+      if (riskProfile === 'Conservative' || riskProfile === 'Moderately Conservative' || 
+          riskProfile === 'Balanced' || riskProfile === 'Moderately Aggressive' || 
+          riskProfile === 'Aggressive') {
+        normalizedProfile = riskProfile as RiskProfile;
+      } else if (riskProfile === 'Moderate') {
+        normalizedProfile = 'Balanced';
+      } else if (riskProfile.includes('Conservative') && riskProfile.includes('Moderate')) {
+        normalizedProfile = 'Moderately Conservative';
+      } else if (riskProfile.includes('Aggressive') && riskProfile.includes('Moderate')) {
+        normalizedProfile = 'Moderately Aggressive';
+      } else if (riskProfile.includes('Conservative')) {
+        normalizedProfile = 'Conservative';
+      } else if (riskProfile.includes('Aggressive')) {
+        normalizedProfile = 'Aggressive';
+      }
+    } else {
+      normalizedProfile = riskProfile;
+    }
+    
+    console.log(`Normalized risk profile "${riskProfile}" to "${normalizedProfile}" for allocation`);
+    
     // Base allocations by risk profile
     const baseAllocations: Record<RiskProfile, AssetAllocation> = {
       'Conservative': {
