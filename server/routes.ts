@@ -13,7 +13,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/funds", async (req, res) => {
     try {
       const { category, limit, offset } = req.query;
-      const parsedLimit = limit ? parseInt(limit as string) : 100;
+      const parsedLimit = limit ? parseInt(limit as string) : 1000; // Increased limit to get all funds
       const parsedOffset = offset ? parseInt(offset as string) : 0;
       
       if (category) {
@@ -21,8 +21,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(funds);
       }
       
-      const funds = await storage.getAllFunds(parsedLimit, parsedOffset);
-      res.json(funds);
+      // Use a more optimized query to get all funds at once
+      const result = await pool.query(`
+        SELECT * FROM funds 
+        ORDER BY fund_name
+        LIMIT $1 OFFSET $2
+      `, [parsedLimit, parsedOffset]);
+      
+      res.json(result.rows);
     } catch (error) {
       console.error("Error fetching funds:", error);
       res.status(500).json({ message: "Failed to fetch funds" });
