@@ -387,8 +387,6 @@ export default function ElivateFramework() {
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">US GDP Growth</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.usGdpGrowth}%</td>
-                          <td className="px-4 py-3 text-sm text-neutral-500">US Federal Reserve</td>
-                          <td className="px-4 py-3 text-sm text-neutral-500">Quarterly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
