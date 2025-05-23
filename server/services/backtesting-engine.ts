@@ -36,10 +36,13 @@ export class BacktestingEngine {
       
       // Get portfolio - either by ID or by risk profile
       let portfolio;
+      let usedGenerator = false;
+      
       if (portfolioId) {
+        // Lookup by ID
         portfolio = await storage.getModelPortfolio(portfolioId);
       } else if (riskProfile) {
-        // Get latest portfolio for risk profile
+        // First, try to get latest portfolio for risk profile
         const portfolios = await pool.query(`
           SELECT * FROM model_portfolios 
           WHERE risk_profile = $1 
@@ -53,17 +56,67 @@ export class BacktestingEngine {
             portfolio = await storage.getModelPortfolio(portfolioId);
           }
         }
+        
+        // If no portfolio found or portfolio has no allocations, generate one
+        if (!portfolio || !portfolio.allocations || portfolio.allocations.length === 0) {
+          // Dynamically import to avoid circular dependencies
+          const { portfolioBuilder } = await import('./portfolio-builder');
+          console.log(`Generating a new portfolio for risk profile: ${riskProfile}`);
+          
+          try {
+            // Create a new portfolio with the specified risk profile
+            const newPortfolio = await portfolioBuilder.generateModelPortfolio(riskProfile as any);
+            if (newPortfolio && newPortfolio.id) {
+              // Fetch the newly created portfolio with allocations
+              portfolio = await storage.getModelPortfolio(newPortfolio.id);
+              usedGenerator = true;
+              console.log(`Created new portfolio with ID: ${portfolio.id} for backtesting`);
+            }
+          } catch (genError) {
+            console.error("Error generating portfolio:", genError);
+          }
+        }
       }
       
+      // Still no portfolio? Throw an error with helpful message
       if (!portfolio) {
-        throw new Error('Portfolio not found');
+        if (portfolioId) {
+          throw new Error(`Portfolio with ID ${portfolioId} not found. Please select a valid portfolio or use a risk profile.`);
+        } else if (riskProfile) {
+          throw new Error(`Could not create a portfolio for risk profile '${riskProfile}'. Please try a different risk profile.`);
+        } else {
+          throw new Error('No portfolio ID or risk profile provided. Please specify one of these parameters.');
+        }
       }
       
       // Get portfolio allocations
-      const allocations = portfolio.allocations;
+      let allocations = portfolio.allocations;
       
+      // Handle case where portfolio has no allocations
       if (!allocations || allocations.length === 0) {
-        throw new Error('Portfolio has no allocations');
+        if (usedGenerator) {
+          // We already tried generating a portfolio but it had no allocations
+          throw new Error(`Generated portfolio ${portfolio.id} (${portfolio.name}) has no fund allocations. This may indicate an issue with the portfolio builder.`);
+        }
+        
+        console.log(`Portfolio ${portfolio.id} has no allocations. Creating a temporary portfolio for backtesting...`);
+        
+        // Try generating a new portfolio with the same risk profile
+        try {
+          const { portfolioBuilder } = await import('./portfolio-builder');
+          const tempPortfolio = await portfolioBuilder.generateModelPortfolio(portfolio.riskProfile);
+          
+          if (tempPortfolio && tempPortfolio.allocations && tempPortfolio.allocations.length > 0) {
+            console.log(`Using temporary portfolio ${tempPortfolio.id} with ${tempPortfolio.allocations.length} allocations for backtesting`);
+            portfolio = tempPortfolio;
+            allocations = tempPortfolio.allocations;
+          } else {
+            throw new Error('Failed to generate allocations');
+          }
+        } catch (allocError) {
+          console.error("Error generating allocations:", allocError);
+          throw new Error(`Portfolio ${portfolio.id} (${portfolio.name}) has no fund allocations and could not create a temporary portfolio. Please try a different portfolio.`);
+        }
       }
       
       // Calculate rebalance dates
