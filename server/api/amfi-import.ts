@@ -4,7 +4,7 @@ import { fetchAMFIMutualFundData } from '../amfi-scraper';
 const router = express.Router();
 
 // Import real NAV data from AMFI
-router.get('/import', async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     console.log('Starting real AMFI data import...');
     const result = await fetchAMFIMutualFundData();
