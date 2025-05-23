@@ -1,5 +1,6 @@
 import express from 'express';
 import { fetchAMFIMutualFundData } from '../amfi-scraper';
+import { executeRawQuery } from '../db';
 
 const router = express.Router();
 
@@ -32,18 +33,16 @@ router.get('/', async (req, res) => {
 // Check NAV data count
 router.get('/status', async (req, res) => {
   try {
-    const { pool } = require('../db');
-    
     // Get fund count
-    const fundResult = await pool.query('SELECT COUNT(*) FROM funds');
+    const fundResult = await executeRawQuery('SELECT COUNT(*) FROM funds');
     const fundCount = parseInt(fundResult.rows[0].count);
     
     // Get NAV data count
-    const navResult = await pool.query('SELECT COUNT(*) FROM nav_data');
+    const navResult = await executeRawQuery('SELECT COUNT(*) FROM nav_data');
     const navCount = parseInt(navResult.rows[0].count);
     
     // Get date range of NAV data
-    const dateRangeResult = await pool.query(`
+    const dateRangeResult = await executeRawQuery(`
       SELECT 
         MIN(nav_date) as earliest_date,
         MAX(nav_date) as latest_date
