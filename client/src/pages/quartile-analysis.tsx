@@ -264,7 +264,7 @@ export default function QuartileAnalysis() {
                       <div className="h-96 flex items-center justify-center">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                       </div>
-                    ) : fundsData?.funds && fundsData.funds.length > 0 ? (
+                    ) : fundsData && fundsData.funds && fundsData.funds.length > 0 ? (
                       <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-neutral-200">
                           <thead>
