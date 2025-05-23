@@ -604,7 +604,7 @@ export default function DatabaseExplorer() {
                   <Card>
                     <CardContent className="pt-6">
                       <div className="text-center">
-                        <Database className="h-8 w-8 mx-auto mb-2 text-red-600" />
+                        <AlertTriangle className="h-8 w-8 mx-auto mb-2 text-red-600" />
                         <div className="text-2xl font-bold text-red-600">
                           {quartileDistribution?.q4Count || 747}
                         </div>
@@ -632,7 +632,7 @@ export default function DatabaseExplorer() {
                       </TabsList>
                       
                       <div className="mt-4">
-                        {/* Q1 Funds Table */}
+                        {/* Q1 Funds Tab Content */}
                         <TabsContent value="q1" className="m-0">
                           <div className="p-4 bg-green-50 rounded-md mb-4">
                             <div className="flex items-center mb-2">
@@ -686,13 +686,205 @@ export default function DatabaseExplorer() {
                                   ))}
                                 </TableBody>
                               </Table>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                              <p className="mt-2 text-muted-foreground">Loading Q1 funds data...</p>
+                            </div>
+                          )}
+                        </TabsContent>
+                        
+                        {/* Q2 Funds Tab Content */}
+                        <TabsContent value="q2" className="m-0">
+                          <div className="p-4 bg-blue-50 rounded-md mb-4">
+                            <div className="flex items-center mb-2">
+                              <TrendingUp className="h-5 w-5 mr-2 text-blue-600" />
+                              <h3 className="text-md font-medium text-blue-800">Second Quartile Funds (Q2)</h3>
+                            </div>
+                            <p className="text-sm text-blue-700">
+                              These funds rank in the 26-50% range based on comprehensive scoring metrics. They offer good performance with reasonable risk profiles. Recommended action: <strong>HOLD</strong>
+                            </p>
+                          </div>
+                          
+                          {topQ2Funds?.funds ? (
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Fund Name</TableHead>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead className="text-right">Total Score</TableHead>
+                                    <TableHead className="text-right">Returns Score</TableHead>
+                                    <TableHead className="text-right">Risk Score</TableHead>
+                                    <TableHead>Recommendation</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {topQ2Funds.funds.slice(0, 10).map((fund: any) => (
+                                    <TableRow key={fund.id}>
+                                      <TableCell className="font-medium max-w-xs">
+                                        <div className="truncate" title={fund.fundName}>
+                                          {fund.fundName}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline">{fund.category}</Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right font-semibold">
+                                        {fund.totalScore || "N/A"}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {fund.historicalReturnsTotal || "N/A"}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {fund.riskGradeTotal || "N/A"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge className="bg-blue-100 text-blue-800">
+                                          {fund.recommendation || "HOLD"}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                              <p className="mt-2 text-muted-foreground">Loading Q2 funds data...</p>
+                            </div>
+                          )}
+                        </TabsContent>
+                        
+                        {/* Q3 Funds Tab Content */}
+                        <TabsContent value="q3" className="m-0">
+                          <div className="p-4 bg-yellow-50 rounded-md mb-4">
+                            <div className="flex items-center mb-2">
+                              <BarChart3 className="h-5 w-5 mr-2 text-yellow-600" />
+                              <h3 className="text-md font-medium text-yellow-800">Third Quartile Funds (Q3)</h3>
+                            </div>
+                            <p className="text-sm text-yellow-700">
+                              These funds fall in the 51-75% range with below-average performance or elevated risk metrics. Consider evaluating these holdings closely. Recommended action: <strong>REVIEW</strong>
+                            </p>
+                          </div>
+                          
+                          {topQ3Funds?.funds ? (
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Fund Name</TableHead>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead className="text-right">Total Score</TableHead>
+                                    <TableHead className="text-right">Returns Score</TableHead>
+                                    <TableHead className="text-right">Risk Score</TableHead>
+                                    <TableHead>Recommendation</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {topQ3Funds.funds.slice(0, 10).map((fund: any) => (
+                                    <TableRow key={fund.id}>
+                                      <TableCell className="font-medium max-w-xs">
+                                        <div className="truncate" title={fund.fundName}>
+                                          {fund.fundName}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline">{fund.category}</Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right font-semibold">
+                                        {fund.totalScore || "N/A"}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {fund.historicalReturnsTotal || "N/A"}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {fund.riskGradeTotal || "N/A"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge className="bg-yellow-100 text-yellow-800">
+                                          {fund.recommendation || "REVIEW"}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                              <p className="mt-2 text-muted-foreground">Loading Q3 funds data...</p>
+                            </div>
+                          )}
+                        </TabsContent>
+                        
+                        {/* Q4 Funds Tab Content */}
+                        <TabsContent value="q4" className="m-0">
+                          <div className="p-4 bg-red-50 rounded-md mb-4">
+                            <div className="flex items-center mb-2">
+                              <AlertTriangle className="h-5 w-5 mr-2 text-red-600" />
+                              <h3 className="text-md font-medium text-red-800">Bottom Quartile Funds (Q4)</h3>
+                            </div>
+                            <p className="text-sm text-red-700">
+                              These are the bottom 25% of funds with the weakest performance characteristics and/or highest risk profiles. Recommended action: <strong>SELL</strong>
+                            </p>
+                          </div>
+                          
+                          {topQ4Funds?.funds ? (
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Fund Name</TableHead>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead className="text-right">Total Score</TableHead>
+                                    <TableHead className="text-right">Returns Score</TableHead>
+                                    <TableHead className="text-right">Risk Score</TableHead>
+                                    <TableHead>Recommendation</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {topQ4Funds.funds.slice(0, 10).map((fund: any) => (
+                                    <TableRow key={fund.id}>
+                                      <TableCell className="font-medium max-w-xs">
+                                        <div className="truncate" title={fund.fundName}>
+                                          {fund.fundName}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline">{fund.category}</Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right font-semibold">
+                                        {fund.totalScore || "N/A"}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {fund.historicalReturnsTotal || "N/A"}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {fund.riskGradeTotal || "N/A"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge className="bg-red-100 text-red-800">
+                                          {fund.recommendation || "SELL"}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          ) : (
+                            <div className="text-center py-8">
+                              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                              <p className="mt-2 text-muted-foreground">Loading Q4 funds data...</p>
+                            </div>
+                          )}
+                        </TabsContent>
                       </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-                        <p className="mt-2 text-muted-foreground">Loading quartile data...</p>
-                      </div>
-                    )}
+                    </Tabs>
                   </CardContent>
                 </Card>
 
