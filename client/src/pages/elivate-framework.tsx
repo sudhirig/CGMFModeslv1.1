@@ -490,11 +490,13 @@ export default function ElivateFramework() {
                         
                         {/* Inflation & Rates Factors */}
                         <tr className="bg-yellow-50">
-                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-yellow-700">Inflation & Rates</td>
+                          <td colSpan={6} className="px-4 py-2 text-sm font-semibold text-yellow-700">Inflation & Rates</td>
                         </tr>
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">CPI Inflation</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.cpiInflation}%</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Ministry of Statistics</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Monthly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
@@ -507,6 +509,8 @@ export default function ElivateFramework() {
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">Repo Rate</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.repoRate}%</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">RBI</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Bi-monthly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
@@ -519,11 +523,13 @@ export default function ElivateFramework() {
                         
                         {/* Valuation & Earnings */}
                         <tr className="bg-purple-50">
-                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-purple-700">Valuation & Earnings</td>
+                          <td colSpan={6} className="px-4 py-2 text-sm font-semibold text-purple-700">Valuation & Earnings</td>
                         </tr>
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">Nifty P/E Ratio</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.niftyPe}</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">NSE India</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Daily</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
