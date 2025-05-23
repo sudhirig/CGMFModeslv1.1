@@ -18,6 +18,8 @@ export default function DatabaseExplorer() {
   const [topAmcs, setTopAmcs] = useState<{name: string, count: number}[]>([]);
   const [categoryData, setCategoryData] = useState<{name: string, value: number}[]>([]);
   const [topSubcategories, setTopSubcategories] = useState<{name: string, count: number}[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importingHistorical, setImportingHistorical] = useState(false);
 
   // Fetch fund scoring data for quartiles tab
   const { data: quartileDistribution } = useQuery({
@@ -48,6 +50,65 @@ export default function DatabaseExplorer() {
   
   // State for inner quartile tabs
   const [activeQuartileTab, setActiveQuartileTab] = useState("q1");
+  
+  // For database stats
+  const { data: navCount, refetch: refetchNavCounts } = useQuery({
+    queryKey: ['/api/amfi/status'],
+    staleTime: 60 * 1000,
+  });
+  
+  // For managing database imports
+  const importAMFIData = async (includeHistorical: boolean = false) => {
+    try {
+      if (includeHistorical) {
+        setImportingHistorical(true);
+      } else {
+        setImporting(true);
+      }
+      
+      const endpoint = includeHistorical 
+        ? '/api/amfi/import?historical=true'
+        : '/api/amfi/import';
+        
+      const response = await fetch(endpoint);
+      const data = await response.json();
+      
+      if (data.success) {
+        // Show success toast
+        // @ts-ignore
+        window.toast?.({
+          title: includeHistorical ? 'Historical NAV Data Imported' : 'AMFI Data Imported',
+          description: data.message,
+          variant: 'success'
+        });
+        
+        // Refresh data counts
+        refetchNavCounts();
+      } else {
+        // Show error toast
+        // @ts-ignore
+        window.toast?.({
+          title: 'Import Failed',
+          description: data.message,
+          variant: 'destructive'
+        });
+      }
+    } catch (error) {
+      console.error('Import error:', error);
+      // @ts-ignore
+      window.toast?.({
+        title: 'Import Error',
+        description: 'Failed to import AMFI data. See console for details.',
+        variant: 'destructive'
+      });
+    } finally {
+      if (includeHistorical) {
+        setImportingHistorical(false);
+      } else {
+        setImporting(false);
+      }
+    }
+  };
 
   useEffect(() => {
     if (funds && funds.length > 0) {
@@ -526,12 +587,77 @@ export default function DatabaseExplorer() {
   return (
     <div className="py-6">
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-neutral-900">Database Explorer</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Explore and analyze the mutual fund and ELIVATE framework databases
-          </p>
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-neutral-900">Database Explorer</h1>
+            <p className="mt-1 text-sm text-neutral-500">
+              Explore and analyze the mutual fund and ELIVATE framework databases
+            </p>
+          </div>
+          
+          {/* Data Management Controls */}
+          <div className="flex space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={() => importAMFIData(false)}
+              disabled={importing || importingHistorical}
+            >
+              {importing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                "Import AMFI Data"
+              )}
+            </Button>
+            
+            <Button 
+              variant="default" 
+              onClick={() => importAMFIData(true)}
+              disabled={importing || importingHistorical}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {importingHistorical ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Importing Historical NAV...
+                </>
+              ) : (
+                "Import Historical NAV Data"
+              )}
+            </Button>
+          </div>
         </div>
+        
+        {/* NAV Data Status */}
+        <Card className="bg-blue-50 mb-6">
+          <CardContent className="pt-4 pb-3 flex justify-between items-center">
+            <div>
+              <span className="text-sm font-medium text-blue-800">NAV Data Status:</span>{" "}
+              <span className="text-sm">
+                {navCount ? (
+                  <>
+                    <strong>{navCount.totalFunds}</strong> mutual funds with{" "}
+                    <strong>{navCount.totalNavRecords}</strong> NAV data points available
+                  </>
+                ) : (
+                  "Loading data statistics..."
+                )}
+              </span>
+            </div>
+            <div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => refetchNavCounts()}
+                className="text-blue-700 hover:text-blue-800 hover:bg-blue-100"
+              >
+                <Loader2 className="mr-1 h-3 w-3" /> Refresh
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full md:w-[600px] grid-cols-5">
