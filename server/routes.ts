@@ -16,9 +16,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedLimit = limit ? parseInt(limit as string) : 1000; // Increased limit to get all funds
       const parsedOffset = offset ? parseInt(offset as string) : 0;
       
-      if (category) {
-        const funds = await storage.getFundsByCategory(category as string);
-        return res.json(funds);
+      if (category && category !== 'undefined' && category !== 'All Categories') {
+        // Use direct pool query to avoid ORM issues
+        try {
+          console.log(`Fetching funds for category: ${category}`);
+          const categoryResult = await pool.query(`
+            SELECT * FROM funds 
+            WHERE category = $1
+            ORDER BY fund_name
+          `, [category]);
+          
+          if (categoryResult && categoryResult.rows && categoryResult.rows.length > 0) {
+            console.log(`Found ${categoryResult.rows.length} funds in category ${category}`);
+            return res.json(categoryResult.rows);
+          } else {
+            console.log(`No funds found in category ${category}, trying case-insensitive search`);
+            // Try case-insensitive search as fallback
+            const fallbackResult = await pool.query(`
+              SELECT * FROM funds 
+              WHERE LOWER(category) = LOWER($1)
+              ORDER BY fund_name
+            `, [category]);
+            
+            if (fallbackResult && fallbackResult.rows && fallbackResult.rows.length > 0) {
+              console.log(`Found ${fallbackResult.rows.length} funds with case-insensitive category ${category}`);
+              return res.json(fallbackResult.rows);
+            } else {
+              console.log(`No funds found even with case-insensitive search for ${category}`);
+              return res.json([]);
+            }
+          }
+        } catch (categoryError) {
+          console.error(`Error fetching funds for category ${category}:`, categoryError);
+          return res.json([]);
+        }
       }
       
       // Use a more reliable direct query to get all funds at once
