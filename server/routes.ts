@@ -174,17 +174,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { category } = req.params;
       const { limit } = req.query;
       
-      const parsedLimit = limit ? parseInt(limit as string) : 5;
+      // Make sure we have a valid limit
+      const parsedLimit = limit ? Number(limit as string) : 5;
+      if (isNaN(parsedLimit)) {
+        return res.status(400).json({ message: "Invalid limit parameter" });
+      }
       
-      // Get the fund scores from the database
-      const fundScores = await executeRawQuery(`
+      // Get the fund scores from the database with simplified query
+      let query = `
         SELECT fs.*, f.fund_name, f.category, f.subcategory, f.amc_name 
         FROM fund_scores fs
         JOIN funds f ON fs.fund_id = f.id
-        WHERE ($1::text IS NULL OR f.category = $1)
-        ORDER BY fs.total_score DESC
-        LIMIT $2
-      `, [category || null, parsedLimit]);
+      `;
+      
+      // Add optional category filter
+      if (category && category !== 'undefined') {
+        query += ` WHERE f.category = $1 `;
+        var params = [category, parsedLimit];
+      } else {
+        query += ` WHERE 1=1 `;
+        var params = [parsedLimit];
+      }
+      
+      // Add ordering and limit
+      query += ` ORDER BY fs.total_score DESC LIMIT $${params.length}`;
+      
+      const fundScores = await executeRawQuery(query, params);
       
       res.json(fundScores.rows);
     } catch (error) {
