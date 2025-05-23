@@ -7,6 +7,7 @@ import { elivateFramework } from "./services/elivate-framework";
 import { fundScoringEngine } from "./services/fund-scoring";
 import { portfolioBuilder } from "./services/portfolio-builder";
 import { backtestingEngine } from "./services/backtesting-engine";
+import amfiImportRoutes from "./api/amfi-import";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API route for direct SQL category filtering
