@@ -23,6 +23,9 @@ export interface IStorage {
   getFund(id: number): Promise<Fund | undefined>;
   getFundBySchemeCode(schemeCode: string): Promise<Fund | undefined>;
   getFundsByCategory(category: string): Promise<Fund[]>;
+  getFundsByQuartile(quartile: number, category?: string): Promise<any[]>;
+  getQuartileMetrics(): Promise<any>;
+  getQuartileDistribution(category?: string): Promise<any>;
   getAllFunds(limit?: number, offset?: number): Promise<Fund[]>;
   createFund(fund: InsertFund): Promise<Fund>;
   updateFund(id: number, updatedFields: Partial<InsertFund>): Promise<Fund | undefined>;
