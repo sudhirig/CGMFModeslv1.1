@@ -15,6 +15,7 @@ export class BacktestingEngine {
   
   /**
    * Run a backtest on a model portfolio for a given time period
+   * Using real historical NAV data to accurately calculate returns
    */
   async runBacktest(params: {
     portfolioId?: number;
@@ -25,6 +26,15 @@ export class BacktestingEngine {
     rebalancePeriod?: 'monthly' | 'quarterly' | 'annually';
   }) {
     try {
+      console.log(`Running backtest with params: ${JSON.stringify({
+        portfolioId: params.portfolioId,
+        riskProfile: params.riskProfile,
+        startDate: params.startDate,
+        endDate: params.endDate,
+        initialAmount: params.initialAmount,
+        rebalancePeriod: params.rebalancePeriod || 'quarterly'
+      })}`);
+      
       const { 
         portfolioId, 
         riskProfile, 
@@ -34,10 +44,13 @@ export class BacktestingEngine {
         rebalancePeriod = 'quarterly'
       } = params;
       
+      // Validate input dates
+      if (startDate > endDate) {
+        throw new Error("Start date must be before end date");
+      }
+      
       // Get portfolio - either by ID or by risk profile
       let portfolio;
-      
-      // Start with a simplified approach - get some default portfolio allocations
       // We'll use these allocations for backtesting if we can't find a specific portfolio
       const defaultAllocations = await this.getDefaultPortfolioAllocations();
       
@@ -608,11 +621,77 @@ export class BacktestingEngine {
   }
   
   /**
-   * Get default portfolio allocations for backtesting
-   * This provides sensible allocations when portfolio data is unavailable
+   * Get portfolio allocations from the database for backtesting
+   * If no allocations are available, it will provide well-designed default allocations
+   * that follow standard allocation patterns for different risk profiles using the best available funds
    */
   private async getDefaultPortfolioAllocations(): Promise<Record<string, any[]>> {
+    console.log("Fetching default portfolio allocations for backtesting");
+    
     try {
+      // First attempt to fetch real recommended model portfolios from the database
+      const models = await pool.query(`
+        SELECT id, name, risk_profile FROM model_portfolios 
+        WHERE status = 'ACTIVE'
+        ORDER BY created_at DESC
+      `);
+      
+      if (models.rows && models.rows.length > 0) {
+        const result: Record<string, any[]> = {};
+        
+        // For each risk profile, get the most recent model portfolio
+        const processedProfiles = new Set<string>();
+        
+        for (const model of models.rows) {
+          const profile = model.risk_profile;
+          
+          // Skip if we already have this profile
+          if (processedProfiles.has(profile)) continue;
+          
+          // Get allocations for this model
+          const allocations = await pool.query(`
+            SELECT mpa.allocation, mpa.fund_id, f.category, f.fund_name
+            FROM model_portfolio_allocations mpa
+            JOIN funds f ON mpa.fund_id = f.id
+            WHERE mpa.portfolio_id = $1
+          `, [model.id]);
+          
+          if (allocations.rows && allocations.rows.length > 0) {
+            // Map the allocations to our format
+            result[profile] = await Promise.all(allocations.rows.map(async row => {
+              // Get the fund details to include in the result
+              const fundDetails = await pool.query(`
+                SELECT * FROM funds WHERE id = $1
+              `, [row.fund_id]);
+              
+              const fund = fundDetails.rows[0];
+              
+              // Ensure allocation is a number
+              const allocation = typeof row.allocation === 'string' 
+                ? parseFloat(row.allocation) 
+                : row.allocation;
+              
+              return {
+                fund: fund,
+                category: row.category,
+                allocation: allocation,
+                score: 90 // Default high score for selected funds
+              };
+            }));
+            
+            processedProfiles.add(profile);
+            console.log(`Found real portfolio allocations for ${profile} risk profile with ${result[profile].length} fund categories`);
+          }
+        }
+        
+        // If we found allocations for at least some profiles, return them
+        if (Object.keys(result).length > 0) {
+          return result;
+        }
+      }
+      
+      console.log("No existing portfolio allocations found in database, fetching top-rated funds for each category");
+      
       // For each risk profile, we'll fetch top funds for appropriate categories
       const defaultAllocations: Record<string, any[]> = {
         'Conservative': [],
@@ -623,67 +702,268 @@ export class BacktestingEngine {
       };
       
       // Get top-rated funds for different categories
-      const topLargeCap = await storage.getLatestFundScores(2, 'Equity: Large Cap');
-      const topMidCap = await storage.getLatestFundScores(2, 'Equity: Mid Cap');
-      const topSmallCap = await storage.getLatestFundScores(2, 'Equity: Small Cap');
-      const topDebtShort = await storage.getLatestFundScores(2, 'Debt: Short Duration');
-      const topDebtMedium = await storage.getLatestFundScores(2, 'Debt: Medium Duration');
-      const topHybrid = await storage.getLatestFundScores(2, 'Hybrid: Balanced');
+      // These queries match our database structure more accurately
+      const topLargeCap = await pool.query(`
+        SELECT fs.*, f.* FROM fund_scores fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE f.category LIKE 'Equity%Large Cap%'
+        ORDER BY fs.total_score DESC
+        LIMIT 2
+      `);
+      
+      const topMidCap = await pool.query(`
+        SELECT fs.*, f.* FROM fund_scores fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE f.category LIKE 'Equity%Mid Cap%'
+        ORDER BY fs.total_score DESC
+        LIMIT 2
+      `);
+      
+      const topSmallCap = await pool.query(`
+        SELECT fs.*, f.* FROM fund_scores fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE f.category LIKE 'Equity%Small Cap%'
+        ORDER BY fs.total_score DESC
+        LIMIT 2
+      `);
+      
+      const topDebtShort = await pool.query(`
+        SELECT fs.*, f.* FROM fund_scores fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE f.category LIKE 'Debt%Short%'
+        ORDER BY fs.total_score DESC
+        LIMIT 2
+      `);
+      
+      const topDebtMedium = await pool.query(`
+        SELECT fs.*, f.* FROM fund_scores fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE f.category LIKE 'Debt%Medium%'
+        ORDER BY fs.total_score DESC
+        LIMIT 2
+      `);
+      
+      const topHybrid = await pool.query(`
+        SELECT fs.*, f.* FROM fund_scores fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE f.category LIKE 'Hybrid%'
+        ORDER BY fs.total_score DESC
+        LIMIT 2
+      `);
       
       // Conservative: 15% Large Cap, 5% Mid Cap, 0% Small Cap, 40% Short Debt, 30% Medium Debt, 10% Hybrid
-      if (topLargeCap.length > 0 && topDebtShort.length > 0 && topDebtMedium.length > 0 && topHybrid.length > 0) {
+      if (topLargeCap.rows?.length > 0 && topDebtShort.rows?.length > 0 && 
+          topDebtMedium.rows?.length > 0 && topHybrid.rows?.length > 0) {
+            
+        // Use the first fund from each category with appropriate allocations
         defaultAllocations['Conservative'] = [
-          { fund: topLargeCap[0].fund, category: 'Equity: Large Cap', allocation: 15, score: topLargeCap[0].totalScore },
-          { fund: topDebtShort[0].fund, category: 'Debt: Short Duration', allocation: 40, score: topDebtShort[0].totalScore },
-          { fund: topDebtMedium[0].fund, category: 'Debt: Medium Duration', allocation: 30, score: topDebtMedium[0].totalScore },
-          { fund: topHybrid[0].fund, category: 'Hybrid: Balanced', allocation: 15, score: topHybrid[0].totalScore }
+          { 
+            fund: topLargeCap.rows[0], 
+            category: 'Equity-Large Cap', 
+            allocation: 15, 
+            score: parseFloat(topLargeCap.rows[0].total_score) 
+          },
+          { 
+            fund: topMidCap.rows.length > 0 ? topMidCap.rows[0] : topLargeCap.rows[0],
+            category: 'Equity-Mid Cap', 
+            allocation: 5, 
+            score: topMidCap.rows.length > 0 ? parseFloat(topMidCap.rows[0].total_score) : 80
+          },
+          { 
+            fund: topDebtShort.rows[0], 
+            category: 'Debt-Short Duration', 
+            allocation: 40, 
+            score: parseFloat(topDebtShort.rows[0].total_score) 
+          },
+          { 
+            fund: topDebtMedium.rows[0], 
+            category: 'Debt-Medium Duration', 
+            allocation: 30, 
+            score: parseFloat(topDebtMedium.rows[0].total_score)
+          },
+          { 
+            fund: topHybrid.rows[0], 
+            category: 'Hybrid-Aggressive', 
+            allocation: 10, 
+            score: parseFloat(topHybrid.rows[0].total_score)
+          }
         ];
+        
+        console.log(`Created Conservative portfolio with ${defaultAllocations['Conservative'].length} funds`);
       }
       
       // Moderately Conservative: 25% Large Cap, 10% Mid Cap, 5% Small Cap, 30% Short Debt, 20% Medium Debt, 10% Hybrid
-      if (topLargeCap.length > 0 && topMidCap.length > 0 && topDebtShort.length > 0 && topDebtMedium.length > 0) {
+      if (topLargeCap.rows?.length > 0 && topMidCap.rows?.length > 0 && 
+          topDebtShort.rows?.length > 0 && topDebtMedium.rows?.length > 0) {
+            
         defaultAllocations['Moderately Conservative'] = [
-          { fund: topLargeCap[0].fund, category: 'Equity: Large Cap', allocation: 25, score: topLargeCap[0].totalScore },
-          { fund: topMidCap[0].fund, category: 'Equity: Mid Cap', allocation: 10, score: topMidCap[0].totalScore },
-          { fund: topDebtShort[0].fund, category: 'Debt: Short Duration', allocation: 30, score: topDebtShort[0].totalScore },
-          { fund: topDebtMedium[0].fund, category: 'Debt: Medium Duration', allocation: 20, score: topDebtMedium[0].totalScore },
-          { fund: topHybrid[0].fund, category: 'Hybrid: Balanced', allocation: 15, score: topHybrid[0].totalScore }
+          { 
+            fund: topLargeCap.rows[0], 
+            category: 'Equity-Large Cap', 
+            allocation: 25, 
+            score: parseFloat(topLargeCap.rows[0].total_score) 
+          },
+          { 
+            fund: topMidCap.rows[0], 
+            category: 'Equity-Mid Cap', 
+            allocation: 10, 
+            score: parseFloat(topMidCap.rows[0].total_score) 
+          },
+          { 
+            fund: topSmallCap.rows?.length > 0 ? topSmallCap.rows[0] : topMidCap.rows[0], 
+            category: 'Equity-Small Cap', 
+            allocation: 5, 
+            score: topSmallCap.rows?.length > 0 ? parseFloat(topSmallCap.rows[0].total_score) : 85
+          },
+          { 
+            fund: topDebtShort.rows[0], 
+            category: 'Debt-Short Duration', 
+            allocation: 30, 
+            score: parseFloat(topDebtShort.rows[0].total_score) 
+          },
+          { 
+            fund: topDebtMedium.rows[0], 
+            category: 'Debt-Medium Duration', 
+            allocation: 20, 
+            score: parseFloat(topDebtMedium.rows[0].total_score) 
+          },
+          { 
+            fund: topHybrid.rows[0], 
+            category: 'Hybrid-Aggressive', 
+            allocation: 10, 
+            score: parseFloat(topHybrid.rows[0].total_score) 
+          }
         ];
+        
+        console.log(`Created Moderately Conservative portfolio with ${defaultAllocations['Moderately Conservative'].length} funds`);
       }
       
       // Balanced: 30% Large Cap, 15% Mid Cap, 10% Small Cap, 20% Short Debt, 15% Medium Debt, 10% Hybrid
-      if (topLargeCap.length > 0 && topMidCap.length > 0 && topSmallCap.length > 0 && topDebtShort.length > 0) {
+      if (topLargeCap.rows?.length > 0 && topMidCap.rows?.length > 0 && 
+          topSmallCap.rows?.length > 0 && topDebtShort.rows?.length > 0) {
+            
         defaultAllocations['Balanced'] = [
-          { fund: topLargeCap[0].fund, category: 'Equity: Large Cap', allocation: 30, score: topLargeCap[0].totalScore },
-          { fund: topMidCap[0].fund, category: 'Equity: Mid Cap', allocation: 15, score: topMidCap[0].totalScore },
-          { fund: topSmallCap[0].fund, category: 'Equity: Small Cap', allocation: 10, score: topSmallCap[0].totalScore },
-          { fund: topDebtShort[0].fund, category: 'Debt: Short Duration', allocation: 20, score: topDebtShort[0].totalScore },
-          { fund: topDebtMedium[0].fund, category: 'Debt: Medium Duration', allocation: 15, score: topDebtMedium[0].totalScore },
-          { fund: topHybrid[0].fund, category: 'Hybrid: Balanced', allocation: 10, score: topHybrid[0].totalScore }
+          { 
+            fund: topLargeCap.rows[0], 
+            category: 'Equity-Large Cap', 
+            allocation: 30, 
+            score: parseFloat(topLargeCap.rows[0].total_score) 
+          },
+          { 
+            fund: topMidCap.rows[0], 
+            category: 'Equity-Mid Cap', 
+            allocation: 15, 
+            score: parseFloat(topMidCap.rows[0].total_score) 
+          },
+          { 
+            fund: topSmallCap.rows[0], 
+            category: 'Equity-Small Cap', 
+            allocation: 10, 
+            score: parseFloat(topSmallCap.rows[0].total_score) 
+          },
+          { 
+            fund: topDebtShort.rows[0], 
+            category: 'Debt-Short Duration', 
+            allocation: 20, 
+            score: parseFloat(topDebtShort.rows[0].total_score) 
+          },
+          { 
+            fund: topDebtMedium.rows[0], 
+            category: 'Debt-Medium Duration', 
+            allocation: 15, 
+            score: parseFloat(topDebtMedium.rows[0].total_score) 
+          },
+          { 
+            fund: topHybrid.rows[0], 
+            category: 'Hybrid-Aggressive', 
+            allocation: 10, 
+            score: parseFloat(topHybrid.rows[0].total_score) 
+          }
         ];
+        
+        console.log(`Created Balanced portfolio with ${defaultAllocations['Balanced'].length} funds`);
       }
       
       // Moderately Aggressive: 35% Large Cap, 25% Mid Cap, 15% Small Cap, 10% Short Debt, 5% Medium Debt, 10% Hybrid
-      if (topLargeCap.length > 0 && topMidCap.length > 0 && topSmallCap.length > 0) {
+      if (topLargeCap.rows?.length > 0 && topMidCap.rows?.length > 0 && topSmallCap.rows?.length > 0) {
         defaultAllocations['Moderately Aggressive'] = [
-          { fund: topLargeCap[0].fund, category: 'Equity: Large Cap', allocation: 35, score: topLargeCap[0].totalScore },
-          { fund: topMidCap[0].fund, category: 'Equity: Mid Cap', allocation: 25, score: topMidCap[0].totalScore },
-          { fund: topSmallCap[0].fund, category: 'Equity: Small Cap', allocation: 15, score: topSmallCap[0].totalScore },
-          { fund: topDebtShort[0].fund, category: 'Debt: Short Duration', allocation: 10, score: topDebtShort[0].totalScore },
-          { fund: topDebtMedium[0].fund, category: 'Debt: Medium Duration', allocation: 5, score: topDebtMedium[0].totalScore },
-          { fund: topHybrid[0].fund, category: 'Hybrid: Balanced', allocation: 10, score: topHybrid[0].totalScore }
+          { 
+            fund: topLargeCap.rows[0], 
+            category: 'Equity-Large Cap', 
+            allocation: 35, 
+            score: parseFloat(topLargeCap.rows[0].total_score) 
+          },
+          { 
+            fund: topMidCap.rows[0], 
+            category: 'Equity-Mid Cap', 
+            allocation: 25, 
+            score: parseFloat(topMidCap.rows[0].total_score) 
+          },
+          { 
+            fund: topSmallCap.rows[0], 
+            category: 'Equity-Small Cap', 
+            allocation: 15, 
+            score: parseFloat(topSmallCap.rows[0].total_score) 
+          },
+          { 
+            fund: topDebtShort.rows?.length > 0 ? topDebtShort.rows[0] : topLargeCap.rows[0],
+            category: 'Debt-Short Duration', 
+            allocation: 10, 
+            score: topDebtShort.rows?.length > 0 ? parseFloat(topDebtShort.rows[0].total_score) : 85
+          },
+          { 
+            fund: topDebtMedium.rows?.length > 0 ? topDebtMedium.rows[0] : topLargeCap.rows[0],
+            category: 'Debt-Medium Duration', 
+            allocation: 5, 
+            score: topDebtMedium.rows?.length > 0 ? parseFloat(topDebtMedium.rows[0].total_score) : 85
+          },
+          { 
+            fund: topHybrid.rows?.length > 0 ? topHybrid.rows[0] : topLargeCap.rows[0],
+            category: 'Hybrid-Aggressive', 
+            allocation: 10, 
+            score: topHybrid.rows?.length > 0 ? parseFloat(topHybrid.rows[0].total_score) : 85
+          }
         ];
+        
+        console.log(`Created Moderately Aggressive portfolio with ${defaultAllocations['Moderately Aggressive'].length} funds`);
       }
       
       // Aggressive: 40% Large Cap, 30% Mid Cap, 20% Small Cap, 5% Short Debt, 0% Medium Debt, 5% Hybrid
-      if (topLargeCap.length > 0 && topMidCap.length > 0 && topSmallCap.length > 0) {
+      if (topLargeCap.rows?.length > 0 && topMidCap.rows?.length > 0 && topSmallCap.rows?.length > 0) {
         defaultAllocations['Aggressive'] = [
-          { fund: topLargeCap[0].fund, category: 'Equity: Large Cap', allocation: 40, score: topLargeCap[0].totalScore },
-          { fund: topMidCap[0].fund, category: 'Equity: Mid Cap', allocation: 30, score: topMidCap[0].totalScore },
-          { fund: topSmallCap[0].fund, category: 'Equity: Small Cap', allocation: 20, score: topSmallCap[0].totalScore },
-          { fund: topDebtShort[0].fund, category: 'Debt: Short Duration', allocation: 5, score: topDebtShort[0].totalScore },
-          { fund: topHybrid[0].fund, category: 'Hybrid: Balanced', allocation: 5, score: topHybrid[0].totalScore }
+          { 
+            fund: topLargeCap.rows[0], 
+            category: 'Equity-Large Cap', 
+            allocation: 40, 
+            score: parseFloat(topLargeCap.rows[0].total_score) 
+          },
+          { 
+            fund: topMidCap.rows[0], 
+            category: 'Equity-Mid Cap', 
+            allocation: 30, 
+            score: parseFloat(topMidCap.rows[0].total_score) 
+          },
+          { 
+            fund: topSmallCap.rows[0], 
+            category: 'Equity-Small Cap', 
+            allocation: 20, 
+            score: parseFloat(topSmallCap.rows[0].total_score) 
+          },
+          { 
+            fund: topDebtShort.rows?.length > 0 ? topDebtShort.rows[0] : topLargeCap.rows[0], 
+            category: 'Debt-Short Duration', 
+            allocation: 5, 
+            score: topDebtShort.rows?.length > 0 ? parseFloat(topDebtShort.rows[0].total_score) : 85
+          },
+          { 
+            fund: topHybrid.rows?.length > 0 ? topHybrid.rows[0] : topLargeCap.rows[0], 
+            category: 'Hybrid-Aggressive', 
+            allocation: 5, 
+            score: topHybrid.rows?.length > 0 ? parseFloat(topHybrid.rows[0].total_score) : 85
+          }
         ];
+        
+        console.log(`Created Aggressive portfolio with ${defaultAllocations['Aggressive'].length} funds`);
       }
       
       // Fallback if we couldn't get proper allocations
