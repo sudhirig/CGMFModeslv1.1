@@ -319,6 +319,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import real AMFI fund data with 3,000+ mutual funds
+  app.get("/api/funds/import-real-amfi", async (req, res) => {
+    try {
+      // Check for force parameter to allow reimport
+      const forceImport = req.query.force === 'true';
+      
+      // Check if we already have data
+      const countCheck = await executeRawQuery('SELECT COUNT(*) FROM funds');
+      const fundCount = parseInt(countCheck.rows[0].count);
+      
+      if (fundCount < 100 || forceImport) {
+        // Import real AMFI data
+        const { fetchAMFIMutualFundData } = await import('./amfi-scraper');
+        const result = await fetchAMFIMutualFundData();
+        
+        return res.json({ 
+          message: `AMFI data import ${result.success ? 'successful' : 'failed'}`,
+          result 
+        });
+      }
+      
+      return res.json({ 
+        message: "Funds already exist in database. Use ?force=true to reimport.", 
+        fundCount: fundCount 
+      });
+    } catch (error) {
+      console.error("Error importing AMFI data:", error);
+      return res.status(500).json({ 
+        message: "Error importing AMFI data",
+        error: String(error)
+      });
+    }
+  });
+  
   // API routes for top-rated funds - fixed to use real data
   app.get("/api/funds/top-rated/:category?", async (req, res) => {
     try {
