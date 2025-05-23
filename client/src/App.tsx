@@ -10,6 +10,7 @@ import PortfolioBuilder from "@/pages/portfolio-builder";
 import EtlPipeline from "@/pages/etl-pipeline";
 import Backtesting from "@/pages/backtesting";
 import DatabaseExplorer from "@/pages/database-explorer";
+import ElivateFramework from "@/pages/elivate-framework";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -27,6 +28,7 @@ function Router() {
             <Route path="/etl-pipeline" component={EtlPipeline} />
             <Route path="/backtesting" component={Backtesting} />
             <Route path="/database-explorer" component={DatabaseExplorer} />
+            <Route path="/elivate-framework" component={ElivateFramework} />
             <Route component={NotFound} />
           </Switch>
         </main>
