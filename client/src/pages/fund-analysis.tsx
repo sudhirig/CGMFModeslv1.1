@@ -11,6 +11,7 @@ import { Loader2 } from "lucide-react";
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Subcategories");
+  const [showDatabaseStats, setShowDatabaseStats] = useState<boolean>(true);
   
   // Called when category is changed from dropdown
   const handleCategoryChange = (category: string) => {
@@ -137,6 +138,43 @@ export default function FundAnalysis() {
                     />
                   </div>
                   
+                  {showDatabaseStats && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
+                      <div className="flex justify-between items-center mb-2">
+                        <h3 className="text-sm font-medium">Database Status</h3>
+                        <span className="text-xs text-blue-600 dark:text-blue-300">
+                          Real AMFI Data
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
+                          <div className="font-medium text-gray-600 dark:text-gray-300">Total Funds</div>
+                          <div className="text-lg font-bold text-blue-600 dark:text-blue-300">{funds?.length || 0}</div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
+                          <div className="font-medium text-gray-600 dark:text-gray-300">Matched</div>
+                          <div className="text-lg font-bold text-green-600 dark:text-green-300">{filteredFunds.length}</div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
+                          <div className="font-medium text-gray-600 dark:text-gray-300">{selectedCategory}</div>
+                          <div className="text-lg font-bold text-purple-600 dark:text-purple-300">
+                            {selectedCategory === "All Categories" 
+                              ? "All" 
+                              : funds?.filter(f => f?.category === selectedCategory)?.length || 0}
+                          </div>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="w-full mt-2 text-xs" 
+                        onClick={() => setShowDatabaseStats(false)}
+                      >
+                        Hide Stats
+                      </Button>
+                    </div>
+                  )}
+
                   <div className="pt-4">
                     <label className="text-sm font-medium text-neutral-700 mb-2 block">
                       Funds <span className="text-primary ml-1 text-xs font-medium">({filteredFunds.length} found)</span>
