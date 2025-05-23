@@ -298,20 +298,215 @@ export default function DatabaseExplorer() {
     );
   };
 
+  const renderElivateDatabase = () => {
+    // ELIVATE Database tables
+    const elivateTables = [
+      { 
+        name: "elivate_scores", 
+        description: "ELIVATE Framework market analysis scores", 
+        columns: [
+          { name: "id", type: "SERIAL", description: "Primary key" },
+          { name: "score_date", type: "DATE", description: "Date of the ELIVATE analysis" },
+          { name: "external_influence_score", type: "DECIMAL", description: "External Influence component (max 20)" },
+          { name: "local_story_score", type: "DECIMAL", description: "Local Story component (max 20)" },
+          { name: "inflation_rates_score", type: "DECIMAL", description: "Inflation & Rates component (max 20)" },
+          { name: "valuation_earnings_score", type: "DECIMAL", description: "Valuation & Earnings component (max 20)" },
+          { name: "allocation_capital_score", type: "DECIMAL", description: "Allocation of Capital component (max 10)" },
+          { name: "trends_sentiments_score", type: "DECIMAL", description: "Trends & Sentiments component (max 10)" },
+          { name: "total_elivate_score", type: "DECIMAL", description: "Total ELIVATE score (max 100)" },
+          { name: "market_stance", type: "TEXT", description: "Market stance (BULLISH, NEUTRAL, BEARISH)" },
+        ]
+      },
+      { 
+        name: "market_indices", 
+        description: "Market indices and economic indicators", 
+        columns: [
+          { name: "index_name", type: "TEXT", description: "Name of the index or indicator" },
+          { name: "index_date", type: "DATE", description: "Date of the index value" },
+          { name: "close_value", type: "DECIMAL", description: "Closing value" },
+          { name: "volume", type: "BIGINT", description: "Trading volume" },
+          { name: "pe_ratio", type: "DECIMAL", description: "Price-to-Earnings ratio" },
+          { name: "pb_ratio", type: "DECIMAL", description: "Price-to-Book ratio" },
+        ]
+      },
+      { 
+        name: "elivate_factors", 
+        description: "Individual factor values for ELIVATE calculation", 
+        columns: [
+          { name: "id", type: "SERIAL", description: "Primary key" },
+          { name: "elivate_score_id", type: "INTEGER", description: "Foreign key to elivate_scores" },
+          { name: "factor_name", type: "TEXT", description: "Name of the factor (GDP Growth, Inflation, etc.)" },
+          { name: "factor_value", type: "DECIMAL", description: "Value of the factor" },
+          { name: "component", type: "TEXT", description: "ELIVATE component the factor belongs to" },
+          { name: "weight", type: "DECIMAL", description: "Weight of the factor in its component" },
+        ]
+      },
+    ];
+    
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="rounded-full h-8 w-8 mx-auto mb-2 bg-purple-500 flex items-center justify-center text-white">E</div>
+                <div className="text-2xl font-bold">84.7</div>
+                <p className="text-sm text-muted-foreground">Current ELIVATE Score</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="rounded-full h-8 w-8 mx-auto mb-2 bg-green-500 flex items-center justify-center text-white">↑</div>
+                <div className="text-2xl font-bold">Bullish</div>
+                <p className="text-sm text-muted-foreground">Market Stance</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="rounded-full h-8 w-8 mx-auto mb-2 bg-blue-500 flex items-center justify-center text-white">21</div>
+                <div className="text-2xl font-bold">Indicators</div>
+                <p className="text-sm text-muted-foreground">Market Factors Tracked</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div className="mb-6">
+          <h3 className="text-lg font-semibold mb-4">ELIVATE Component Scores</h3>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">External Influence</span>
+                <span className="text-sm text-muted-foreground">17.8 / 20</span>
+              </div>
+              <div className="w-full bg-neutral-200 rounded-full h-2.5">
+                <div 
+                  className="bg-blue-500 h-2.5 rounded-full" 
+                  style={{ width: `${(17.8 / 20) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Local Story</span>
+                <span className="text-sm text-muted-foreground">16.5 / 20</span>
+              </div>
+              <div className="w-full bg-neutral-200 rounded-full h-2.5">
+                <div 
+                  className="bg-green-500 h-2.5 rounded-full" 
+                  style={{ width: `${(16.5 / 20) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Inflation & Rates</span>
+                <span className="text-sm text-muted-foreground">15.2 / 20</span>
+              </div>
+              <div className="w-full bg-neutral-200 rounded-full h-2.5">
+                <div 
+                  className="bg-yellow-500 h-2.5 rounded-full" 
+                  style={{ width: `${(15.2 / 20) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Valuation & Earnings</span>
+                <span className="text-sm text-muted-foreground">18.3 / 20</span>
+              </div>
+              <div className="w-full bg-neutral-200 rounded-full h-2.5">
+                <div 
+                  className="bg-purple-500 h-2.5 rounded-full" 
+                  style={{ width: `${(18.3 / 20) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Allocation of Capital</span>
+                <span className="text-sm text-muted-foreground">8.7 / 10</span>
+              </div>
+              <div className="w-full bg-neutral-200 rounded-full h-2.5">
+                <div 
+                  className="bg-indigo-500 h-2.5 rounded-full" 
+                  style={{ width: `${(8.7 / 10) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+            <div>
+              <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Trends & Sentiments</span>
+                <span className="text-sm text-muted-foreground">8.2 / 10</span>
+              </div>
+              <div className="w-full bg-neutral-200 rounded-full h-2.5">
+                <div 
+                  className="bg-red-500 h-2.5 rounded-full" 
+                  style={{ width: `${(8.2 / 10) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {elivateTables.map(table => (
+          <Card key={table.name}>
+            <CardHeader>
+              <div className="flex items-center space-x-2">
+                <TableIcon className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-lg">{table.name}</CardTitle>
+              </div>
+              <CardDescription>{table.description}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">Column</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Description</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {table.columns.map(column => (
+                      <TableRow key={column.name}>
+                        <TableCell className="font-medium">{column.name}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{column.type}</Badge>
+                        </TableCell>
+                        <TableCell>{column.description}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="py-6">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-neutral-900">Database Explorer</h1>
           <p className="mt-1 text-sm text-neutral-500">
-            Explore and analyze the mutual fund database
+            Explore and analyze the mutual fund and ELIVATE framework databases
           </p>
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full md:w-[400px] grid-cols-3">
+          <TabsList className="grid w-full md:w-[500px] grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="schema">Schema</TabsTrigger>
+            <TabsTrigger value="elivate">ELIVATE Database</TabsTrigger>
             <TabsTrigger value="explorer">Data Explorer</TabsTrigger>
           </TabsList>
           
@@ -339,6 +534,10 @@ export default function DatabaseExplorer() {
             
             <TabsContent value="schema" className="m-0">
               {renderDatabaseSchema()}
+            </TabsContent>
+            
+            <TabsContent value="elivate" className="m-0">
+              {renderElivateDatabase()}
             </TabsContent>
             
             <TabsContent value="explorer" className="m-0">
