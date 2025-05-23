@@ -403,6 +403,8 @@ export default function ElivateFramework() {
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">Fed Funds Rate</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.fedFundsRate}%</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">US Federal Reserve</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Monthly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
@@ -415,6 +417,8 @@ export default function ElivateFramework() {
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">Dollar Index (DXY)</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.dxyIndex}</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Federal Reserve</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Daily</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
@@ -427,6 +431,8 @@ export default function ElivateFramework() {
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">China PMI</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.chinaPmi}</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Chinese NBS</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Monthly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
@@ -439,7 +445,7 @@ export default function ElivateFramework() {
                         
                         {/* Local Story Factors */}
                         <tr className="bg-green-50">
-                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-green-700">Local Story</td>
+                          <td colSpan={6} className="px-4 py-2 text-sm font-semibold text-green-700">Local Story</td>
                         </tr>
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">India GDP Growth</td>
