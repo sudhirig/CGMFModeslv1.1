@@ -379,6 +379,149 @@ export class DatabaseStorage implements IStorage {
     return newPortfolio;
   }
   
+  // Quartile Analysis methods
+  async getFundsByQuartile(quartile: number, category?: string): Promise<any> {
+    try {
+      let query = db
+        .select({
+          id: funds.id,
+          fundName: funds.fundName,
+          category: funds.category,
+          amc: funds.amcName,
+          historicalReturnsTotal: fundScores.historicalReturnsTotal,
+          riskGradeTotal: fundScores.riskGradeTotal,
+          otherMetricsTotal: fundScores.otherMetricsTotal,
+          totalScore: fundScores.totalScore,
+          recommendation: fundScores.recommendation
+        })
+        .from(fundScores)
+        .innerJoin(funds, eq(funds.id, fundScores.fundId))
+        .where(eq(fundScores.quartile, quartile))
+        .orderBy(desc(fundScores.totalScore));
+
+      if (category) {
+        query = query.where(eq(funds.category, category));
+      }
+
+      const results = await query.limit(100);
+      
+      return { funds: results };
+    } catch (error) {
+      console.error("Error getting funds by quartile:", error);
+      throw error;
+    }
+  }
+
+  async getQuartileMetrics(): Promise<any> {
+    try {
+      // Sample data for development - in production these would be real database queries
+      // Returns data by quartile
+      const returnsData = [
+        { name: "Q1", return1Y: 18.5, return3Y: 15.2 },
+        { name: "Q2", return1Y: 12.7, return3Y: 10.3 },
+        { name: "Q3", return1Y: 8.4, return3Y: 6.1 },
+        { name: "Q4", return1Y: 3.2, return3Y: 2.5 }
+      ];
+
+      // Risk metrics by quartile
+      const riskData = [
+        { name: "Q1", sharpeRatio: 1.8, maxDrawdown: 12.5 },
+        { name: "Q2", sharpeRatio: 1.3, maxDrawdown: 18.7 },
+        { name: "Q3", sharpeRatio: 0.9, maxDrawdown: 24.3 },
+        { name: "Q4", sharpeRatio: 0.4, maxDrawdown: 35.8 }
+      ];
+
+      // Scoring breakdown by quartile
+      const scoringData = [
+        { 
+          name: "Q1", 
+          label: "Q1 (Top 25%)", 
+          historicalReturns: 32.6, 
+          riskGrade: 24.8, 
+          otherMetrics: 23.7, 
+          totalScore: 81.1 
+        },
+        { 
+          name: "Q2", 
+          label: "Q2 (26-50%)", 
+          historicalReturns: 26.3, 
+          riskGrade: 19.1, 
+          otherMetrics: 20.4, 
+          totalScore: 65.8 
+        },
+        { 
+          name: "Q3", 
+          label: "Q3 (51-75%)", 
+          historicalReturns: 19.7, 
+          riskGrade: 15.6, 
+          otherMetrics: 16.9, 
+          totalScore: 52.2 
+        },
+        { 
+          name: "Q4", 
+          label: "Q4 (Bottom 25%)", 
+          historicalReturns: 12.4, 
+          riskGrade: 10.2, 
+          otherMetrics: 12.1, 
+          totalScore: 34.7 
+        }
+      ];
+
+      return {
+        returnsData,
+        riskData,
+        scoringData
+      };
+    } catch (error) {
+      console.error("Error getting quartile metrics:", error);
+      throw error;
+    }
+  }
+
+  async getQuartileDistribution(category?: string): Promise<any> {
+    try {
+      // Sample data for development - in production this would be a real database query
+      const distribution = {
+        totalCount: 2985,
+        q1Count: 746,
+        q2Count: 747,
+        q3Count: 746,
+        q4Count: 746,
+        q1Percent: 25,
+        q2Percent: 25, 
+        q3Percent: 25,
+        q4Percent: 25
+      };
+      
+      // Adjust slightly for categories
+      if (category) {
+        // Small adjustments to simulate different distributions by category
+        if (category.startsWith('Equity')) {
+          distribution.q1Count = Math.floor(distribution.q1Count * 0.9);
+          distribution.q2Count = Math.floor(distribution.q2Count * 1.1);
+          distribution.totalCount = distribution.q1Count + distribution.q2Count + 
+                                  distribution.q3Count + distribution.q4Count;
+        } else if (category.startsWith('Debt')) {
+          distribution.q3Count = Math.floor(distribution.q3Count * 0.95);
+          distribution.q4Count = Math.floor(distribution.q4Count * 1.05);
+          distribution.totalCount = distribution.q1Count + distribution.q2Count + 
+                                  distribution.q3Count + distribution.q4Count;
+        }
+        
+        // Recalculate percentages
+        distribution.q1Percent = Math.round((distribution.q1Count / distribution.totalCount) * 100);
+        distribution.q2Percent = Math.round((distribution.q2Count / distribution.totalCount) * 100);
+        distribution.q3Percent = Math.round((distribution.q3Count / distribution.totalCount) * 100);
+        distribution.q4Percent = Math.round((distribution.q4Count / distribution.totalCount) * 100);
+      }
+      
+      return distribution;
+    } catch (error) {
+      console.error("Error getting quartile distribution:", error);
+      throw error;
+    }
+  }
+  
   // ETL pipeline methods
   async getETLRuns(pipelineName?: string, limit: number = 50): Promise<EtlPipelineRun[]> {
     let query = db.select().from(etlPipelineRuns);

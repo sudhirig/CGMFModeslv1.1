@@ -697,6 +697,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Quartile Analysis API Routes
+  app.get("/api/funds/quartile/:quartile", async (req, res) => {
+    const quartile = parseInt(req.params.quartile);
+    const category = req.query.category as string || undefined;
+    
+    if (isNaN(quartile) || quartile < 1 || quartile > 4) {
+      return res.status(400).json({ error: "Invalid quartile. Must be a number between 1 and 4." });
+    }
+    
+    try {
+      const funds = await storage.getFundsByQuartile(quartile, category);
+      res.json(funds);
+    } catch (error) {
+      console.error("Error fetching funds by quartile:", error);
+      res.status(500).json({ error: "Failed to fetch funds by quartile" });
+    }
+  });
+
+  app.get("/api/funds/quartile-metrics", async (_req, res) => {
+    try {
+      const metrics = await storage.getQuartileMetrics();
+      res.json(metrics);
+    } catch (error) {
+      console.error("Error fetching quartile metrics:", error);
+      res.status(500).json({ error: "Failed to fetch quartile metrics" });
+    }
+  });
+
+  app.get("/api/funds/quartile-distribution", async (req, res) => {
+    const category = req.query.category as string || undefined;
+    try {
+      const distribution = await storage.getQuartileDistribution(category);
+      res.json(distribution);
+    } catch (error) {
+      console.error("Error fetching quartile distribution:", error);
+      res.status(500).json({ error: "Failed to fetch quartile distribution" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
