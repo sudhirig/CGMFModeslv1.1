@@ -281,8 +281,90 @@ export default function ElivateFramework() {
             </TabsContent>
             
             <TabsContent value="details" className="space-y-4">
-              <Card>
-                <CardContent className="p-6">
+              {/* Factor Details & Data Sources Card */}
+              <Card className="mb-6">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">Factor Details & Data Sources</h3>
+                    <div className="flex items-center space-x-2">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Live Data
+                      </span>
+                      <span className="text-sm text-neutral-500">Last Updated: {format(new Date(elivateScore?.scoreDate || new Date()), 'MMM dd, yyyy')}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div className="bg-slate-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium mb-2">AMFI Data</h4>
+                      <p className="text-sm text-muted-foreground mb-2">Source: Association of Mutual Funds in India (AMFI)</p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li className="flex justify-between">
+                          <span>Data Type:</span>
+                          <span className="font-medium text-black">Live API</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Update Frequency:</span>
+                          <span className="font-medium text-black">Daily</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Covers:</span>
+                          <span className="font-medium text-black">2,985 Mutual Funds</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Data Points:</span>
+                          <span className="font-medium text-black">Fund NAVs, Categories</span>
+                        </li>
+                      </ul>
+                    </div>
+                    
+                    <div className="bg-slate-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium mb-2">NSE Data</h4>
+                      <p className="text-sm text-muted-foreground mb-2">Source: National Stock Exchange of India</p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li className="flex justify-between">
+                          <span>Data Type:</span>
+                          <span className="font-medium text-black">Live API</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Update Frequency:</span>
+                          <span className="font-medium text-black">Daily (EOD)</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Covers:</span>
+                          <span className="font-medium text-black">Market Indices, Metrics</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Data Points:</span>
+                          <span className="font-medium text-black">P/E, P/B, VIX, A/D Ratio</span>
+                        </li>
+                      </ul>
+                    </div>
+                    
+                    <div className="bg-slate-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium mb-2">RBI & Economic Data</h4>
+                      <p className="text-sm text-muted-foreground mb-2">Source: Reserve Bank of India & Government</p>
+                      <ul className="text-xs text-muted-foreground space-y-1">
+                        <li className="flex justify-between">
+                          <span>Data Type:</span>
+                          <span className="font-medium text-black">Live API</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Update Frequency:</span>
+                          <span className="font-medium text-black">Monthly</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Covers:</span>
+                          <span className="font-medium text-black">Economic Indicators</span>
+                        </li>
+                        <li className="flex justify-between">
+                          <span>Data Points:</span>
+                          <span className="font-medium text-black">GDP, Inflation, Repo Rate</span>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                  
                   <h3 className="text-lg font-semibold text-neutral-900 mb-4">Factor Details</h3>
                   
                   <div className="overflow-x-auto">
