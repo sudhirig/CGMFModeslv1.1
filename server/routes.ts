@@ -180,7 +180,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid limit parameter" });
       }
       
-      // Get the fund scores from the database with simplified query using raw pool query
+      // Get the fund scores from the database with optimized single query
+      // This avoids the need for additional database calls that could fail
       let query = `
         SELECT 
           fs.fund_id, 
@@ -190,31 +191,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fs.historical_returns_total, 
           fs.risk_grade_total,
           fs.other_metrics_total,
+          f.id as fund_db_id,
           f.fund_name, 
           f.category, 
           f.subcategory, 
-          f.amc_name 
+          f.amc_name,
+          n.nav as latest_nav,
+          n.nav_date as nav_date
         FROM fund_scores fs
         JOIN funds f ON fs.fund_id = f.id
+        LEFT JOIN (
+          SELECT DISTINCT ON (fund_id) fund_id, nav, nav_date
+          FROM nav_data
+          ORDER BY fund_id, nav_date DESC
+        ) n ON f.id = n.fund_id
       `;
       
       // Add optional category filter
       let params: (string | number)[] = [];
+      let paramIndex = 1;
+      
       if (category && category !== 'undefined') {
-        query += ` WHERE f.category = $1 `;
+        query += ` WHERE f.category = $${paramIndex++} `;
         params.push(category);
-        params.push(parsedLimit);
-      } else {
-        query += ` WHERE 1=1 `;
-        params.push(parsedLimit);
       }
       
       // Add ordering and limit
-      query += ` ORDER BY fs.total_score DESC LIMIT $${params.length}`;
+      query += ` ORDER BY fs.total_score DESC LIMIT $${paramIndex}`;
+      params.push(parsedLimit);
       
       const result = await pool.query(query, params);
       
-      res.json(result.rows);
+      // Format the response data for the client
+      const mappedResults = result.rows.map((row: any) => ({
+        id: row.fund_id,
+        name: row.fund_name,
+        amcName: row.amc_name,
+        category: row.category,
+        subcategory: row.subcategory,
+        totalScore: row.total_score,
+        recommendation: row.recommendation,
+        historicalReturns: row.historical_returns_total,
+        riskGrade: row.risk_grade_total,
+        otherMetrics: row.other_metrics_total,
+        latestNav: row.latest_nav,
+        navDate: row.nav_date
+      }));
+      
+      res.json(mappedResults);
     } catch (error) {
       console.error("Error fetching top-rated funds:", error);
       res.status(500).json({ message: "Failed to fetch top-rated funds" });
