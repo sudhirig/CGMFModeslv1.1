@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
 import { dataCollector } from "./services/data-collector";
 import { elivateFramework } from "./services/elivate-framework";
 import { fundScoringEngine } from "./services/fund-scoring";
@@ -160,9 +161,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { limit } = req.query;
       
       const parsedLimit = limit ? parseInt(limit as string) : 5;
-      const topFunds = await storage.getLatestFundScores(parsedLimit, category);
       
-      res.json(topFunds);
+      // Get the fund scores from the database
+      const fundScores = await db.query(`
+        SELECT fs.*, f.fund_name, f.category, f.subcategory, f.amc_name 
+        FROM fund_scores fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE ($1::text IS NULL OR f.category = $1)
+        ORDER BY fs.total_score DESC
+        LIMIT $2
+      `, [category || null, parsedLimit]);
+      
+      res.json(fundScores.rows);
     } catch (error) {
       console.error("Error fetching top-rated funds:", error);
       res.status(500).json({ message: "Failed to fetch top-rated funds" });
