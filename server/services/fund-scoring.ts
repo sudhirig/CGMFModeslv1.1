@@ -954,29 +954,99 @@ export class FundScoringEngine {
   }
   
   // Helper: Calculate sectoral similarity score
+  /**
+   * Enhanced sectoral similarity scoring with weighted sector comparison
+   * This measures how well the fund is positioned relative to ELIVATE recommendations
+   */
   private calculateSectoralSimilarityScore(
     currentAllocation: Record<string, number>,
     modelAllocation: Record<string, number>,
     maxPoints: number
   ): number {
-    let similarity = 0;
+    // Get all unique sectors from both allocations
+    const allSectors = [...new Set([
+      ...Object.keys(currentAllocation),
+      ...Object.keys(modelAllocation)
+    ])];
     
-    // For each sector in the model allocation
-    for (const sector in modelAllocation) {
-      const modelWeight = modelAllocation[sector];
+    // Define sector importance weights
+    const sectorImportance: Record<string, number> = {
+      'Banking & Finance': 1.5,
+      'Technology': 1.4,
+      'Healthcare': 1.3,
+      'Consumer Discretionary': 1.2,
+      'Industrials': 1.2,
+      'Consumer Staples': 1.1,
+      'Utilities': 1.0,
+      'Pharma': 1.1,
+      'Infrastructure': 1.0,
+      'Auto': 0.9,
+      'FMCG': 0.9,
+      'Others': 0.7
+    };
+    
+    let totalWeightedDifference = 0;
+    let totalWeight = 0;
+    
+    // Calculate weighted differences for each sector
+    for (const sector of allSectors) {
       const currentWeight = currentAllocation[sector] || 0;
+      const modelWeight = modelAllocation[sector] || 0;
       
-      // Calculate overlap (minimum of the two weights)
-      similarity += Math.min(modelWeight, currentWeight);
+      // Get importance weight (default to 1.0 if not specified)
+      const importance = sectorImportance[sector] || 1.0;
+      
+      // Calculate absolute difference
+      const difference = Math.abs(currentWeight - modelWeight);
+      
+      // Apply additional penalty for overallocation vs underallocation
+      // Overallocating to a sector is generally worse than underallocating
+      const adjustedDifference = modelWeight > currentWeight 
+        ? difference * 0.9  // Underallocation penalty
+        : difference * 1.1; // Overallocation penalty
+      
+      totalWeightedDifference += adjustedDifference * importance;
+      totalWeight += importance;
     }
     
-    // Map similarity to score
-    if (similarity >= 0.8) return maxPoints;
-    if (similarity >= 0.7) return maxPoints * 0.8;
-    if (similarity >= 0.6) return maxPoints * 0.6;
-    if (similarity >= 0.5) return maxPoints * 0.4;
-    return maxPoints * 0.2;
+    // Calculate normalized weighted difference (0-1)
+    const avgWeightedDifference = totalWeightedDifference / totalWeight;
+    
+    // Convert to similarity score (0-1, higher is better)
+    // Normalize to avoid extreme penalties
+    let similarityScore = 1 - Math.min(1, avgWeightedDifference);
+    similarityScore = Math.max(0.2, similarityScore); // Minimum score floor
+    
+    // Apply non-linear scoring for better differentiation
+    const finalScore = Math.pow(similarityScore, 0.7); // Favor higher similarity
+    
+    // Store detailed similarity analysis for reporting
+    this.lastSimilarityAnalysis = {
+      overallSimilarity: similarityScore,
+      adjustedSimilarity: finalScore,
+      sectorDifferences: allSectors.map(sector => ({
+        sector,
+        currentAllocation: currentAllocation[sector] || 0,
+        modelAllocation: modelAllocation[sector] || 0,
+        difference: Math.abs((currentAllocation[sector] || 0) - (modelAllocation[sector] || 0))
+      }))
+    };
+    
+    // Scale to max points with more granular scoring
+    return finalScore * maxPoints;
   }
+  
+  // Store detailed similarity analysis for advanced reporting
+  private lastSimilarityAnalysis: {
+    overallSimilarity: number;
+    adjustedSimilarity: number;
+    sectorDifferences: Array<{
+      sector: string;
+      currentAllocation: number;
+      modelAllocation: number;
+      difference: number;
+    }>;
+  } | null = null;
   
   // Helper: Calculate forward score
   private calculateForwardScore(
