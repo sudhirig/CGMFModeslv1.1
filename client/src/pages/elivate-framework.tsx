@@ -450,6 +450,8 @@ export default function ElivateFramework() {
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">India GDP Growth</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.indiaGdpGrowth}%</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">RBI</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Quarterly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
@@ -461,7 +463,9 @@ export default function ElivateFramework() {
                         </tr>
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">GST Collections</td>
-                          <td className="px-4 py-3 text-sm text-neutral-500">₹{elivateScore?.gstCollectionCr.toLocaleString()} Cr</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">₹{(elivateScore?.gstCollectionCr || 0).toLocaleString()} Cr</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Finance Ministry</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Monthly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
