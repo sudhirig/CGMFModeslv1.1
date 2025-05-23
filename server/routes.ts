@@ -31,7 +31,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/funds/:id", async (req, res) => {
     try {
-      const fundId = parseInt(req.params.id);
+      // Validate that the ID is actually a number
+      const fundId = Number(req.params.id);
+      if (isNaN(fundId)) {
+        return res.status(400).json({ message: "Invalid fund ID format" });
+      }
+      
       const fund = await storage.getFund(fundId);
       
       if (!fund) {
@@ -171,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE ($1::text IS NULL OR f.category = $1)
         ORDER BY fs.total_score DESC
         LIMIT $2
-      `, { category: category || null, limit: parsedLimit });
+      `, [category || null, parsedLimit]);
       
       res.json(fundScores.rows);
     } catch (error) {
