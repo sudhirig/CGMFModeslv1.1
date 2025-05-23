@@ -101,6 +101,39 @@ export default function FundAnalysis() {
                       </div>
                     )}
                   </div>
+                  
+                  <div className="mt-4 border-t pt-4">
+                    <h3 className="text-sm font-medium text-neutral-700 mb-2">Data Management</h3>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={async () => {
+                        try {
+                          const response = await fetch('/api/import/amfi-data', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json'
+                            }
+                          });
+                          
+                          const result = await response.json();
+                          
+                          if (result.success) {
+                            alert(`Successfully imported mutual fund data! ${result.counts?.importedFunds || 'Many'} funds are now available.`);
+                            // Refresh the fund list
+                            refetch();
+                          } else {
+                            alert(`Failed to import data: ${result.message}`);
+                          }
+                        } catch (error) {
+                          console.error('Error importing AMFI data:', error);
+                          alert('Failed to import mutual fund data. Please try again later.');
+                        }
+                      }}
+                    >
+                      Import Real Mutual Fund Data (3,000+ Funds)
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

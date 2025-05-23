@@ -425,6 +425,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // API route to fetch real mutual fund data from AMFI (3000+ funds)
+  app.post("/api/import/amfi-data", async (_req, res) => {
+    try {
+      const { fetchAMFIMutualFundData } = await import('./amfi-scraper');
+      const result = await fetchAMFIMutualFundData();
+      res.json(result);
+    } catch (error) {
+      console.error('Error importing AMFI data:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Failed to import AMFI data' 
+      });
+    }
+  });
+  
   // API routes for backtesting
   app.post("/api/backtest", async (req, res) => {
     try {
