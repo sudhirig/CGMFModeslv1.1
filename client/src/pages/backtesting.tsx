@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -71,7 +71,7 @@ export default function BacktestingPage() {
   
   // Run backtest mutation
   const runBacktestMutation = useMutation({
-    mutationFn: (data: z.infer<typeof backtestFormSchema>) => {
+    mutationFn: async (data: z.infer<typeof backtestFormSchema>) => {
       // Format dates to ISO strings
       const formattedData = {
         ...data,
@@ -79,13 +79,20 @@ export default function BacktestingPage() {
         endDate: data.endDate.toISOString(),
       };
       
-      return apiRequest('/api/backtest', {
+      const response = await fetch('/api/backtest', {
         method: 'POST',
         body: JSON.stringify(formattedData),
         headers: {
           'Content-Type': 'application/json',
         },
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to run backtest');
+      }
+      
+      return response.json();
     },
     onSuccess: (data) => {
       setBacktestResults(data);
