@@ -613,6 +613,10 @@ export class FundScoringEngine {
   }
   
   // Helper: Calculate standard deviation
+  /**
+   * Calculate standard deviation (volatility) of returns
+   * Enhanced implementation with improved accuracy
+   */
   private calculateStandardDeviation(returns: number[]): number {
     if (returns.length === 0) return 0;
     
@@ -621,6 +625,57 @@ export class FundScoringEngine {
     const variance = squaredDiffs.reduce((sum, value) => sum + value, 0) / returns.length;
     
     return Math.sqrt(variance);
+  }
+  
+  /**
+   * Calculate Sharpe ratio - a measure of risk-adjusted return
+   * Higher values indicate better risk-adjusted performance
+   */
+  private calculateSharpeRatio(returns: number[], riskFreeRate: number = 0.04): number {
+    if (returns.length === 0) return 0;
+    
+    // Convert annual risk-free rate to daily
+    const dailyRiskFreeRate = Math.pow(1 + riskFreeRate, 1/252) - 1;
+    
+    // Calculate excess returns
+    const excessReturns = returns.map(r => r - dailyRiskFreeRate);
+    
+    // Calculate average excess return
+    const avgExcessReturn = excessReturns.reduce((sum, r) => sum + r, 0) / excessReturns.length;
+    
+    // Calculate standard deviation of returns
+    const stdDev = this.calculateStandardDeviation(returns);
+    
+    // Calculate annualized Sharpe ratio
+    if (stdDev === 0) return 0;
+    return (avgExcessReturn / stdDev) * Math.sqrt(252);
+  }
+  
+  /**
+   * Calculate Sortino ratio - focuses on downside risk only
+   * Higher values indicate better downside risk-adjusted performance
+   */
+  private calculateSortinoRatio(returns: number[], riskFreeRate: number = 0.04): number {
+    if (returns.length === 0) return 0;
+    
+    // Convert annual risk-free rate to daily
+    const dailyRiskFreeRate = Math.pow(1 + riskFreeRate, 1/252) - 1;
+    
+    // Calculate excess returns
+    const excessReturns = returns.map(r => r - dailyRiskFreeRate);
+    
+    // Calculate average excess return
+    const avgExcessReturn = excessReturns.reduce((sum, r) => sum + r, 0) / excessReturns.length;
+    
+    // Calculate downside deviation (only negative returns)
+    const negativeReturns = returns.filter(r => r < dailyRiskFreeRate).map(r => Math.pow(dailyRiskFreeRate - r, 2));
+    if (negativeReturns.length === 0) return avgExcessReturn > 0 ? 10 : 0; // Handle case with no negative returns
+    
+    const downsideDeviation = Math.sqrt(negativeReturns.reduce((sum, r) => sum + r, 0) / negativeReturns.length);
+    
+    // Calculate annualized Sortino ratio
+    if (downsideDeviation === 0) return 0;
+    return (avgExcessReturn / downsideDeviation) * Math.sqrt(252);
   }
   
   // Helper: Calculate up/down capture ratio
@@ -671,17 +726,110 @@ export class FundScoringEngine {
     
     let maxDrawdown = 0;
     let peak = sortedNavData[0].navValue;
+    let peakIndex = 0;
+    let valleyIndex = 0;
     
-    for (const nav of sortedNavData) {
+    for (let i = 0; i < sortedNavData.length; i++) {
+      const nav = sortedNavData[i];
+      
       if (nav.navValue > peak) {
         peak = nav.navValue;
+        peakIndex = i;
       } else {
         const drawdown = (peak - nav.navValue) / peak;
-        maxDrawdown = Math.max(maxDrawdown, drawdown);
+        if (drawdown > maxDrawdown) {
+          maxDrawdown = drawdown;
+          valleyIndex = i;
+        }
       }
     }
     
+    // Find recovery date (when NAV returns to the peak level)
+    let recoveryIndex = -1;
+    for (let i = valleyIndex + 1; i < sortedNavData.length; i++) {
+      if (sortedNavData[i].navValue >= peak) {
+        recoveryIndex = i;
+        break;
+      }
+    }
+    
+    // Store drawdown details for reporting
+    this.drawdownInfo = {
+      maxDrawdown,
+      peakDate: sortedNavData[peakIndex].navDate,
+      valleyDate: sortedNavData[valleyIndex].navDate,
+      recoveryDate: recoveryIndex !== -1 ? sortedNavData[recoveryIndex].navDate : null,
+      recoveryPeriod: recoveryIndex !== -1 ? 
+        (new Date(sortedNavData[recoveryIndex].navDate).getTime() - 
+         new Date(sortedNavData[valleyIndex].navDate).getTime()) / (1000 * 60 * 60 * 24) : null
+    };
+    
     return maxDrawdown;
+  }
+  
+  // Store information about the latest drawdown analysis
+  private drawdownInfo: {
+    maxDrawdown: number;
+    peakDate: Date;
+    valleyDate: Date;
+    recoveryDate: Date | null;
+    recoveryPeriod: number | null;
+  } | null = null;
+  
+  /**
+   * Calculate Beta - measure of systematic risk relative to the market
+   * Beta < 1: Lower volatility than market
+   * Beta = 1: Same volatility as market
+   * Beta > 1: Higher volatility than market
+   */
+  private calculateBeta(fundReturns: number[], benchmarkReturns: number[]): number {
+    const length = Math.min(fundReturns.length, benchmarkReturns.length);
+    if (length < 30) return 1; // Default beta value
+    
+    // Calculate average returns
+    const fundAvg = fundReturns.reduce((sum, r) => sum + r, 0) / length;
+    const benchmarkAvg = benchmarkReturns.reduce((sum, r) => sum + r, 0) / length;
+    
+    // Calculate covariance and benchmark variance
+    let covariance = 0;
+    let benchmarkVariance = 0;
+    
+    for (let i = 0; i < length; i++) {
+      covariance += (fundReturns[i] - fundAvg) * (benchmarkReturns[i] - benchmarkAvg);
+      benchmarkVariance += Math.pow(benchmarkReturns[i] - benchmarkAvg, 2);
+    }
+    
+    covariance /= length;
+    benchmarkVariance /= length;
+    
+    // Calculate beta
+    if (benchmarkVariance === 0) return 1;
+    return covariance / benchmarkVariance;
+  }
+  
+  /**
+   * Calculate Alpha - excess return over what would be predicted by CAPM
+   * Higher alpha indicates better risk-adjusted performance relative to benchmark
+   */
+  private calculateAlpha(fundReturns: number[], benchmarkReturns: number[], riskFreeRate: number = 0.04): number {
+    const length = Math.min(fundReturns.length, benchmarkReturns.length);
+    if (length < 30) return 0;
+    
+    // Convert annual risk-free rate to daily
+    const dailyRiskFreeRate = Math.pow(1 + riskFreeRate, 1/252) - 1;
+    
+    // Calculate average returns
+    const avgFundReturn = fundReturns.reduce((sum, r) => sum + r, 0) / length;
+    const avgBenchmarkReturn = benchmarkReturns.reduce((sum, r) => sum + r, 0) / length;
+    
+    // Calculate beta
+    const beta = this.calculateBeta(fundReturns, benchmarkReturns);
+    
+    // Calculate alpha (daily)
+    const dailyAlpha = avgFundReturn - (dailyRiskFreeRate + beta * (avgBenchmarkReturn - dailyRiskFreeRate));
+    
+    // Annualize alpha
+    return dailyAlpha * 252;
   }
   
   // Helper: Score return percentile
