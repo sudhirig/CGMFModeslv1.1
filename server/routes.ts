@@ -10,6 +10,8 @@ import { backtestingEngine } from "./services/backtesting-engine";
 import amfiImportRoutes from "./api/amfi-import";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register AMFI data import routes
+  app.use('/api/amfi', amfiImportRoutes);
   // API route for direct SQL category filtering
   app.get("/api/funds/sql-category/:category", async (req, res) => {
     try {
