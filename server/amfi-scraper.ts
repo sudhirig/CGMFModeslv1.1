@@ -81,7 +81,16 @@ export async function fetchAMFIMutualFundData() {
             : 0;
           
           // Get date from the next part if available
-          const navDate = parts.length >= 6 ? parts[5].trim() : new Date().toISOString().split('T')[0];
+          let navDate = parts.length >= 6 ? parts[5].trim() : new Date().toISOString().split('T')[0];
+          
+          // Ensure date is in correct format (YYYY-MM-DD)
+          if (navDate) {
+            // Convert DD-MM-YYYY to YYYY-MM-DD
+            if (navDate.match(/^\d{2}-\d{2}-\d{4}$/)) {
+              const [day, month, year] = navDate.split('-');
+              navDate = `${year}-${month}-${day}`;
+            }
+          }
           
           // Categorize the fund
           const { category, subcategory } = categorizeFund(currentSchemeType, fundName);
@@ -139,16 +148,9 @@ async function importFundsToDatabase(funds: ParsedFund[]) {
   let errorCount = 0;
   
   try {
-    // Clear existing data to ensure a fresh start
-    console.log("Clearing existing fund data...");
-    try {
-      await executeRawQuery('DELETE FROM nav_data');
-      await executeRawQuery('DELETE FROM funds');
-      console.log("Successfully cleared existing data");
-    } catch (clearError) {
-      console.error("Error clearing existing data:", clearError);
-      // Continue anyway - we'll use the ON CONFLICT clauses to handle duplicates
-    }
+    // Instead of deleting data, we'll use the ON CONFLICT clauses to update existing data
+    console.log("Using upsert approach to handle existing data");
+    // We won't delete existing data to avoid foreign key constraint violations
     
     // Process funds in batches to avoid memory issues
     const batchSize = 100;
@@ -187,19 +189,44 @@ async function importFundsToDatabase(funds: ParsedFund[]) {
             const fundId = fundResult.rows[0].id;
             
             // 2. Insert the NAV data
-            await executeRawQuery(
-              `INSERT INTO nav_data (
-                fund_id, nav_date, nav_value, created_at
-              ) VALUES ($1, $2, $3, $4)
-              ON CONFLICT (fund_id, nav_date) DO UPDATE SET
-                nav_value = EXCLUDED.nav_value`,
-              [
-                fundId,
-                fund.navDate,
-                fund.navValue,
-                new Date()
-              ]
-            );
+            // Format the date properly (YYYY-MM-DD)
+            let formattedDate;
+            try {
+              // Try to parse the date to ensure it's valid
+              const dateParts = fund.navDate.split('-');
+              if (dateParts.length === 3) {
+                const year = parseInt(dateParts[0]);
+                const month = parseInt(dateParts[1]);
+                const day = parseInt(dateParts[2]);
+                
+                if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                  formattedDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                } else {
+                  // Use current date as fallback
+                  formattedDate = new Date().toISOString().split('T')[0];
+                }
+              } else {
+                // Use current date as fallback
+                formattedDate = new Date().toISOString().split('T')[0];
+              }
+              
+              await executeRawQuery(
+                `INSERT INTO nav_data (
+                  fund_id, nav_date, nav_value, created_at
+                ) VALUES ($1, $2, $3, $4)
+                ON CONFLICT (fund_id, nav_date) DO UPDATE SET
+                  nav_value = EXCLUDED.nav_value`,
+                [
+                  fundId,
+                  formattedDate,
+                  fund.navValue,
+                  new Date()
+                ]
+              );
+            } catch (navError) {
+              console.error(`Error inserting NAV data for fund ${fundId}:`, navError);
+              // Continue with next fund
+            }
             
             importedCount++;
           }
