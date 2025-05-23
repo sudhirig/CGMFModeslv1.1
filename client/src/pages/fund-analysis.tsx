@@ -10,42 +10,17 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
   
-  // Update the endpoint when category changes and import data if needed
-  const updateCategoryEndpoint = async (category: string) => {
-    const newEndpoint = `/api/funds${category !== 'All Categories' ? `?category=${category}` : ''}`;
-    setEndpoint(newEndpoint);
-    console.log("Setting endpoint to:", newEndpoint);
-    
-    // Check if we have data, if not import it automatically
-    const checkResponse = await fetch('/api/funds');
-    const currentFunds = await checkResponse.json();
-    
-    if (!currentFunds || currentFunds.length < 100) {
-      try {
-        console.log("Importing mutual fund data...");
-        const importResponse = await fetch('/api/import/amfi-data', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        const result = await importResponse.json();
-        if (result.success) {
-          console.log(`Successfully imported mutual fund data (${result.counts?.importedFunds || 'many'} funds)`);
-          refetch(); // Reload the funds after import
-        }
-      } catch (error) {
-        console.error("Error importing fund data:", error);
-      }
-    }
+  // Called when category is changed from dropdown
+  const handleCategoryChange = (category: string) => {
+    console.log(`Selected category: ${category}`);
+    setSelectedCategory(category);
+    // The useFunds hook will automatically fetch the funds for this category
   };
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFund, setSelectedFund] = useState<any>(null);
   
-  const [endpoint, setEndpoint] = useState<string>("/api/funds");
-  
-  const { funds, isLoading, error, refetch } = useFunds(endpoint);
+  // Use useFunds hook with the selected category directly
+  const { funds, isLoading, error, refetch } = useFunds(selectedCategory);
   
   // Filter funds based on search query
   const filteredFunds = funds?.filter(fund => 
@@ -83,10 +58,7 @@ export default function FundAnalysis() {
                     <label className="text-sm font-medium text-neutral-700">Category</label>
                     <Select 
                       value={selectedCategory} 
-                      onValueChange={(category) => {
-                        setSelectedCategory(category);
-                        updateCategoryEndpoint(category);
-                      }}
+                      onValueChange={handleCategoryChange}
                     >
                       <SelectTrigger className="w-full mt-1">
                         <SelectValue placeholder="Select a category" />

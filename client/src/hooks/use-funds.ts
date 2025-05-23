@@ -20,20 +20,40 @@ interface Fund {
 }
 
 export function useFunds(category?: string) {
-  const [endpoint, setEndpoint] = useState<string>("/api/funds");
-  
-  useEffect(() => {
-    if (category && category !== 'All Categories') {
-      setEndpoint(`/api/funds?category=${encodeURIComponent(category)}`);
-      console.log(`Setting endpoint to: /api/funds?category=${encodeURIComponent(category)}`);
-    } else {
-      setEndpoint("/api/funds");
-      console.log("Setting endpoint to: /api/funds");
-    }
-  }, [category]);
+  // Directly pass the category to the query instead of building a complex endpoint
+  const queryKey = category && category !== 'All Categories' 
+    ? ['/api/funds', 'category', category] 
+    : ['/api/funds'];
   
   const { data, isLoading, error, refetch } = useQuery<Fund[]>({
-    queryKey: [endpoint],
+    queryKey: queryKey,
+    queryFn: async () => {
+      // Use direct SQL query approach for more reliable results
+      let url = '/api/funds';
+      
+      if (category && category !== 'All Categories') {
+        // First check if we need to import data
+        const checkResponse = await fetch('/api/funds');
+        const existingFunds = await checkResponse.json();
+        
+        if (!existingFunds || existingFunds.length < 5) {
+          console.log("Importing funds since database appears empty...");
+          const importResponse = await fetch('/api/import/amfi-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          await importResponse.json();
+        }
+        
+        // Get funds by category with direct SQL
+        const response = await fetch(`/api/funds/sql-category/${category}`);
+        return response.json();
+      } else {
+        // Get all funds
+        const response = await fetch(url);
+        return response.json();
+      }
+    },
     staleTime: 0, // Don't cache to ensure we always get fresh data
     refetchOnMount: true, // Always refetch when component mounts
     refetchOnWindowFocus: true, // Refetch when window gets focus

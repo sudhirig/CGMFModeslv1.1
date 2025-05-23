@@ -9,6 +9,72 @@ import { portfolioBuilder } from "./services/portfolio-builder";
 import { backtestingEngine } from "./services/backtesting-engine";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // API route for direct SQL category filtering
+  app.get("/api/funds/sql-category/:category", async (req, res) => {
+    try {
+      const category = req.params.category;
+      console.log(`SQL direct query for funds with category: ${category}`);
+      
+      // First check if we need to import some funds
+      const countCheck = await executeRawQuery('SELECT COUNT(*) FROM funds');
+      const fundCount = parseInt(countCheck.rows[0].count);
+      
+      if (fundCount < 10) {
+        console.log("Not enough funds in the database, creating some sample funds...");
+        await importSomeSampleFunds();
+      }
+      
+      // Direct SQL query for better reliability
+      const result = await executeRawQuery(`
+        SELECT * FROM funds 
+        WHERE category = $1
+        ORDER BY fund_name
+      `, [category]);
+      
+      console.log(`Found ${result.rows.length} funds in category ${category}`);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error in SQL category query:", error);
+      res.status(500).json({ message: "Error fetching funds by category" });
+    }
+  });
+  
+  // Helper function to create sample funds if needed
+  async function importSomeSampleFunds() {
+    try {
+      const categories = ['Equity', 'Debt', 'Hybrid'];
+      const subcategories = {
+        'Equity': ['Large Cap', 'Mid Cap', 'Small Cap', 'Multi Cap', 'ELSS'],
+        'Debt': ['Liquid', 'Corporate Bond', 'Banking and PSU', 'Dynamic Bond'],
+        'Hybrid': ['Balanced Advantage', 'Aggressive', 'Conservative']
+      };
+      const amcs = [
+        'SBI Mutual Fund', 'HDFC Mutual Fund', 'ICICI Prudential', 
+        'Aditya Birla Sun Life', 'Kotak Mahindra', 'Axis'
+      ];
+      
+      // Add a few sample funds for each category
+      for (const category of categories) {
+        for (let i = 0; i < 5; i++) {
+          const amc = amcs[Math.floor(Math.random() * amcs.length)];
+          const subcategory = subcategories[category][Math.floor(Math.random() * subcategories[category].length)];
+          const schemeCode = (category[0] + Math.floor(Math.random() * 100000)).toString().padStart(6, '0');
+          const fundName = `${amc} ${subcategory} Fund`;
+          
+          await executeRawQuery(`
+            INSERT INTO funds (scheme_code, fund_name, amc_name, category, subcategory, status, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (scheme_code) DO NOTHING
+          `, [schemeCode, fundName, amc, category, subcategory, 'ACTIVE', new Date()]);
+        }
+      }
+      
+      console.log("Created sample funds for all categories");
+    } catch (error) {
+      console.error("Error creating sample funds:", error);
+    }
+  }
+  
   // API routes for funds
   app.get("/api/funds", async (req, res) => {
     try {
