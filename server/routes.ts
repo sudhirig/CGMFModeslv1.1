@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { db } from "./db";
+import { db, executeRawQuery } from "./db";
 import { dataCollector } from "./services/data-collector";
 import { elivateFramework } from "./services/elivate-framework";
 import { fundScoringEngine } from "./services/fund-scoring";
@@ -37,13 +37,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid fund ID format" });
       }
       
-      const fund = await storage.getFund(fundId);
+      // Using raw query to avoid parameter format issues
+      const result = await executeRawQuery(`
+        SELECT * FROM funds WHERE id = $1
+      `, [fundId]);
       
-      if (!fund) {
+      if (!result.rows.length) {
         return res.status(404).json({ message: "Fund not found" });
       }
       
-      res.json(fund);
+      res.json(result.rows[0]);
     } catch (error) {
       console.error("Error fetching fund:", error);
       res.status(500).json({ message: "Failed to fetch fund" });
@@ -104,13 +107,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API routes for ELIVATE framework
   app.get("/api/elivate/score", async (req, res) => {
     try {
-      const latestScore = await storage.getLatestElivateScore();
+      // Using raw query for better parameter handling
+      const result = await executeRawQuery(`
+        SELECT * FROM elivate_scores
+        ORDER BY score_date DESC
+        LIMIT 1
+      `);
       
-      if (!latestScore) {
+      if (!result.rows.length) {
         return res.status(404).json({ message: "ELIVATE score not found" });
       }
       
-      res.json(latestScore);
+      res.json(result.rows[0]);
     } catch (error) {
       console.error("Error fetching ELIVATE score:", error);
       res.status(500).json({ message: "Failed to fetch ELIVATE score" });
@@ -169,7 +177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedLimit = limit ? parseInt(limit as string) : 5;
       
       // Get the fund scores from the database
-      const fundScores = await db.execute(`
+      const fundScores = await executeRawQuery(`
         SELECT fs.*, f.fund_name, f.category, f.subcategory, f.amc_name 
         FROM fund_scores fs
         JOIN funds f ON fs.fund_id = f.id
