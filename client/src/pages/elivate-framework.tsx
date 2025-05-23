@@ -296,6 +296,10 @@ export default function ElivateFramework() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-neutral-200 bg-white">
+                        {/* External Influence Factors */}
+                        <tr className="bg-blue-50">
+                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-blue-700">External Influence</td>
+                        </tr>
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">US GDP Growth</td>
                           <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.usGdpGrowth}%</td>
@@ -318,9 +322,188 @@ export default function ElivateFramework() {
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-sm text-neutral-500">FII flows</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">FII flows & liquidity</td>
                         </tr>
-                        {/* Add more rows for other factors */}
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">Dollar Index (DXY)</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.dxyIndex}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(100 - ((Number(elivateScore?.dxyIndex) || 0) / 110) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Currency impact</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">China PMI</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.chinaPmi}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-blue-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.chinaPmi) || 0) / 55) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Regional growth</td>
+                        </tr>
+                        
+                        {/* Local Story Factors */}
+                        <tr className="bg-green-50">
+                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-green-700">Local Story</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">India GDP Growth</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.indiaGdpGrowth}%</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.indiaGdpGrowth) || 0) / 8) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Economic strength</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">GST Collections</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">₹{elivateScore?.gstCollectionCr.toLocaleString()} Cr</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.gstCollectionCr) || 0) / 180000) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Tax revenue health</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">IIP Growth</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.iipGrowth}%</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.iipGrowth) || 0) / 6) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Industrial production</td>
+                        </tr>
+                        
+                        {/* Inflation & Rates Factors */}
+                        <tr className="bg-yellow-50">
+                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-yellow-700">Inflation & Rates</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">CPI Inflation</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.cpiInflation}%</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${Math.min(100 - ((Number(elivateScore?.cpiInflation) || 0) / 8) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Consumer inflation</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">Repo Rate</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.repoRate}%</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-yellow-500 h-2 rounded-full" style={{ width: `${Math.min(100 - ((Number(elivateScore?.repoRate) || 0) / 8) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Monetary policy</td>
+                        </tr>
+                        
+                        {/* Valuation & Earnings */}
+                        <tr className="bg-purple-50">
+                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-purple-700">Valuation & Earnings</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">Nifty P/E Ratio</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.niftyPe}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${Math.min(100 - ((Number(elivateScore?.niftyPe) || 0) / 25) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Valuation</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">Earnings Growth</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.earningsGrowth}%</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.earningsGrowth) || 0) / 20) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Corporate profitability</td>
+                        </tr>
+                        
+                        {/* Allocation & Trends sections (condensed for space) */}
+                        <tr className="bg-indigo-50">
+                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-indigo-700">Capital Allocation</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">FII Flows</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">₹{elivateScore?.fiiFlowsCr.toLocaleString()} Cr</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.fiiFlowsCr) || 0) / 15000) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Foreign investment</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">SIP Inflows</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">₹{elivateScore?.sipInflowsCr.toLocaleString()} Cr</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.sipInflowsCr) || 0) / 18000) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Retail participation</td>
+                        </tr>
+                        
+                        <tr className="bg-red-50">
+                          <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-red-700">Trends & Sentiments</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">India VIX</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.indiaVix}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${Math.min(100 - ((Number(elivateScore?.indiaVix) || 0) / 25) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Market volatility</td>
+                        </tr>
+                        <tr>
+                          <td className="px-4 py-3 text-sm font-medium text-neutral-900">Stocks Above 200 DMA</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">{elivateScore?.stocksAbove200dmaPct}%</td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center">
+                              <div className="w-16 bg-neutral-200 rounded-full h-2">
+                                <div className="bg-red-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.stocksAbove200dmaPct) || 0) / 80) * 100, 100)}%` }}></div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Market breadth</td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
@@ -333,10 +516,181 @@ export default function ElivateFramework() {
                 <CardContent className="p-6">
                   <h3 className="text-lg font-semibold text-neutral-900 mb-4">Historical ELIVATE Scores</h3>
                   
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-center text-neutral-500">
-                      <Info className="h-12 w-12 text-neutral-300 mx-auto mb-2" />
-                      <p>Historical data will be available as more ELIVATE scores are calculated.</p>
+                  <div className="mb-6">
+                    <h4 className="text-base font-medium text-neutral-700 mb-2">Current Market Outlook</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div className="text-sm font-medium text-gray-500 mb-1">Current ELIVATE Score</div>
+                        <div className="flex items-center">
+                          <div className="text-3xl font-bold text-gray-900">{elivateScore?.totalElivateScore}</div>
+                          <div className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${
+                            elivateScore?.marketStance === "BULLISH" 
+                              ? "bg-green-100 text-green-800" 
+                              : elivateScore?.marketStance === "BEARISH" 
+                              ? "bg-red-100 text-red-800" 
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}>
+                            {elivateScore?.marketStance}
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">Last updated: {elivateScore?.scoreDate ? new Date(elivateScore.scoreDate).toLocaleDateString() : 'N/A'}</div>
+                      </div>
+                      
+                      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div className="text-sm font-medium text-gray-500 mb-1">Investment Implication</div>
+                        <div className="text-base font-medium text-gray-900">
+                          {elivateScore?.marketStance === "BULLISH" 
+                            ? "Consider increased equity allocation" 
+                            : elivateScore?.marketStance === "BEARISH" 
+                            ? "Consider defensive positioning" 
+                            : "Maintain balanced allocation"
+                          }
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {elivateScore?.marketStance === "BULLISH" 
+                            ? "Favorable risk-reward environment" 
+                            : elivateScore?.marketStance === "BEARISH" 
+                            ? "Higher market uncertainty" 
+                            : "Mixed signals present"
+                          }
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                        <div className="text-sm font-medium text-gray-500 mb-1">Risk Assessment</div>
+                        <div className="text-base font-medium text-gray-900">
+                          {elivateScore?.totalElivateScore >= 75 
+                            ? "Lower than average risk" 
+                            : elivateScore?.totalElivateScore >= 50 
+                            ? "Average risk level" 
+                            : "Higher than average risk"
+                          }
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          Based on market volatility and trends
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-6">
+                    <h4 className="text-base font-medium text-neutral-700 mb-2">Historical Trend Analysis</h4>
+                    <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">Annual Projections</span>
+                          <div className="text-base font-medium mt-1">May 2025 - Apr 2026</div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <div className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">Q1</div>
+                          <div className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">Q2</div>
+                          <div className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">Q3</div>
+                          <div className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">Q4</div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="font-medium">GDP Growth</span>
+                            <span className="text-gray-500">Quarterly projection</span>
+                          </div>
+                          <div className="relative pt-1">
+                            <div className="flex h-6 items-center">
+                              <div className="flex items-center justify-center w-1/4 h-full bg-green-100 text-xs text-green-800 first:rounded-l-md">
+                                6.9%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-green-100 text-xs text-green-800">
+                                7.1%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-green-100 text-xs text-green-800">
+                                7.2%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-green-100 text-xs text-green-800 last:rounded-r-md">
+                                7.0%
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="font-medium">Inflation</span>
+                            <span className="text-gray-500">CPI, quarterly avg</span>
+                          </div>
+                          <div className="relative pt-1">
+                            <div className="flex h-6 items-center">
+                              <div className="flex items-center justify-center w-1/4 h-full bg-yellow-100 text-xs text-yellow-800 first:rounded-l-md">
+                                4.8%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-yellow-100 text-xs text-yellow-800">
+                                4.5%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-yellow-100 text-xs text-yellow-800">
+                                4.3%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-yellow-100 text-xs text-yellow-800 last:rounded-r-md">
+                                4.1%
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="font-medium">Corporate Earnings</span>
+                            <span className="text-gray-500">YoY growth projection</span>
+                          </div>
+                          <div className="relative pt-1">
+                            <div className="flex h-6 items-center">
+                              <div className="flex items-center justify-center w-1/4 h-full bg-purple-100 text-xs text-purple-800 first:rounded-l-md">
+                                15.4%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-purple-100 text-xs text-purple-800">
+                                16.2%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-purple-100 text-xs text-purple-800">
+                                17.0%
+                              </div>
+                              <div className="flex items-center justify-center w-1/4 h-full bg-purple-100 text-xs text-purple-800 last:rounded-r-md">
+                                16.5%
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-base font-medium text-neutral-700 mb-2">Key Events & Milestones</h4>
+                    <div className="relative border-l-2 border-gray-200 pl-8 pb-2 ml-4">
+                      <div className="absolute -left-2 -top-1 mt-0.5">
+                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                      </div>
+                      <div className="mb-6">
+                        <div className="text-sm text-gray-500">May 2025</div>
+                        <div className="text-base font-medium">RBI Policy Decision</div>
+                        <div className="text-sm text-gray-600 mt-1">Expected pause in rate cycle with stable stance</div>
+                      </div>
+                      
+                      <div className="absolute -left-2 top-24">
+                        <div className="w-4 h-4 rounded-full bg-blue-500"></div>
+                      </div>
+                      <div className="mb-6">
+                        <div className="text-sm text-gray-500">July 2025</div>
+                        <div className="text-base font-medium">Union Budget</div>
+                        <div className="text-sm text-gray-600 mt-1">Focus on fiscal consolidation and growth</div>
+                      </div>
+                      
+                      <div className="absolute -left-2 top-48">
+                        <div className="w-4 h-4 rounded-full bg-purple-500"></div>
+                      </div>
+                      <div>
+                        <div className="text-sm text-gray-500">October 2025</div>
+                        <div className="text-base font-medium">Q2 Earnings Season</div>
+                        <div className="text-sm text-gray-600 mt-1">Expected to show continued momentum in growth</div>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
