@@ -1,14 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 
-interface Fund {
-  id: number;
-  schemeCode: string;
-  fundName: string;
-  amcName: string;
-  category: string;
-  subcategory: string | null;
-}
-
 export function useDatabaseStats() {
   // Convert database fields to camelCase for the frontend
   const convertToCamelCase = (funds: any[]) => {
@@ -26,12 +17,12 @@ export function useDatabaseStats() {
     }));
   };
   
-  const { data, isLoading, error } = useQuery<Fund[]>({
-    queryKey: ['/api/funds/all'],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['/api/funds/stats'],
     queryFn: async () => {
       try {
-        // No limit parameter to get ALL funds
-        const response = await fetch('/api/funds');
+        // Use a high limit to get all funds
+        const response = await fetch('/api/funds?limit=5000');
         const funds = await response.json();
         console.log(`Found ${funds.length} total funds in database for statistics`);
         return convertToCamelCase(funds);

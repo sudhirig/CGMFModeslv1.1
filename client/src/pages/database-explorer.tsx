@@ -12,10 +12,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTo
 
 export default function DatabaseExplorer() {
   const [activeTab, setActiveTab] = useState("overview");
-  const { funds, isLoading, error } = useDatabaseStats();
-  const [fundsCount, setFundsCount] = useState<any>({ total: 0, equity: 0, debt: 0, hybrid: 0 });
+  const { funds, isLoading, error } = useAllFunds();
+  const [fundsCount, setFundsCount] = useState<any>({ total: 0, equity: 0, debt: 0, hybrid: 0, other: 0 });
   const [topAmcs, setTopAmcs] = useState<{name: string, count: number}[]>([]);
   const [categoryData, setCategoryData] = useState<{name: string, value: number}[]>([]);
+  const [topSubcategories, setTopSubcategories] = useState<{name: string, count: number}[]>([]);
 
   useEffect(() => {
     if (funds && funds.length > 0) {
@@ -52,9 +53,24 @@ export default function DatabaseExplorer() {
       const amcArray = Object.entries(amcCounts)
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+        .slice(0, 15);
       
       setTopAmcs(amcArray);
+      
+      // Calculate subcategories
+      const subcategoryCounts: {[key: string]: number} = {};
+      funds.forEach(fund => {
+        if (fund.subcategory) {
+          subcategoryCounts[fund.subcategory] = (subcategoryCounts[fund.subcategory] || 0) + 1;
+        }
+      });
+      
+      const subcategoryArray = Object.entries(subcategoryCounts)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20);
+      
+      setTopSubcategories(subcategoryArray);
     }
   }, [funds]);
 
@@ -217,7 +233,7 @@ export default function DatabaseExplorer() {
           
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Top 10 Fund Houses</CardTitle>
+              <CardTitle className="text-lg">Top 15 Fund Houses</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -239,6 +255,37 @@ export default function DatabaseExplorer() {
                       <div 
                         className="bg-primary h-2.5 rounded-full" 
                         style={{ width: `${(amc.count / topAmcs[0].count) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Top 20 Fund Subcategories</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="space-y-2">
+                      <Skeleton className="h-4 w-[250px]" />
+                      <Skeleton className="h-2 w-full" />
+                    </div>
+                  ))
+                ) : topSubcategories.map((subcat, index) => (
+                  <div key={index}>
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium">{subcat.name}</span>
+                      <span className="text-sm text-muted-foreground">{subcat.count} funds</span>
+                    </div>
+                    <div className="w-full bg-neutral-200 rounded-full h-2.5">
+                      <div 
+                        className="bg-primary h-2.5 rounded-full" 
+                        style={{ width: `${(subcat.count / topSubcategories[0].count) * 100}%` }}
                       ></div>
                     </div>
                   </div>
