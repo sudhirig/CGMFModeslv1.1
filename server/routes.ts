@@ -164,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedLimit = limit ? parseInt(limit as string) : 5;
       
       // Get the fund scores from the database
-      const fundScores = await db.query(`
+      const fundScores = await db.execute(`
         SELECT fs.*, f.fund_name, f.category, f.subcategory, f.amc_name 
         FROM fund_scores fs
         JOIN funds f ON fs.fund_id = f.id

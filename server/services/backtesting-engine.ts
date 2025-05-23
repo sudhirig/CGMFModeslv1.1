@@ -40,7 +40,7 @@ export class BacktestingEngine {
         portfolio = await storage.getModelPortfolio(portfolioId);
       } else if (riskProfile) {
         // Get latest portfolio for risk profile
-        const portfolios = await db.query(`
+        const portfolios = await db.execute(`
           SELECT * FROM model_portfolios 
           WHERE risk_profile = $1 
           ORDER BY created_at DESC 
@@ -231,7 +231,7 @@ export class BacktestingEngine {
    */
   private async getHistoricalNavData(fundIds: number[], startDate: Date, endDate: Date): Promise<any[]> {
     try {
-      const navData = await db.query(`
+      const navData = await db.execute(`
         SELECT * FROM nav_data
         WHERE fund_id = ANY($1)
         AND nav_date BETWEEN $2 AND $3
@@ -250,7 +250,7 @@ export class BacktestingEngine {
    */
   private async getBenchmarkPerformance(indexName: string, startDate: Date, endDate: Date): Promise<{ date: Date; value: number }[]> {
     try {
-      const indexData = await db.query(`
+      const indexData = await db.execute(`
         SELECT index_date, close_value
         FROM market_indices
         WHERE index_name = $1
