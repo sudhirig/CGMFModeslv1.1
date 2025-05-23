@@ -20,7 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Use direct pool query to avoid ORM issues
         try {
           console.log(`Fetching funds for category: ${category}`);
-          const categoryResult = await pool.query(`
+          const categoryResult = await executeRawQuery(`
             SELECT * FROM funds 
             WHERE category = $1
             ORDER BY fund_name
@@ -28,11 +28,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           if (categoryResult && categoryResult.rows && categoryResult.rows.length > 0) {
             console.log(`Found ${categoryResult.rows.length} funds in category ${category}`);
+            
+            // Log the actual funds for debugging
+            console.log("Funds in category:", categoryResult.rows.map(row => row.fund_name).join(", "));
+            
             return res.json(categoryResult.rows);
           } else {
             console.log(`No funds found in category ${category}, trying case-insensitive search`);
             // Try case-insensitive search as fallback
-            const fallbackResult = await pool.query(`
+            const fallbackResult = await executeRawQuery(`
               SELECT * FROM funds 
               WHERE LOWER(category) = LOWER($1)
               ORDER BY fund_name
@@ -42,13 +46,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.log(`Found ${fallbackResult.rows.length} funds with case-insensitive category ${category}`);
               return res.json(fallbackResult.rows);
             } else {
-              console.log(`No funds found even with case-insensitive search for ${category}`);
-              return res.json([]);
+              console.log(`No funds found for category ${category}, returning ALL funds instead`);
+              
+              // Return all funds if none found in category
+              const allFundsResult = await executeRawQuery(`
+                SELECT * FROM funds ORDER BY fund_name
+              `);
+              
+              return res.json(allFundsResult.rows);
             }
           }
         } catch (categoryError) {
           console.error(`Error fetching funds for category ${category}:`, categoryError);
-          return res.json([]);
+          
+          // Return all funds as fallback if there's an error
+          try {
+            const emergencyResult = await executeRawQuery(`SELECT * FROM funds ORDER BY fund_name`);
+            console.log(`Returned ${emergencyResult.rows.length} funds as fallback`);
+            return res.json(emergencyResult.rows);
+          } catch (e) {
+            console.error("Emergency query failed:", e);
+            return res.json([]);
+          }
         }
       }
       

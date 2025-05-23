@@ -12,7 +12,7 @@ export default function FundAnalysis() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFund, setSelectedFund] = useState<any>(null);
   
-  const { funds, isLoading, error } = useFunds(selectedCategory !== "All Categories" ? selectedCategory : undefined);
+  const { funds, isLoading, error } = useFunds(selectedCategory);
   
   // Filter funds based on search query
   const filteredFunds = funds?.filter(fund => 
