@@ -38,7 +38,10 @@ export default function FundAnalysis() {
   const [selectedFund, setSelectedFund] = useState<any>(null);
   
   // Use useFunds hook with the selected category directly
-  const { funds, isLoading, error, refetch } = useFunds(selectedCategory);
+  // Use the selectedCategory directly in the hook
+  const { funds, isLoading, error, refetch } = useFunds(
+    selectedCategory === "All Categories" ? undefined : selectedCategory
+  );
   
   // Filter funds based on search query and subcategory with null checks
   const filteredFunds = funds?.filter(fund => {
