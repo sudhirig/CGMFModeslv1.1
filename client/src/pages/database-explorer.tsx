@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useAllFunds } from "@/hooks/use-all-funds";
-import { Loader2, Database, Table as TableIcon, BarChart3, Target, TrendingUp } from "lucide-react";
+import { Loader2, Database, Table as TableIcon, BarChart3, Target, TrendingUp, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,10 +25,29 @@ export default function DatabaseExplorer() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Fetch funds for each quartile
   const { data: topQ1Funds } = useQuery({
     queryKey: ['/api/quartile/funds/1'],
     staleTime: 5 * 60 * 1000,
   });
+  
+  const { data: topQ2Funds } = useQuery({
+    queryKey: ['/api/quartile/funds/2'],
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  const { data: topQ3Funds } = useQuery({
+    queryKey: ['/api/quartile/funds/3'],
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  const { data: topQ4Funds } = useQuery({
+    queryKey: ['/api/quartile/funds/4'],
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  // State for inner quartile tabs
+  const [activeQuartileTab, setActiveQuartileTab] = useState("q1");
 
   useEffect(() => {
     if (funds && funds.length > 0) {
@@ -595,59 +614,78 @@ export default function DatabaseExplorer() {
                   </Card>
                 </div>
 
-                {/* Top Q1 Funds Sample */}
+                {/* Detailed Quartile Breakdown */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Top Quartile 1 Funds (From Database)</CardTitle>
+                    <CardTitle>Detailed Quartile Breakdown</CardTitle>
                     <CardDescription>
-                      Real mutual fund data with comprehensive scoring from your database
+                      Comprehensive scoring and rankings of mutual funds by quartile
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {topQ1Funds?.funds ? (
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Fund Name</TableHead>
-                              <TableHead>Category</TableHead>
-                              <TableHead className="text-right">Total Score</TableHead>
-                              <TableHead className="text-right">Returns Score</TableHead>
-                              <TableHead className="text-right">Risk Score</TableHead>
-                              <TableHead>Recommendation</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {topQ1Funds.funds.slice(0, 10).map((fund: any) => (
-                              <TableRow key={fund.id}>
-                                <TableCell className="font-medium max-w-xs">
-                                  <div className="truncate" title={fund.fundName}>
-                                    {fund.fundName}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline">{fund.category}</Badge>
-                                </TableCell>
-                                <TableCell className="text-right font-semibold">
-                                  {fund.totalScore || "N/A"}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {fund.historicalReturnsTotal || "N/A"}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {fund.riskGradeTotal || "N/A"}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge className={
-                                    fund.recommendation === 'Buy' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                                  }>
-                                    {fund.recommendation}
-                                  </Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                    <Tabs value={activeQuartileTab} onValueChange={setActiveQuartileTab} className="w-full">
+                      <TabsList className="grid w-full grid-cols-4">
+                        <TabsTrigger value="q1" className="bg-green-50 data-[state=active]:bg-green-100 data-[state=active]:text-green-800">Q1 (BUY)</TabsTrigger>
+                        <TabsTrigger value="q2" className="bg-blue-50 data-[state=active]:bg-blue-100 data-[state=active]:text-blue-800">Q2 (HOLD)</TabsTrigger>
+                        <TabsTrigger value="q3" className="bg-yellow-50 data-[state=active]:bg-yellow-100 data-[state=active]:text-yellow-800">Q3 (REVIEW)</TabsTrigger>
+                        <TabsTrigger value="q4" className="bg-red-50 data-[state=active]:bg-red-100 data-[state=active]:text-red-800">Q4 (SELL)</TabsTrigger>
+                      </TabsList>
+                      
+                      <div className="mt-4">
+                        {/* Q1 Funds Table */}
+                        <TabsContent value="q1" className="m-0">
+                          <div className="p-4 bg-green-50 rounded-md mb-4">
+                            <div className="flex items-center mb-2">
+                              <Target className="h-5 w-5 mr-2 text-green-600" />
+                              <h3 className="text-md font-medium text-green-800">Top Quartile Funds (Q1)</h3>
+                            </div>
+                            <p className="text-sm text-green-700">
+                              These are the top 25% of funds based on comprehensive scoring metrics. They offer the best combination of returns, risk management, and other key factors. Recommended action: <strong>BUY</strong>
+                            </p>
+                          </div>
+                          
+                          {topQ1Funds?.funds ? (
+                            <div className="overflow-x-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Fund Name</TableHead>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead className="text-right">Total Score</TableHead>
+                                    <TableHead className="text-right">Returns Score</TableHead>
+                                    <TableHead className="text-right">Risk Score</TableHead>
+                                    <TableHead>Recommendation</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {topQ1Funds.funds.slice(0, 10).map((fund: any) => (
+                                    <TableRow key={fund.id}>
+                                      <TableCell className="font-medium max-w-xs">
+                                        <div className="truncate" title={fund.fundName}>
+                                          {fund.fundName}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge variant="outline">{fund.category}</Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right font-semibold">
+                                        {fund.totalScore || "N/A"}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {fund.historicalReturnsTotal || "N/A"}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {fund.riskGradeTotal || "N/A"}
+                                      </TableCell>
+                                      <TableCell>
+                                        <Badge className="bg-green-100 text-green-800">
+                                          {fund.recommendation || "BUY"}
+                                        </Badge>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
                       </div>
                     ) : (
                       <div className="text-center py-8">
