@@ -88,8 +88,19 @@ export class DatabaseStorage implements IStorage {
   
   // Fund methods
   async getFund(id: number): Promise<Fund | undefined> {
-    const [fund] = await db.select().from(funds).where(eq(funds.id, id));
-    return fund;
+    // Make sure we have a valid ID before querying
+    if (!id || isNaN(id)) {
+      console.warn(`Invalid fund ID provided: ${id}`);
+      return undefined;
+    }
+    
+    try {
+      const [fund] = await db.select().from(funds).where(eq(funds.id, id));
+      return fund;
+    } catch (error) {
+      console.error(`Error fetching fund with ID ${id}:`, error);
+      return undefined;
+    }
   }
   
   async getFundBySchemeCode(schemeCode: string): Promise<Fund | undefined> {
