@@ -288,7 +288,7 @@ export default function QuartileAnalysis() {
                                   {fund.category}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                  {fund.historicalReturnsTotal ? fund.historicalReturnsTotal.toFixed(1) : "N/A"}/40
+                                  {fund.historicalReturnsTotal && typeof fund.historicalReturnsTotal === 'number' ? fund.historicalReturnsTotal.toFixed(1) : "N/A"}/40
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                                   {fund.riskGradeTotal ? fund.riskGradeTotal.toFixed(1) : "N/A"}/30
