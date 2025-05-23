@@ -291,13 +291,13 @@ export default function QuartileAnalysis() {
                                   {fund.historicalReturnsTotal && typeof fund.historicalReturnsTotal === 'number' ? fund.historicalReturnsTotal.toFixed(1) : "N/A"}/40
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                  {fund.riskGradeTotal ? fund.riskGradeTotal.toFixed(1) : "N/A"}/30
+                                  {fund.riskGradeTotal && typeof fund.riskGradeTotal === 'number' ? fund.riskGradeTotal.toFixed(1) : "N/A"}/30
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                  {fund.otherMetricsTotal ? fund.otherMetricsTotal.toFixed(1) : "N/A"}/30
+                                  {fund.otherMetricsTotal && typeof fund.otherMetricsTotal === 'number' ? fund.otherMetricsTotal.toFixed(1) : "N/A"}/30
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
-                                  {fund.totalScore ? fund.totalScore.toFixed(1) : "N/A"}
+                                  {fund.totalScore && typeof fund.totalScore === 'number' ? fund.totalScore.toFixed(1) : "N/A"}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-xs text-center">
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-medium
