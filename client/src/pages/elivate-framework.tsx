@@ -271,7 +271,7 @@ export default function ElivateFramework() {
                           Technical indicators including price relative to moving averages, volatility measures (VIX), and market breadth.
                         </p>
                         <div className="mt-1 text-xs text-neutral-500">
-                          Current: Price vs. MA {elivateScore?.dmaRatio}%, India VIX {elivateScore?.indiaVix}, Adv/Dec Ratio {elivateScore?.advanceDeclineRatio}
+                          Current: Stocks Above 200-DMA {elivateScore?.stocksAbove200dmaPct}%, India VIX {elivateScore?.indiaVix}, Adv/Dec Ratio {elivateScore?.advanceDeclineRatio}
                         </div>
                       </div>
                     </div>
