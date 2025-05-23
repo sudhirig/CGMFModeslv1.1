@@ -14,19 +14,19 @@ export default function QuartileAnalysis() {
   
   // Get quartile distribution data
   const { data: distributionData, isLoading: isDistributionLoading } = useQuery({
-    queryKey: [`/api/funds/quartile-distribution`, categoryParam],
+    queryKey: [`/api/quartile/distribution`, categoryParam],
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
   // Get quartile metrics
   const { data: metricsData, isLoading: isMetricsLoading } = useQuery({
-    queryKey: [`/api/funds/quartile-metrics`],
+    queryKey: [`/api/quartile/metrics`],
     staleTime: 5 * 60 * 1000,
   });
   
   // Get funds by selected quartile
   const { data: fundsData, isLoading: isFundsLoading } = useQuery({
-    queryKey: [`/api/funds/quartile/${selectedQuartile}`, categoryParam],
+    queryKey: [`/api/quartile/funds/${selectedQuartile}`, categoryParam],
     staleTime: 5 * 60 * 1000,
   });
   

@@ -181,11 +181,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Quartile Analysis API Routes - MUST come before /api/funds/:id
-  app.get("/api/funds/quartile-distribution", async (req, res) => {
+  // Quartile Analysis API Routes - Using separate path to avoid conflicts
+  app.get("/api/quartile/distribution", async (req, res) => {
+    console.log("✓ QUARTILE DISTRIBUTION ROUTE HIT");
     const category = req.query.category as string || undefined;
     try {
       const distribution = await storage.getQuartileDistribution(category);
+      console.log("✓ Distribution data:", distribution);
       res.json(distribution);
     } catch (error) {
       console.error("Error fetching quartile distribution:", error);
@@ -193,9 +195,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/funds/quartile-metrics", async (_req, res) => {
+  app.get("/api/quartile/metrics", async (_req, res) => {
+    console.log("✓ QUARTILE METRICS ROUTE HIT");
     try {
       const metrics = await storage.getQuartileMetrics();
+      console.log("✓ Metrics data:", metrics);
       res.json(metrics);
     } catch (error) {
       console.error("Error fetching quartile metrics:", error);
@@ -203,7 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/funds/quartile/:quartile", async (req, res) => {
+  app.get("/api/quartile/funds/:quartile", async (req, res) => {
     const quartile = parseInt(req.params.quartile);
     const category = req.query.category as string || undefined;
     
