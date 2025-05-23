@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { db, executeRawQuery } from "./db";
+import { db, executeRawQuery, pool } from "./db";
 import { dataCollector } from "./services/data-collector";
 import { elivateFramework } from "./services/elivate-framework";
 import { fundScoringEngine } from "./services/fund-scoring";
@@ -168,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API routes for top-rated funds
+  // API routes for top-rated funds - fixed to use real data
   app.get("/api/funds/top-rated/:category?", async (req, res) => {
     try {
       const { category } = req.params;
@@ -180,28 +180,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid limit parameter" });
       }
       
-      // Get the fund scores from the database with simplified query
+      // Get the fund scores from the database with simplified query using raw pool query
       let query = `
-        SELECT fs.*, f.fund_name, f.category, f.subcategory, f.amc_name 
+        SELECT 
+          fs.fund_id, 
+          fs.score_date, 
+          fs.total_score, 
+          fs.recommendation, 
+          fs.historical_returns_total, 
+          fs.risk_grade_total,
+          fs.other_metrics_total,
+          f.fund_name, 
+          f.category, 
+          f.subcategory, 
+          f.amc_name 
         FROM fund_scores fs
         JOIN funds f ON fs.fund_id = f.id
       `;
       
       // Add optional category filter
+      let params: (string | number)[] = [];
       if (category && category !== 'undefined') {
         query += ` WHERE f.category = $1 `;
-        var params = [category, parsedLimit];
+        params.push(category);
+        params.push(parsedLimit);
       } else {
         query += ` WHERE 1=1 `;
-        var params = [parsedLimit];
+        params.push(parsedLimit);
       }
       
       // Add ordering and limit
       query += ` ORDER BY fs.total_score DESC LIMIT $${params.length}`;
       
-      const fundScores = await executeRawQuery(query, params);
+      const result = await pool.query(query, params);
       
-      res.json(fundScores.rows);
+      res.json(result.rows);
     } catch (error) {
       console.error("Error fetching top-rated funds:", error);
       res.status(500).json({ message: "Failed to fetch top-rated funds" });

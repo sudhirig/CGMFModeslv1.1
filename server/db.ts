@@ -11,6 +11,7 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
+// Export the pool connection for direct use
 export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 export const db = drizzle(pool, { schema });
 

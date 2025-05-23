@@ -1,4 +1,4 @@
-import { db } from '../db';
+import { db, pool } from '../db';
 import { storage } from '../storage';
 
 export class BacktestingEngine {
@@ -231,12 +231,12 @@ export class BacktestingEngine {
    */
   private async getHistoricalNavData(fundIds: number[], startDate: Date, endDate: Date): Promise<any[]> {
     try {
-      const navData = await db.execute(`
+      const navData = await pool.query(`
         SELECT * FROM nav_data
         WHERE fund_id = ANY($1)
         AND nav_date BETWEEN $2 AND $3
         ORDER BY fund_id, nav_date
-      `, { 1: fundIds, 2: startDate, 3: endDate });
+      `, [fundIds, startDate, endDate]);
       
       return navData.rows;
     } catch (error) {
