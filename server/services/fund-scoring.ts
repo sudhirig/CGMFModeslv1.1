@@ -1049,43 +1049,137 @@ export class FundScoringEngine {
   } | null = null;
   
   // Helper: Calculate forward score
+  /**
+   * Enhanced forward score calculation that predicts future fund performance
+   * This integrates the ELIVATE framework with fund category analysis
+   */
   private calculateForwardScore(
     elivateScore: number,
     marketStance: string,
     category: string,
     maxPoints: number
   ): number {
-    // Determine if the fund category is suitable for current market stance
+    // Enhanced category classifications with more detailed mapping
+    const categoryMapping: Record<string, {
+      strongFit: string[];
+      moderateFit: string[];
+      weakFit: string[];
+    }> = {
+      BULLISH: {
+        strongFit: ['Equity: Large Cap Growth', 'Equity: Flexi Cap', 'Equity: Mid Cap', 'Equity: Sectoral: Technology', 'Equity: Sectoral: Banking'],
+        moderateFit: ['Equity: Multi Cap', 'Equity: Large Cap', 'Equity: ELSS', 'Equity: Small Cap', 'Equity: Focused'],
+        weakFit: ['Hybrid: Balanced', 'Hybrid: Dynamic Asset Allocation', 'Equity: Value', 'Equity: Dividend Yield']
+      },
+      NEUTRAL: {
+        strongFit: ['Equity: Multi Cap', 'Hybrid: Balanced', 'Hybrid: Dynamic Asset Allocation', 'Equity: Value', 'Equity: Large Cap'],
+        moderateFit: ['Equity: Dividend Yield', 'Debt: Medium Duration', 'Hybrid: Aggressive', 'Equity: Contra'],
+        weakFit: ['Equity: Small Cap', 'Debt: Short Duration', 'Debt: Corporate Bond', 'Debt: Banking & PSU']
+      },
+      BEARISH: {
+        strongFit: ['Debt: Short Duration', 'Debt: Medium Duration', 'Hybrid: Conservative', 'Equity: Dividend Yield', 'Debt: Banking & PSU'],
+        moderateFit: ['Debt: Corporate Bond', 'Hybrid: Balanced', 'Equity: Value', 'Debt: Gilt'],
+        weakFit: ['Hybrid: Dynamic Asset Allocation', 'Equity: Large Cap', 'Equity: Multi Cap', 'Equity: Contra']
+      }
+    };
+    
+    // Original category lists for fallback
     const bullishFavoredCategories = ['Equity: Large Cap', 'Equity: Flexi Cap', 'Equity: Mid Cap', 'Equity: Sectoral'];
     const neutralFavoredCategories = ['Equity: Multi Cap', 'Hybrid: Balanced', 'Hybrid: Dynamic Asset Allocation'];
     const bearishFavoredCategories = ['Debt: Short Duration', 'Debt: Medium Duration', 'Hybrid: Conservative', 'Equity: Dividend Yield'];
     
-    let alignmentScore = 0;
+    // Determine market regime strength based on ELIVATE score
+    let regimeStrength = 0;
     
     if (marketStance === 'BULLISH') {
-      alignmentScore = bullishFavoredCategories.some(c => category.includes(c)) ? 1.0 :
-                       neutralFavoredCategories.some(c => category.includes(c)) ? 0.6 : 0.3;
-    } else if (marketStance === 'NEUTRAL') {
-      alignmentScore = neutralFavoredCategories.some(c => category.includes(c)) ? 1.0 :
-                       (bullishFavoredCategories.some(c => category.includes(c)) || bearishFavoredCategories.some(c => category.includes(c))) ? 0.6 : 0.3;
-    } else { // BEARISH
-      alignmentScore = bearishFavoredCategories.some(c => category.includes(c)) ? 1.0 :
-                       neutralFavoredCategories.some(c => category.includes(c)) ? 0.6 : 0.3;
+      regimeStrength = Math.min(1, Math.max(0, (elivateScore - 50) / 30));
+    } else if (marketStance === 'BEARISH') {
+      regimeStrength = Math.min(1, Math.max(0, (50 - elivateScore) / 30));
+    } else { // NEUTRAL
+      regimeStrength = Math.min(1, Math.max(0, 1 - Math.abs(elivateScore - 50) / 15));
+    }
+    
+    // Calculate category alignment score
+    let alignmentScore = 0;
+    
+    // Check if category matches any of the detailed mappings
+    const mapping = categoryMapping[marketStance] || {
+      strongFit: [],
+      moderateFit: [],
+      weakFit: []
+    };
+    
+    const isStrongFit = mapping.strongFit.some(c => category.includes(c));
+    const isModerateFit = mapping.moderateFit.some(c => category.includes(c));
+    const isWeakFit = mapping.weakFit.some(c => category.includes(c));
+    
+    if (isStrongFit) {
+      alignmentScore = 1.0;
+    } else if (isModerateFit) {
+      alignmentScore = 0.7;
+    } else if (isWeakFit) {
+      alignmentScore = 0.4;
+    } else {
+      // Use original categorization as fallback
+      if (marketStance === 'BULLISH') {
+        alignmentScore = bullishFavoredCategories.some(c => category.includes(c)) ? 0.8 :
+                       neutralFavoredCategories.some(c => category.includes(c)) ? 0.5 : 0.2;
+      } else if (marketStance === 'NEUTRAL') {
+        alignmentScore = neutralFavoredCategories.some(c => category.includes(c)) ? 0.8 :
+                       (bullishFavoredCategories.some(c => category.includes(c)) || bearishFavoredCategories.some(c => category.includes(c))) ? 0.5 : 0.2;
+      } else { // BEARISH
+        alignmentScore = bearishFavoredCategories.some(c => category.includes(c)) ? 0.8 :
+                       neutralFavoredCategories.some(c => category.includes(c)) ? 0.5 : 0.2;
+      }
     }
     
     // Calculate conviction based on ELIVATE score
     let conviction = 0;
-    if (elivateScore >= 80) conviction = 1.0;
-    else if (elivateScore >= 65) conviction = 0.8;
-    else if (elivateScore >= 50) conviction = 0.6;
-    else if (elivateScore >= 35) conviction = 0.4;
-    else conviction = 0.2;
+    if (elivateScore >= 80) conviction = 1.0;      // Very strong conviction
+    else if (elivateScore >= 65) conviction = 0.8; // Strong conviction
+    else if (elivateScore >= 50) conviction = 0.6; // Moderate conviction
+    else if (elivateScore >= 35) conviction = 0.4; // Weak conviction
+    else conviction = 0.2;                         // Very weak conviction
     
-    // Calculate forward score
-    const forwardScore = alignmentScore * conviction * maxPoints;
+    // Factor in regime strength
+    alignmentScore = alignmentScore * 0.8 + regimeStrength * 0.2;
+    
+    // Calculate momentum factor (in a full implementation, this would use historical ELIVATE data)
+    const momentumFactor = Math.min(1, Math.max(0, Math.abs(elivateScore - 50) / 30));
+    
+    // Store forward score analysis
+    this.lastForwardScoreAnalysis = {
+      elivateScore,
+      marketStance,
+      category,
+      regimeStrength,
+      categoryAlignment: isStrongFit ? 'Strong' : isModerateFit ? 'Moderate' : isWeakFit ? 'Weak' : 'Poor',
+      alignmentScore,
+      conviction,
+      momentumFactor,
+      forwardOutlook: alignmentScore > 0.7 ? 'Highly Favorable' :
+                     alignmentScore > 0.5 ? 'Favorable' :
+                     alignmentScore > 0.3 ? 'Neutral' : 'Unfavorable'
+    };
+    
+    // Calculate final forward score with weighted components
+    const forwardScore = (alignmentScore * 0.6 + conviction * 0.3 + momentumFactor * 0.1) * maxPoints;
     
     return forwardScore;
   }
+  
+  // Store forward score analysis for reporting
+  // Type for storing the forward score analysis
+  private lastForwardScoreAnalysis: {
+    elivateScore: number;
+    marketStance: string;
+    category: string;
+    regimeStrength: number;
+    categoryAlignment: string;
+    alignmentScore: number;
+    conviction: number;
+    momentumFactor: number;
+    forwardOutlook: string;
+  } | null = null;
   
   // Helper: Calculate AUM size score
   private calculateAumSizeScore(aumCr: number, category: string, maxPoints: number): number {
