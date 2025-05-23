@@ -171,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         WHERE ($1::text IS NULL OR f.category = $1)
         ORDER BY fs.total_score DESC
         LIMIT $2
-      `, [category || null, parsedLimit]);
+      `, { category: category || null, limit: parsedLimit });
       
       res.json(fundScores.rows);
     } catch (error) {

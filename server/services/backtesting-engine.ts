@@ -45,7 +45,7 @@ export class BacktestingEngine {
           WHERE risk_profile = $1 
           ORDER BY created_at DESC 
           LIMIT 1
-        `, [riskProfile]);
+        `, { 1: riskProfile });
         
         if (portfolios.rows.length > 0) {
           const portfolioId = portfolios.rows[0].id;
@@ -236,7 +236,7 @@ export class BacktestingEngine {
         WHERE fund_id = ANY($1)
         AND nav_date BETWEEN $2 AND $3
         ORDER BY fund_id, nav_date
-      `, [fundIds, startDate, endDate]);
+      `, { 1: fundIds, 2: startDate, 3: endDate });
       
       return navData.rows;
     } catch (error) {
@@ -256,7 +256,7 @@ export class BacktestingEngine {
         WHERE index_name = $1
         AND index_date BETWEEN $2 AND $3
         ORDER BY index_date
-      `, [indexName, startDate, endDate]);
+      `, { 1: indexName, 2: startDate, 3: endDate });
       
       return indexData.rows.map((row: any) => ({
         date: row.index_date,
