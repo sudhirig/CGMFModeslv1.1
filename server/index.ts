@@ -36,6 +36,54 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add quartile API routes BEFORE Vite middleware to prevent conflicts
+app.get("/api/quartile/distribution", async (req, res) => {
+  console.log("✓ DIRECT QUARTILE DISTRIBUTION ROUTE HIT!");
+  const { storage } = await import("./storage");
+  try {
+    const category = req.query.category as string || undefined;
+    const distribution = await storage.getQuartileDistribution(category);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(distribution);
+  } catch (error) {
+    console.error("Error in direct quartile distribution:", error);
+    res.status(500).json({ error: "Failed to fetch quartile distribution" });
+  }
+});
+
+app.get("/api/quartile/metrics", async (req, res) => {
+  console.log("✓ DIRECT QUARTILE METRICS ROUTE HIT!");
+  const { storage } = await import("./storage");
+  try {
+    const metrics = await storage.getQuartileMetrics();
+    res.setHeader('Content-Type', 'application/json');
+    res.json(metrics);
+  } catch (error) {
+    console.error("Error in direct quartile metrics:", error);
+    res.status(500).json({ error: "Failed to fetch quartile metrics" });
+  }
+});
+
+app.get("/api/quartile/funds/:quartile", async (req, res) => {
+  console.log("✓ DIRECT QUARTILE FUNDS ROUTE HIT!");
+  const { storage } = await import("./storage");
+  try {
+    const quartile = parseInt(req.params.quartile);
+    const category = req.query.category as string || undefined;
+    
+    if (isNaN(quartile) || quartile < 1 || quartile > 4) {
+      return res.status(400).json({ error: "Invalid quartile. Must be a number between 1 and 4." });
+    }
+    
+    const funds = await storage.getFundsByQuartile(quartile, category);
+    res.setHeader('Content-Type', 'application/json');
+    res.json(funds);
+  } catch (error) {
+    console.error("Error in direct quartile funds:", error);
+    res.status(500).json({ error: "Failed to fetch funds by quartile" });
+  }
+});
+
 (async () => {
   const server = await registerRoutes(app);
 

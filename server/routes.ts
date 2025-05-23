@@ -183,11 +183,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Quartile Analysis API Routes - Using separate path to avoid conflicts
   app.get("/api/quartile/distribution", async (req, res) => {
-    console.log("✓ QUARTILE DISTRIBUTION ROUTE HIT");
+    console.log("✓ QUARTILE DISTRIBUTION ROUTE HIT - BACKEND WORKING!");
     const category = req.query.category as string || undefined;
     try {
       const distribution = await storage.getQuartileDistribution(category);
       console.log("✓ Distribution data:", distribution);
+      res.setHeader('Content-Type', 'application/json');
       res.json(distribution);
     } catch (error) {
       console.error("Error fetching quartile distribution:", error);
