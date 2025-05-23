@@ -75,7 +75,7 @@ export function useFunds(category?: string) {
         // Normal path - either get by category or all funds
         if (category && category !== 'All Categories') {
           console.log(`Fetching funds for category: ${category}`);
-          const response = await fetch(`/api/funds?category=${encodeURIComponent(category)}`);
+          const response = await fetch(`/api/funds?category=${encodeURIComponent(category)}&limit=5000`);
           const funds = await response.json();
           console.log(`Found ${funds.length} funds for category ${category}`);
           return convertToCamelCase(funds);

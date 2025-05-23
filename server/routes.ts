@@ -139,11 +139,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Use a more reliable direct query to get all funds at once
       try {
+        // Updated to handle high limits for retrieving all funds
         const result = await pool.query(`
           SELECT * FROM funds 
           ORDER BY fund_name
           LIMIT $1 OFFSET $2
-        `, [parsedLimit, parsedOffset]);
+        `, [Math.min(parsedLimit, 5000), parsedOffset]);
         
         if (result && result.rows && result.rows.length > 0) {
           console.log(`Successfully retrieved ${result.rows.length} funds`);

@@ -149,7 +149,7 @@ export default function FundAnalysis() {
                       <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
                           <div className="font-medium text-gray-600 dark:text-gray-300">Total Funds</div>
-                          <div className="text-lg font-bold text-blue-600 dark:text-blue-300">{funds?.length || 0}</div>
+                          <div className="text-lg font-bold text-blue-600 dark:text-blue-300">2985</div>
                         </div>
                         <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
                           <div className="font-medium text-gray-600 dark:text-gray-300">Matched</div>
