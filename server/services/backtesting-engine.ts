@@ -82,12 +82,35 @@ export class BacktestingEngine {
       if (!portfolio) {
         console.log("Portfolio not found, creating a fallback portfolio");
         
+        // Check if risk profile is one of the valid options
+        const validRiskProfiles = ['Conservative', 'Moderately Conservative', 'Balanced', 'Moderately Aggressive', 'Aggressive'];
+        
+        // Map any variations to standard risk profiles
+        let standardRiskProfile = "Balanced";
+        if (riskProfile) {
+          if (riskProfile === "Moderate") {
+            standardRiskProfile = "Balanced";
+          } else if (validRiskProfiles.includes(riskProfile)) {
+            standardRiskProfile = riskProfile;
+          } else if (riskProfile.includes("Conservative") && riskProfile.includes("Moderate")) {
+            standardRiskProfile = "Moderately Conservative";
+          } else if (riskProfile.includes("Aggressive") && riskProfile.includes("Moderate")) {
+            standardRiskProfile = "Moderately Aggressive";
+          } else if (riskProfile.includes("Conservative")) {
+            standardRiskProfile = "Conservative";
+          } else if (riskProfile.includes("Aggressive")) {
+            standardRiskProfile = "Aggressive";
+          }
+        }
+        
+        console.log(`Mapped risk profile "${riskProfile}" to standard risk profile "${standardRiskProfile}"`);
+        
         // Create a basic fallback portfolio
         portfolio = {
           id: 0,
-          name: riskProfile ? `${riskProfile} Portfolio (Fallback)` : "Fallback Portfolio",
-          riskProfile: riskProfile || "Balanced",
-          allocations: defaultAllocations[riskProfile || "Balanced"] || defaultAllocations["Balanced"]
+          name: `${standardRiskProfile} Portfolio (Fallback)`,
+          riskProfile: standardRiskProfile,
+          allocations: defaultAllocations[standardRiskProfile] || []
         };
         
         console.log(`Created fallback portfolio with ${portfolio.allocations.length} allocations`);
