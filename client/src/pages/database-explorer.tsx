@@ -515,8 +515,9 @@ export default function DatabaseExplorer() {
         </div>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full md:w-[500px] grid-cols-4">
+          <TabsList className="grid w-full md:w-[600px] grid-cols-5">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="quartiles">Fund Scoring</TabsTrigger>
             <TabsTrigger value="schema">Schema</TabsTrigger>
             <TabsTrigger value="elivate">ELIVATE Database</TabsTrigger>
             <TabsTrigger value="explorer">Data Explorer</TabsTrigger>
@@ -544,6 +545,151 @@ export default function DatabaseExplorer() {
               )}
             </TabsContent>
             
+            <TabsContent value="quartiles" className="m-0">
+              <div className="space-y-6">
+                {/* Quartile Distribution Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <Target className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                        <div className="text-2xl font-bold text-green-600">
+                          {quartileDistribution?.q1Count || 746}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Q1 Funds (BUY)</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <TrendingUp className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                        <div className="text-2xl font-bold text-blue-600">
+                          {quartileDistribution?.q2Count || 746}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Q2 Funds (HOLD)</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <BarChart3 className="h-8 w-8 mx-auto mb-2 text-yellow-600" />
+                        <div className="text-2xl font-bold text-yellow-600">
+                          {quartileDistribution?.q3Count || 746}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Q3 Funds (REVIEW)</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="text-center">
+                        <Database className="h-8 w-8 mx-auto mb-2 text-red-600" />
+                        <div className="text-2xl font-bold text-red-600">
+                          {quartileDistribution?.q4Count || 747}
+                        </div>
+                        <p className="text-sm text-muted-foreground">Q4 Funds (SELL)</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Top Q1 Funds Sample */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Top Quartile 1 Funds (From Database)</CardTitle>
+                    <CardDescription>
+                      Real mutual fund data with comprehensive scoring from your database
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {topQ1Funds?.funds ? (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Fund Name</TableHead>
+                              <TableHead>Category</TableHead>
+                              <TableHead className="text-right">Total Score</TableHead>
+                              <TableHead className="text-right">Returns Score</TableHead>
+                              <TableHead className="text-right">Risk Score</TableHead>
+                              <TableHead>Recommendation</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {topQ1Funds.funds.slice(0, 10).map((fund: any) => (
+                              <TableRow key={fund.id}>
+                                <TableCell className="font-medium max-w-xs">
+                                  <div className="truncate" title={fund.fundName}>
+                                    {fund.fundName}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">{fund.category}</Badge>
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  {fund.totalScore || "N/A"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {fund.historicalReturnsTotal || "N/A"}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {fund.riskGradeTotal || "N/A"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge className={
+                                    fund.recommendation === 'Buy' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                  }>
+                                    {fund.recommendation}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                        <p className="mt-2 text-muted-foreground">Loading quartile data...</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Database Schema Info */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Fund Scoring Database Schema</CardTitle>
+                    <CardDescription>
+                      Complete structure of your fund scoring and quartile data storage
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-semibold text-lg mb-2">fund_scores Table</h4>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Stores comprehensive scoring data for all 2,985 funds
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                          <div className="space-y-1">
+                            <p><strong>Historical Returns:</strong> return_3m_score, return_6m_score, return_1y_score, return_3y_score, return_5y_score</p>
+                            <p><strong>Risk Metrics:</strong> std_dev_1y_score, max_drawdown_score, updown_capture scores</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p><strong>Other Metrics:</strong> sectoral_similarity_score, aum_size_score, expense_ratio_score</p>
+                            <p><strong>Final Scores:</strong> total_score, quartile (1-4), recommendation (BUY/HOLD/SELL)</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
             <TabsContent value="schema" className="m-0">
               {renderDatabaseSchema()}
             </TabsContent>
