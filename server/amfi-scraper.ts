@@ -255,20 +255,42 @@ export async function fetchAMFIMutualFundData(includeHistorical: boolean = false
       console.log(`Will fetch historical data for ${historicalDates.length} months.`);
       
       // Fetch and import historical data for each month
+      // Start with the most recent months first as they're most relevant for backtesting
+      console.log(`===== STARTING HISTORICAL DATA IMPORT PROCESS =====`);
+      console.log(`Target: Past ${historicalDates.length} months of NAV data for ${funds.length} funds`);
+      
+      let importSuccessCount = 0;
+      let importFailedCount = 0;
+      
       for (const date of historicalDates) {
         const { year, month } = date;
         
-        // Fetch historical data for this month
-        console.log(`Fetching historical data for ${month}/${year}...`);
-        const historicalFunds = await fetchHistoricalNavData(year, month);
-        
-        if (historicalFunds.length > 0) {
-          // Import this batch of historical data
-          const historicalResult = await importNavDataOnly(historicalFunds);
-          historicalNavCount += historicalResult.importedCount;
+        try {
+          // Fetch historical data for this month
+          console.log(`[${new Date().toISOString()}] Fetching historical data for ${month}/${year}...`);
+          const historicalFunds = await fetchHistoricalNavData(year, month);
           
-          console.log(`Imported ${historicalResult.importedCount} historical NAV data points for ${month}/${year}.`);
+          if (historicalFunds.length > 0) {
+            console.log(`Found ${historicalFunds.length} NAV records for ${month}/${year}`);
+            
+            // Import this batch of historical data
+            const historicalResult = await importNavDataOnly(historicalFunds);
+            historicalNavCount += historicalResult.importedCount;
+            
+            console.log(`SUCCESS: Imported ${historicalResult.importedCount} historical NAV data points for ${month}/${year}.`);
+            importSuccessCount++;
+          } else {
+            console.log(`WARNING: No NAV data found for ${month}/${year}. Skipping this month.`);
+            importFailedCount++;
+          }
+        } catch (error) {
+          console.error(`ERROR: Failed to import data for ${month}/${year}:`, error);
+          importFailedCount++;
         }
+        
+        // Log progress
+        console.log(`Progress: ${importSuccessCount + importFailedCount}/${historicalDates.length} months processed`);
+        console.log(`Current stats: ${historicalNavCount} NAV data points imported`);
       }
       
       console.log(`Historical data import complete. Total historical NAV data points: ${historicalNavCount}`);
