@@ -43,7 +43,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   async function importSomeSampleFunds() {
     try {
       const categories = ['Equity', 'Debt', 'Hybrid'];
-      const subcategories = {
+      const subcategories: Record<string, string[]> = {
         'Equity': ['Large Cap', 'Mid Cap', 'Small Cap', 'Multi Cap', 'ELSS'],
         'Debt': ['Liquid', 'Corporate Bond', 'Banking and PSU', 'Dynamic Bond'],
         'Hybrid': ['Balanced Advantage', 'Aggressive', 'Conservative']

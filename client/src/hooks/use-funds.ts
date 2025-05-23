@@ -20,7 +20,7 @@ interface Fund {
 }
 
 export function useFunds(category?: string) {
-  // Directly pass the category to the query instead of building a complex endpoint
+  // Create a stable query key based on the category
   const queryKey = category && category !== 'All Categories' 
     ? ['/api/funds', 'category', category] 
     : ['/api/funds'];
@@ -28,35 +28,42 @@ export function useFunds(category?: string) {
   const { data, isLoading, error, refetch } = useQuery<Fund[]>({
     queryKey: queryKey,
     queryFn: async () => {
-      // Use direct SQL query approach for more reliable results
-      let url = '/api/funds';
-      
-      if (category && category !== 'All Categories') {
-        // First check if we need to import data
+      try {
+        // Check if we need to create sample data first
         const checkResponse = await fetch('/api/funds');
-        const existingFunds = await checkResponse.json();
+        const checkData = await checkResponse.json();
+        console.log(`Found ${checkData?.length || 0} total funds in the database`);
         
-        if (!existingFunds || existingFunds.length < 5) {
-          console.log("Importing funds since database appears empty...");
-          const importResponse = await fetch('/api/import/amfi-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          await importResponse.json();
+        // If very few funds, make sure we have samples in all categories
+        if (!checkData || checkData.length < 15) {
+          console.log("Creating sample fund data...");
+          // We'll use direct SQL through our custom endpoint
+          if (category && category !== 'All Categories') {
+            const sampleResponse = await fetch(`/api/funds/sql-category/${category}`);
+            return await sampleResponse.json();
+          }
         }
         
-        // Get funds by category with direct SQL
-        const response = await fetch(`/api/funds/sql-category/${category}`);
-        return response.json();
-      } else {
-        // Get all funds
-        const response = await fetch(url);
-        return response.json();
+        // Normal path - either get by category or all funds
+        if (category && category !== 'All Categories') {
+          console.log(`Fetching funds for category: ${category}`);
+          const response = await fetch(`/api/funds?category=${encodeURIComponent(category)}`);
+          const funds = await response.json();
+          console.log(`Found ${funds.length} funds for category ${category}`);
+          return funds;
+        } else {
+          // Get all funds with a reasonable limit
+          const response = await fetch('/api/funds?limit=100');
+          return await response.json();
+        }
+      } catch (err) {
+        console.error("Error fetching funds:", err);
+        return [];
       }
     },
-    staleTime: 0, // Don't cache to ensure we always get fresh data
-    refetchOnMount: true, // Always refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when window gets focus
+    staleTime: 10000, // 10 seconds to avoid too many refreshes
+    refetchOnMount: true,
+    refetchOnWindowFocus: false // Don't constantly refresh on window focus
   });
   
   return {

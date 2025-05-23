@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useFunds } from "@/hooks/use-funds";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Loader2 } from "lucide-react";
 
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
@@ -22,11 +23,13 @@ export default function FundAnalysis() {
   // Use useFunds hook with the selected category directly
   const { funds, isLoading, error, refetch } = useFunds(selectedCategory);
   
-  // Filter funds based on search query
+  // Filter funds based on search query with null checks
   const filteredFunds = funds?.filter(fund => 
-    fund.fundName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    fund.amcName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    fund && fund.fundName && fund.amcName && (
+      fund.fundName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      fund.amcName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  ) || [];
   
   const handleFundSelect = (fundId: number) => {
     const fund = funds?.find(f => f.id === fundId);
@@ -87,7 +90,10 @@ export default function FundAnalysis() {
                     <label className="text-sm font-medium text-neutral-700 mb-2 block">Funds</label>
                     
                     {isLoading ? (
-                      <div className="text-center py-4">Loading funds...</div>
+                      <div className="text-center py-4 flex flex-col items-center">
+                        <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
+                        <span>Loading funds...</span>
+                      </div>
                     ) : error ? (
                       <div className="text-center py-4 text-red-500">Error loading funds</div>
                     ) : filteredFunds?.length === 0 ? (
