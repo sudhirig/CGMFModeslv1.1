@@ -365,9 +365,11 @@ export default function ElivateFramework() {
                     </div>
                   </div>
                   
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Factor Details</h3>
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Factor Details with Data Sources</h3>
                   
                   <div className="overflow-x-auto">
+                    <p className="text-sm text-neutral-500 mb-4">All data is sourced from live APIs with no simulation. Last updated: {format(new Date(elivateScore?.scoreDate || new Date()), 'MMM dd, yyyy')}</p>
+                    
                     <table className="min-w-full divide-y divide-neutral-200">
                       <thead>
                         <tr>
