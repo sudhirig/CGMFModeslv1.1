@@ -10,11 +10,35 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
   
-  // Update the endpoint when category changes
-  const updateCategoryEndpoint = (category: string) => {
+  // Update the endpoint when category changes and import data if needed
+  const updateCategoryEndpoint = async (category: string) => {
     const newEndpoint = `/api/funds${category !== 'All Categories' ? `?category=${category}` : ''}`;
     setEndpoint(newEndpoint);
     console.log("Setting endpoint to:", newEndpoint);
+    
+    // Check if we have data, if not import it automatically
+    const checkResponse = await fetch('/api/funds');
+    const currentFunds = await checkResponse.json();
+    
+    if (!currentFunds || currentFunds.length < 100) {
+      try {
+        console.log("Importing mutual fund data...");
+        const importResponse = await fetch('/api/import/amfi-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await importResponse.json();
+        if (result.success) {
+          console.log(`Successfully imported mutual fund data (${result.counts?.importedFunds || 'many'} funds)`);
+          refetch(); // Reload the funds after import
+        }
+      } catch (error) {
+        console.error("Error importing fund data:", error);
+      }
+    }
   };
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFund, setSelectedFund] = useState<any>(null);
