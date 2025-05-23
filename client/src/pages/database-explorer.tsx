@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { useFunds } from "@/hooks/use-funds";
+import { useAllFunds } from "@/hooks/use-all-funds";
 import { Loader2, Database, Table as TableIcon, BarChart3 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTo
 
 export default function DatabaseExplorer() {
   const [activeTab, setActiveTab] = useState("overview");
-  const { funds, isLoading, error } = useFunds();
+  const { funds, isLoading, error } = useDatabaseStats();
   const [fundsCount, setFundsCount] = useState<any>({ total: 0, equity: 0, debt: 0, hybrid: 0 });
   const [topAmcs, setTopAmcs] = useState<{name: string, count: number}[]>([]);
   const [categoryData, setCategoryData] = useState<{name: string, value: number}[]>([]);
