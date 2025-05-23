@@ -250,8 +250,14 @@ async function importFundsToDatabase(funds: ParsedFund[]) {
   try {
     // Clear existing data to ensure a fresh start
     console.log("Clearing existing fund data...");
-    await executeRawQuery('DELETE FROM nav_data');
-    await executeRawQuery('DELETE FROM funds');
+    try {
+      await executeRawQuery('DELETE FROM nav_data');
+      await executeRawQuery('DELETE FROM funds');
+      console.log("Successfully cleared existing data");
+    } catch (clearError) {
+      console.error("Error clearing existing data:", clearError);
+      // Continue anyway - we'll use the ON CONFLICT clauses to handle duplicates
+    }
     
     // Process funds in batches to avoid memory issues
     const batchSize = 100;

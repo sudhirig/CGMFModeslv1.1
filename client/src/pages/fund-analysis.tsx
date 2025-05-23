@@ -19,7 +19,7 @@ export default function FundAnalysis() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFund, setSelectedFund] = useState<any>(null);
   
-  const [endpoint, setEndpoint] = useState<string>(`/api/funds${selectedCategory !== 'All Categories' ? `?category=${selectedCategory}` : ''}`);
+  const [endpoint, setEndpoint] = useState<string>("/api/funds");
   
   const { funds, isLoading, error, refetch } = useFunds(endpoint);
   
@@ -57,7 +57,13 @@ export default function FundAnalysis() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-sm font-medium text-neutral-700">Category</label>
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <Select 
+                      value={selectedCategory} 
+                      onValueChange={(category) => {
+                        setSelectedCategory(category);
+                        updateCategoryEndpoint(category);
+                      }}
+                    >
                       <SelectTrigger className="w-full mt-1">
                         <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
@@ -118,21 +124,23 @@ export default function FundAnalysis() {
                       className="w-full"
                       onClick={async () => {
                         try {
-                          const response = await fetch('/api/import/amfi-data', {
-                            method: 'POST',
-                            headers: {
-                              'Content-Type': 'application/json'
+                          if (confirm("This will import around 3,000 mutual funds with real data. It may take a moment to process. Continue?")) {
+                            const response = await fetch('/api/import/amfi-data', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json'
+                              }
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                              alert(`Successfully imported mutual fund data! ${result.counts?.importedFunds || 'Many'} funds are now available.`);
+                              // Refresh the fund list
+                              refetch();
+                            } else {
+                              alert(`Failed to import data: ${result.message || 'Unknown error'}`);
                             }
-                          });
-                          
-                          const result = await response.json();
-                          
-                          if (result.success) {
-                            alert(`Successfully imported mutual fund data! ${result.counts?.importedFunds || 'Many'} funds are now available.`);
-                            // Refresh the fund list by forcing a new data fetch
-                            setEndpoint(endpoint); // This will trigger a refetch with the same endpoint
-                          } else {
-                            alert(`Failed to import data: ${result.message}`);
                           }
                         } catch (error) {
                           console.error('Error importing AMFI data:', error);
