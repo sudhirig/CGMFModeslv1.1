@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useAllFunds } from "@/hooks/use-all-funds";
-import { Loader2, Database, Table as TableIcon, BarChart3 } from "lucide-react";
+import { Loader2, Database, Table as TableIcon, BarChart3, Target, TrendingUp } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
@@ -17,6 +18,17 @@ export default function DatabaseExplorer() {
   const [topAmcs, setTopAmcs] = useState<{name: string, count: number}[]>([]);
   const [categoryData, setCategoryData] = useState<{name: string, value: number}[]>([]);
   const [topSubcategories, setTopSubcategories] = useState<{name: string, count: number}[]>([]);
+
+  // Fetch fund scoring data for quartiles tab
+  const { data: quartileDistribution } = useQuery({
+    queryKey: ['/api/quartile/distribution'],
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const { data: topQ1Funds } = useQuery({
+    queryKey: ['/api/quartile/funds/1'],
+    staleTime: 5 * 60 * 1000,
+  });
 
   useEffect(() => {
     if (funds && funds.length > 0) {
