@@ -47,6 +47,12 @@ export default function Sidebar() {
                   <span>Fund Analysis</span>
                 </a>
               </Link>
+              <Link href="/quartile-analysis">
+                <a className={linkClass("/quartile-analysis")}>
+                  <span className="material-icons text-xl mr-3">pie_chart</span>
+                  <span>Quartile Analysis</span>
+                </a>
+              </Link>
               <Link href="/portfolio-builder">
                 <a className={linkClass("/portfolio-builder")}>
                   <span className="material-icons text-xl mr-3">account_balance</span>
