@@ -9,10 +9,19 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
+  
+  // Update the endpoint when category changes
+  const updateCategoryEndpoint = (category: string) => {
+    const newEndpoint = `/api/funds${category !== 'All Categories' ? `?category=${category}` : ''}`;
+    setEndpoint(newEndpoint);
+    console.log("Setting endpoint to:", newEndpoint);
+  };
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFund, setSelectedFund] = useState<any>(null);
   
-  const { funds, isLoading, error } = useFunds(selectedCategory);
+  const [endpoint, setEndpoint] = useState<string>(`/api/funds${selectedCategory !== 'All Categories' ? `?category=${selectedCategory}` : ''}`);
+  
+  const { funds, isLoading, error, refetch } = useFunds(endpoint);
   
   // Filter funds based on search query
   const filteredFunds = funds?.filter(fund => 
@@ -120,8 +129,8 @@ export default function FundAnalysis() {
                           
                           if (result.success) {
                             alert(`Successfully imported mutual fund data! ${result.counts?.importedFunds || 'Many'} funds are now available.`);
-                            // Refresh the fund list
-                            refetch();
+                            // Refresh the fund list by forcing a new data fetch
+                            setEndpoint(endpoint); // This will trigger a refetch with the same endpoint
                           } else {
                             alert(`Failed to import data: ${result.message}`);
                           }
