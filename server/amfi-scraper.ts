@@ -1,6 +1,7 @@
 // Advanced AMFI Data Scraper to fetch real mutual fund data
 import axios from 'axios';
 import { executeRawQuery } from './db';
+import { updateImportProgress } from './api/amfi-import';
 
 // Real AMFI URLs for production use
 const AMFI_NAV_ALL_URL = 'https://www.amfiindia.com/spages/NAVAll.txt';
@@ -254,6 +255,17 @@ export async function fetchAMFIMutualFundData(includeHistorical: boolean = false
       const historicalDates = generateHistoricalDates();
       console.log(`Will fetch historical data for ${historicalDates.length} months.`);
       
+      // Update progress tracking
+      updateImportProgress({
+        isImporting: true,
+        totalMonths: historicalDates.length,
+        completedMonths: 0,
+        currentMonth: '',
+        currentYear: '',
+        totalImported: 0,
+        errors: []
+      });
+      
       // Fetch and import historical data for each month
       // Start with the most recent months first as they're most relevant for backtesting
       console.log(`===== STARTING HISTORICAL DATA IMPORT PROCESS =====`);
@@ -266,6 +278,12 @@ export async function fetchAMFIMutualFundData(includeHistorical: boolean = false
         const { year, month } = date;
         
         try {
+          // Update progress tracking
+          updateImportProgress({
+            currentMonth: month.toString(),
+            currentYear: year.toString(),
+          });
+          
           // Fetch historical data for this month
           console.log(`[${new Date().toISOString()}] Fetching historical data for ${month}/${year}...`);
           const historicalFunds = await fetchHistoricalNavData(year, month);
@@ -279,13 +297,31 @@ export async function fetchAMFIMutualFundData(includeHistorical: boolean = false
             
             console.log(`SUCCESS: Imported ${historicalResult.importedCount} historical NAV data points for ${month}/${year}.`);
             importSuccessCount++;
+            
+            // Update progress tracking with new totals
+            updateImportProgress({
+              completedMonths: importSuccessCount + importFailedCount,
+              totalImported: historicalNavCount
+            });
           } else {
             console.log(`WARNING: No NAV data found for ${month}/${year}. Skipping this month.`);
             importFailedCount++;
+            
+            // Update progress tracking
+            updateImportProgress({
+              completedMonths: importSuccessCount + importFailedCount,
+              errors: [`No data found for ${month}/${year}`]
+            });
           }
         } catch (error) {
           console.error(`ERROR: Failed to import data for ${month}/${year}:`, error);
           importFailedCount++;
+          
+          // Update progress tracking with error
+          updateImportProgress({
+            completedMonths: importSuccessCount + importFailedCount,
+            errors: [`Error importing ${month}/${year}: ${error}`]
+          });
         }
         
         // Log progress
@@ -294,6 +330,13 @@ export async function fetchAMFIMutualFundData(includeHistorical: boolean = false
       }
       
       console.log(`Historical data import complete. Total historical NAV data points: ${historicalNavCount}`);
+      
+      // Mark import as complete
+      updateImportProgress({
+        isImporting: false,
+        currentMonth: 'Complete',
+        currentYear: 'Complete'
+      });
     }
     
     return { 

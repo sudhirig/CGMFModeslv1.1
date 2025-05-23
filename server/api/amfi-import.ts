@@ -37,6 +37,32 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Track import progress globally
+let importProgress = {
+  isImporting: false,
+  totalMonths: 0,
+  completedMonths: 0,
+  currentMonth: '',
+  currentYear: '',
+  totalImported: 0,
+  lastUpdated: new Date(),
+  errors: [] as string[]
+};
+
+// Update import progress
+export function updateImportProgress(update: Partial<typeof importProgress>) {
+  importProgress = {
+    ...importProgress,
+    ...update,
+    lastUpdated: new Date()
+  };
+}
+
+// Get current import progress
+router.get('/progress', (req, res) => {
+  res.json(importProgress);
+});
+
 // Check NAV data count
 router.get('/status', async (req, res) => {
   try {
