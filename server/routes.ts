@@ -6,6 +6,7 @@ import { dataCollector } from "./services/data-collector";
 import { elivateFramework } from "./services/elivate-framework";
 import { fundScoringEngine } from "./services/fund-scoring";
 import { portfolioBuilder } from "./services/portfolio-builder";
+import { backtestingEngine } from "./services/backtesting-engine";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes for funds
@@ -271,6 +272,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error triggering data collection:", error);
       res.status(500).json({ message: "Failed to trigger data collection" });
+    }
+  });
+  
+  // API routes for backtesting
+  app.post("/api/backtest", async (req, res) => {
+    try {
+      const { 
+        portfolioId, 
+        riskProfile, 
+        startDate, 
+        endDate, 
+        initialAmount, 
+        rebalancePeriod 
+      } = req.body;
+      
+      if ((!portfolioId && !riskProfile) || !startDate || !endDate || !initialAmount) {
+        return res.status(400).json({ 
+          message: "Missing required parameters. Please provide either portfolioId or riskProfile, plus startDate, endDate, and initialAmount." 
+        });
+      }
+      
+      const parsedStartDate = new Date(startDate);
+      const parsedEndDate = new Date(endDate);
+      const parsedAmount = parseFloat(initialAmount);
+      
+      if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime()) || isNaN(parsedAmount)) {
+        return res.status(400).json({ 
+          message: "Invalid date format or amount. Please provide valid values." 
+        });
+      }
+      
+      if (parsedStartDate >= parsedEndDate) {
+        return res.status(400).json({ 
+          message: "Start date must be before end date." 
+        });
+      }
+      
+      const result = await backtestingEngine.runBacktest({
+        portfolioId: portfolioId ? parseInt(portfolioId as string) : undefined,
+        riskProfile,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        initialAmount: parsedAmount,
+        rebalancePeriod
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error running backtest:", error);
+      res.status(500).json({ message: "Failed to run backtest", error: (error as Error).message });
     }
   });
 

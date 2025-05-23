@@ -8,6 +8,7 @@ import Dashboard from "@/pages/dashboard";
 import FundAnalysis from "@/pages/fund-analysis";
 import PortfolioBuilder from "@/pages/portfolio-builder";
 import EtlPipeline from "@/pages/etl-pipeline";
+import Backtesting from "@/pages/backtesting";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -23,6 +24,7 @@ function Router() {
             <Route path="/fund-analysis" component={FundAnalysis} />
             <Route path="/portfolio-builder" component={PortfolioBuilder} />
             <Route path="/etl-pipeline" component={EtlPipeline} />
+            <Route path="/backtesting" component={Backtesting} />
             <Route component={NotFound} />
           </Switch>
         </main>
