@@ -2,8 +2,12 @@
 import axios from 'axios';
 import { executeRawQuery } from './db';
 
-// Real AMFI URL for production use
+// Real AMFI URLs for production use
 const AMFI_NAV_ALL_URL = 'https://www.amfiindia.com/spages/NAVAll.txt';
+// Historical NAV data URLs - AMFI provides historical data by month
+const AMFI_HISTORICAL_BASE_URL = 'https://www.amfiindia.com/spages/NAVArchive.aspx';
+// Calculate relevant months for historical data (past 12 months)
+const HISTORICAL_MONTHS = 12; // Number of months to fetch historically
 
 // Since external API calls might be limited in this environment,
 // we'll generate a comprehensive mutual fund dataset
@@ -23,7 +27,129 @@ interface ParsedFund {
 /**
  * Generate and import a comprehensive set of mutual fund data
  */
-export async function fetchAMFIMutualFundData() {
+/**
+ * Generate historical dates for fetching NAV data (last 12 months)
+ */
+function generateHistoricalDates(): { year: number, month: number }[] {
+  const dates = [];
+  const today = new Date();
+  let currentMonth = today.getMonth(); // 0-11
+  let currentYear = today.getFullYear();
+  
+  // Generate the past 12 months of dates
+  for (let i = 0; i < HISTORICAL_MONTHS; i++) {
+    dates.push({ year: currentYear, month: currentMonth + 1 }); // Month is 1-12 for AMFI
+    
+    // Move to previous month
+    currentMonth--;
+    if (currentMonth < 0) {
+      currentMonth = 11; // December
+      currentYear--;
+    }
+  }
+  
+  return dates;
+}
+
+/**
+ * Fetch historical NAV data for a particular month/year
+ */
+async function fetchHistoricalNavData(year: number, month: number): Promise<ParsedFund[]> {
+  try {
+    // Format the URL parameters according to AMFI's format
+    // AMFI archive format: ?fDate=25-May-2023
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthName = monthNames[month - 1]; // Convert 1-12 to 0-11 for array indexing
+    
+    // Get the last day of the month
+    const lastDay = new Date(year, month, 0).getDate();
+    
+    // Format the date string for AMFI's API
+    const dateStr = `${lastDay}-${monthName}-${year}`;
+    const url = `${AMFI_HISTORICAL_BASE_URL}?fDate=${dateStr}`;
+    
+    console.log(`Fetching historical NAV data for ${dateStr} from ${url}`);
+    
+    const response = await axios.get(url);
+    
+    if (!response.data) {
+      throw new Error(`No historical data received for ${dateStr}`);
+    }
+    
+    // Parse the NAV data similar to current data
+    const navText = response.data;
+    const funds: ParsedFund[] = [];
+    
+    // Split by lines and parse similar to current method
+    const lines = navText.split('\n');
+    
+    let currentAMC = '';
+    let currentSchemeType = '';
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      if (line.length === 0) continue;
+      
+      // Check if line contains AMC name
+      if (line.includes('Mutual Fund') && !line.includes(';')) {
+        currentAMC = line;
+        continue;
+      }
+      
+      // Check if line contains scheme type
+      if (line.includes('Schemes') && !line.includes(';')) {
+        currentSchemeType = line;
+        continue;
+      }
+      
+      // Parse fund data line (semicolon separated)
+      if (line.includes(';')) {
+        const parts = line.split(';');
+        
+        if (parts.length >= 5) {
+          const schemeCode = parts[0].trim();
+          const fundName = parts[3].trim();
+          const isinDivPayout = parts[1].trim() || null;
+          const isinDivReinvest = parts[2].trim() || null;
+          
+          // Convert NAV string to number, handling commas and invalid values
+          let navValueStr = parts[4].trim().replace(/,/g, '');
+          const navValue = navValueStr && !isNaN(parseFloat(navValueStr)) 
+            ? parseFloat(navValueStr) 
+            : 0;
+          
+          // Use the date for this historical data point
+          const navDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
+          
+          // Categorize the fund
+          const { category, subcategory } = categorizeFund(currentSchemeType, fundName);
+          
+          funds.push({
+            schemeCode,
+            isinDivPayout,
+            isinDivReinvest,
+            fundName,
+            amcName: currentAMC,
+            category,
+            subcategory,
+            navValue,
+            navDate
+          });
+        }
+      }
+    }
+    
+    console.log(`Found ${funds.length} historical NAV data points for ${dateStr}`);
+    return funds;
+    
+  } catch (error: any) {
+    console.error(`Error fetching historical NAV data for ${month}/${year}:`, error);
+    return []; // Return empty array on error
+  }
+}
+
+export async function fetchAMFIMutualFundData(includeHistorical: boolean = false) {
   try {
     console.log('Starting real AMFI mutual fund data import...');
     
@@ -117,14 +243,44 @@ export async function fetchAMFIMutualFundData() {
     console.log(`Parsing complete. Found ${funds.length} mutual funds from AMFI.`);
     
     // Insert funds into database
-    const result = await importFundsToDatabase(funds);
+    let result = await importFundsToDatabase(funds);
+    
+    // If historical data is requested, fetch it
+    let historicalNavCount = 0;
+    if (includeHistorical) {
+      console.log('Starting historical NAV data import...');
+      
+      // Get dates for historical data
+      const historicalDates = generateHistoricalDates();
+      console.log(`Will fetch historical data for ${historicalDates.length} months.`);
+      
+      // Fetch and import historical data for each month
+      for (const date of historicalDates) {
+        const { year, month } = date;
+        
+        // Fetch historical data for this month
+        console.log(`Fetching historical data for ${month}/${year}...`);
+        const historicalFunds = await fetchHistoricalNavData(year, month);
+        
+        if (historicalFunds.length > 0) {
+          // Import this batch of historical data
+          const historicalResult = await importNavDataOnly(historicalFunds);
+          historicalNavCount += historicalResult.importedCount;
+          
+          console.log(`Imported ${historicalResult.importedCount} historical NAV data points for ${month}/${year}.`);
+        }
+      }
+      
+      console.log(`Historical data import complete. Total historical NAV data points: ${historicalNavCount}`);
+    }
     
     return { 
       success: true, 
-      message: `Successfully imported ${result.importedCount} mutual funds from AMFI`,
+      message: `Successfully imported ${result.importedCount} mutual funds from AMFI${includeHistorical ? ` and ${historicalNavCount} historical NAV data points` : ''}`,
       counts: {
         totalFunds: funds.length,
-        importedFunds: result.importedCount
+        importedFunds: result.importedCount,
+        historicalNavCount: historicalNavCount
       }
     };
     
@@ -135,6 +291,94 @@ export async function fetchAMFIMutualFundData() {
       message: error.message || 'Unknown error occurred during AMFI data fetch',
       error: String(error)
     };
+  }
+}
+
+/**
+ * Import only NAV data for funds that already exist
+ * This is used for historical data import
+ */
+async function importNavDataOnly(funds: ParsedFund[]) {
+  console.log(`Importing historical NAV data for ${funds.length} records...`);
+  
+  let importedCount = 0;
+  let errorCount = 0;
+  
+  try {
+    // Process funds in batches
+    const batchSize = 100;
+    for (let i = 0; i < funds.length; i += batchSize) {
+      const batch = funds.slice(i, i + batchSize);
+      
+      for (const fund of batch) {
+        try {
+          // First, look up fund by scheme code
+          const fundResult = await executeRawQuery(
+            `SELECT id FROM funds WHERE scheme_code = $1`,
+            [fund.schemeCode]
+          );
+          
+          if (fundResult.rows && fundResult.rows.length > 0) {
+            const fundId = fundResult.rows[0].id;
+            
+            // Format the date properly (YYYY-MM-DD)
+            let formattedDate;
+            try {
+              // Parse the date to ensure it's valid
+              const dateParts = fund.navDate.split('-');
+              if (dateParts.length === 3) {
+                const year = parseInt(dateParts[0]);
+                const month = parseInt(dateParts[1]);
+                const day = parseInt(dateParts[2]);
+                
+                if (!isNaN(year) && !isNaN(month) && !isNaN(day)) {
+                  formattedDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                } else {
+                  // Skip invalid dates
+                  continue;
+                }
+              } else {
+                // Skip invalid dates
+                continue;
+              }
+              
+              // Insert the NAV data only
+              await executeRawQuery(
+                `INSERT INTO nav_data (
+                  fund_id, nav_date, nav_value, created_at
+                ) VALUES ($1, $2, $3, $4)
+                ON CONFLICT (fund_id, nav_date) DO UPDATE SET
+                  nav_value = EXCLUDED.nav_value`,
+                [
+                  fundId,
+                  formattedDate,
+                  fund.navValue,
+                  new Date()
+                ]
+              );
+              
+              importedCount++;
+            } catch (navError) {
+              console.error(`Error inserting historical NAV data for fund ${fundId}:`, navError);
+              // Continue with next fund
+            }
+          }
+        } catch (err) {
+          errorCount++;
+        }
+      }
+      
+      if (i > 0 && i % 500 === 0) {
+        console.log(`Imported historical batch ${i/batchSize}, progress: ${importedCount}/${funds.length}`);
+      }
+    }
+    
+    console.log(`Historical NAV data import complete. Imported: ${importedCount}, Errors: ${errorCount}`);
+    
+    return { importedCount, errorCount };
+  } catch (error) {
+    console.error('Historical NAV data import error:', error);
+    throw error;
   }
 }
 

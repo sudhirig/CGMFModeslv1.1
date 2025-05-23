@@ -8,7 +8,14 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     console.log('Starting real AMFI data import...');
-    const result = await fetchAMFIMutualFundData();
+    
+    // Check if historical data is requested
+    const includeHistorical = req.query.historical === 'true';
+    
+    console.log(`Import options: includeHistorical=${includeHistorical}`);
+    
+    // Fetch AMFI data with or without historical data
+    const result = await fetchAMFIMutualFundData(includeHistorical);
     
     console.log('AMFI data import completed with result:', {
       success: result.success,
