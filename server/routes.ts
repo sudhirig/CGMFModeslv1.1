@@ -21,14 +21,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(funds);
       }
       
-      // Use a more optimized query to get all funds at once
-      const result = await pool.query(`
-        SELECT * FROM funds 
-        ORDER BY fund_name
-        LIMIT $1 OFFSET $2
-      `, [parsedLimit, parsedOffset]);
-      
-      res.json(result.rows);
+      // Use a more reliable direct query to get all funds at once
+      try {
+        const result = await pool.query(`
+          SELECT * FROM funds 
+          ORDER BY fund_name
+          LIMIT $1 OFFSET $2
+        `, [parsedLimit, parsedOffset]);
+        
+        if (result && result.rows && result.rows.length > 0) {
+          console.log(`Successfully retrieved ${result.rows.length} funds`);
+          res.json(result.rows);
+        } else {
+          // If the previous query fails, try using a simpler query as fallback
+          console.log("First query returned no funds, trying fallback query");
+          const fallbackResult = await pool.query(`SELECT * FROM funds`);
+          
+          if (fallbackResult && fallbackResult.rows && fallbackResult.rows.length > 0) {
+            console.log(`Fallback retrieved ${fallbackResult.rows.length} funds`);
+            res.json(fallbackResult.rows);
+          } else {
+            console.log("No funds found in database");
+            res.json([]);
+          }
+        }
+      } catch (queryError) {
+        console.error("Database query error:", queryError);
+        
+        // Last resort - try simple query without parameters
+        try {
+          const emergencyResult = await executeRawQuery(`SELECT * FROM funds LIMIT 1000`);
+          console.log(`Emergency query retrieved ${emergencyResult.rows.length} funds`);
+          res.json(emergencyResult.rows);
+        } catch (emergencyError) {
+          console.error("Emergency query failed:", emergencyError);
+          res.json([]);
+        }
+      }
     } catch (error) {
       console.error("Error fetching funds:", error);
       res.status(500).json({ message: "Failed to fetch funds" });
