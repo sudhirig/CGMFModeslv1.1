@@ -80,8 +80,8 @@ export function useFunds(category?: string) {
           console.log(`Found ${funds.length} funds for category ${category}`);
           return convertToCamelCase(funds);
         } else {
-          // Get all funds with a reasonable limit
-          const response = await fetch('/api/funds?limit=100');
+          // Get all funds with a higher limit to show all imported funds
+          const response = await fetch('/api/funds?limit=5000');
           const funds = await response.json();
           return convertToCamelCase(funds);
         }
