@@ -265,7 +265,7 @@ export default function PortfolioBuilder() {
                                       {allocation.fund?.category?.split(': ')[1] || allocation.fund?.category || "Mixed Asset"}
                                     </td>
                                     <td className="px-4 py-3 text-sm font-medium text-primary-600 break-words max-w-xs">
-                                      {allocation.fund?.fundName || allocation.fund?.name || `Fund ${allocation.fundId || index + 1}`}
+                                      {allocation.fund?.fund_name || allocation.fund?.fundName || allocation.fund?.name || `Fund ${allocation.fundId || index + 1}`}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                                       {typeof allocation.allocationPercent === 'number' 
@@ -289,7 +289,7 @@ export default function PortfolioBuilder() {
                                       )}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
-                                      {allocation.fund?.totalScore ? Math.round(allocation.fund.totalScore) : '-'}
+                                      {allocation.fund?.total_score ? Math.round(parseFloat(allocation.fund.total_score)) : (allocation.fund?.totalScore ? Math.round(allocation.fund.totalScore) : '-')}
                                     </td>
                                   </tr>
                                 ))
