@@ -69,8 +69,8 @@ export class FundDetailsCollector {
       
       console.log(`Found ${validFunds.length} funds to collect enhanced details for`);
       
-      // Process in batches to avoid overwhelming the source
-      const batchSize = 10;
+      // Process in larger batches to improve processing speed
+      const batchSize = 50; // Increased from 10 to 50 for faster processing
       let successCount = 0;
       
       for (let i = 0; i < validFunds.length; i += batchSize) {
@@ -88,9 +88,9 @@ export class FundDetailsCollector {
           }
         });
         
-        // Add a small delay between batches to be nice to the server
+        // Add a smaller delay between batches to maintain responsiveness while increasing throughput
         if (i + batchSize < validFunds.length) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Reduced from 2000ms to 1000ms
         }
       }
       
