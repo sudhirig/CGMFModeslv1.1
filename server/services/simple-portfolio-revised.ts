@@ -129,10 +129,11 @@ export class RevisedPortfolioService {
       // Function to select funds with priority to higher quartiles
       const selectFundsFromCategory = (category, count, allocPerFund) => {
         const selected = [];
+        // Prioritize Q1 and Q2 funds first, then Q3, and only use Q4 and Unrated as last resort
         const quartileOrder = ['Q1', 'Q2', 'Q3', 'Q4', 'Unrated'];
         
-        // First try to get funds from each quartile in priority order
-        for (const quartile of quartileOrder) {
+        // First try to get funds ONLY from Q1 and Q2
+        for (const quartile of ['Q1', 'Q2']) {
           if (selected.length >= count) break;
           
           const availableFunds = category[quartile].filter(fund => 
@@ -152,10 +153,50 @@ export class RevisedPortfolioService {
           }
         }
         
-        // Convert to allocation objects
+        // If we still need more funds, then try Q3
+        if (selected.length < count) {
+          const availableQ3Funds = category['Q3'].filter(fund => 
+            !selectedFundNames.has(fund.fund_name)
+          );
+          
+          const neededFromQ3 = Math.min(
+            count - selected.length, 
+            availableQ3Funds.length
+          );
+          
+          for (let i = 0; i < neededFromQ3; i++) {
+            const fund = availableQ3Funds[i];
+            selected.push(fund);
+            selectedFundNames.add(fund.fund_name);
+          }
+        }
+        
+        // Only use Q4 and Unrated as a last resort if we absolutely can't find enough funds
+        if (selected.length < count) {
+          for (const quartile of ['Q4', 'Unrated']) {
+            if (selected.length >= count) break;
+            
+            const availableFunds = category[quartile].filter(fund => 
+              !selectedFundNames.has(fund.fund_name)
+            );
+            
+            const neededFromQuartile = Math.min(
+              count - selected.length, 
+              availableFunds.length
+            );
+            
+            for (let i = 0; i < neededFromQuartile; i++) {
+              const fund = availableFunds[i];
+              selected.push(fund);
+              selectedFundNames.add(fund.fund_name);
+            }
+          }
+        }
+        
+        // Convert to allocation objects - using formatted allocation percentages
         return selected.map(fund => ({
           fund,
-          allocationPercent: allocPerFund,
+          allocationPercent: this.formatAllocationPercentage(allocPerFund),
           expectedReturn: this.getExpectedReturnByQuartile(fund.quartile)
         }));
       };
@@ -322,6 +363,13 @@ export class RevisedPortfolioService {
       case 4: return 8.0;   // Q4 funds underperformance
       default: return 10.0; // Default for unrated funds
     }
+  }
+  
+  /**
+   * Format allocation percentage to clean display value
+   */
+  formatAllocationPercentage(percentage: number): string {
+    return percentage.toFixed(0) + "%";
   }
 }
 
