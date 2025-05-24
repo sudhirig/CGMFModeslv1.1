@@ -50,11 +50,14 @@ export class FundDetailsCollector {
       console.log('Starting collection of enhanced fund details...');
       
       // Log ETL operation start
-      await storage.createETLRun({
-        pipelineName: 'fund_details_collection',
+      const etlRun = await storage.createETLRun({
+        pipelineName: 'Fund Details Collection',
         status: 'RUNNING',
         startTime: new Date()
       });
+      
+      // Store the ETL run ID for later update
+      const etlRunId = etlRun.id;
       
       // Get funds to process - either the specific funds requested or all funds
       const fundsToProcess = fundIds 
@@ -91,11 +94,9 @@ export class FundDetailsCollector {
         }
       }
       
-      // Log ETL operation completion
-      await storage.createETLRun({
-        pipelineName: 'fund_details_collection',
+      // Update ETL operation completion status
+      await storage.updateETLRun(etlRun.id, {
         status: 'COMPLETED',
-        startTime: new Date(),
         endTime: new Date(),
         recordsProcessed: validFunds.length,
         errorMessage: `Successfully collected enhanced details for ${successCount} out of ${validFunds.length} funds`
@@ -109,11 +110,9 @@ export class FundDetailsCollector {
     } catch (error: any) {
       console.error('Error collecting fund details:', error);
       
-      // Log ETL operation failure
-      await storage.createETLRun({
-        pipelineName: 'fund_details_collection',
+      // Update ETL operation with failure status
+      await storage.updateETLRun(etlRun.id, {
         status: 'FAILED',
-        startTime: new Date(),
         endTime: new Date(),
         errorMessage: `Error: ${error.message || 'Unknown error'}`
       });
