@@ -213,7 +213,13 @@ export default function EtlPipeline() {
               <div className="mt-3">
                 <div className="text-xs text-neutral-500">Funds Processed</div>
                 <div className="flex justify-between items-center">
-                  <div className="text-base font-medium text-neutral-900">2,345</div>
+                  <div className="text-base font-medium text-neutral-900">
+                    {isLoadingAmfiStatus ? (
+                      <Skeleton className="h-5 w-16" />
+                    ) : (
+                      amfiStatus?.fundCount?.toLocaleString() || "Loading..."
+                    )}
+                  </div>
                   <div className="text-xs text-success">100%</div>
                 </div>
                 <div className="mt-1 w-full bg-neutral-200 rounded-full h-1.5">
