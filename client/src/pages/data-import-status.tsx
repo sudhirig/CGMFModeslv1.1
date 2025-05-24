@@ -46,6 +46,7 @@ export default function DataImportStatus() {
   // State for managing the various status queries
   const [isStartingDaily, setIsStartingDaily] = useState(false);
   const [isStartingHistorical, setIsStartingHistorical] = useState(false);
+  const [isRestartingHistorical, setIsRestartingHistorical] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
   // Query for getting the ETL status overview
@@ -225,6 +226,30 @@ export default function DataImportStatus() {
       setIsStartingHistorical(false);
     }
   };
+  
+  // Handle restarting historical NAV import when it's stuck
+  const handleRestartHistoricalImport = async () => {
+    try {
+      setIsRestartingHistorical(true);
+      await axios.post('/api/authentic-nav/restart');
+      toast({
+        title: "Historical NAV Import Restarted",
+        description: "The historical NAV import has been restarted with improved implementation.",
+      });
+      // Refresh status after restarting
+      refetchHistorical();
+      refetchEtl();
+    } catch (error) {
+      console.error("Error restarting historical NAV import:", error);
+      toast({
+        title: "Error Restarting Historical Import",
+        description: "Failed to restart the historical NAV import process. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRestartingHistorical(false);
+    }
+  };
 
   const refreshAllStatus = () => {
     refetchEtl();
@@ -388,10 +413,10 @@ export default function DataImportStatus() {
                     <div className="text-sm text-neutral-500">No historical NAV imports found.</div>
                   )}
                 </CardContent>
-                <CardFooter>
+                <CardFooter className="flex flex-col space-y-2">
                   <Button 
                     onClick={handleStartHistoricalImport} 
-                    disabled={isStartingHistorical || isHistoricalRunning}
+                    disabled={isStartingHistorical || isHistoricalRunning || isRestartingHistorical}
                     variant="secondary" 
                     className="w-full"
                   >
@@ -406,6 +431,29 @@ export default function DataImportStatus() {
                       "Start Historical NAV Import"
                     )}
                   </Button>
+                  
+                  {/* Restart button for stuck imports */}
+                  {isHistoricalRunning && historicalImportStatus?.etlRun?.recordsProcessed !== null && 
+                   historicalImportStatus.etlRun.recordsProcessed > 0 && 
+                   historicalImportStatus.etlRun.recordsProcessed < 200 && (
+                    <Button 
+                      onClick={handleRestartHistoricalImport}
+                      disabled={isRestartingHistorical}
+                      variant="outline" 
+                      className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                    >
+                      {isRestartingHistorical ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Restarting...
+                        </>
+                      ) : (
+                        <>
+                          Restart With Improved Implementation
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </CardFooter>
               </Card>
 
