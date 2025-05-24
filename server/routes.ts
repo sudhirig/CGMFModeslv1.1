@@ -948,39 +948,233 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Run the backtest with the portfolio
-      const backtestResult = await backtestingEngine.runBacktest({
-        portfolioId: parseInt(portfolioId.toString()),
-        startDate: parsedStartDate,
-        endDate: parsedEndDate,
-        initialAmount: parsedAmount,
-        rebalancePeriod: rebalancePeriod as 'monthly' | 'quarterly' | 'annually'
-      });
+      console.log(`Generating backtest for portfolio ${portfolioId} with ${portfolio.allocations.length} allocations`);
       
-      // Calculate additional metrics
-      const startValue = backtestResult.returns[0]?.value || parsedAmount;
-      const endValue = backtestResult.returns[backtestResult.returns.length - 1]?.value || parsedAmount;
+      // Get NAV data for each fund in the portfolio
+      const allNavData = [];
+      for (const allocation of portfolio.allocations) {
+        if (!allocation.fund || !allocation.fund.id) continue;
+        
+        const navData = await storage.getNavData(allocation.fund.id, parsedStartDate, parsedEndDate);
+        if (navData && navData.length > 0) {
+          allNavData.push({
+            fundId: allocation.fund.id,
+            allocation: allocation.allocationPercent,
+            navData
+          });
+        }
+      }
+
+      console.log(`Retrieved NAV data for ${allNavData.length} funds in portfolio`);
+      
+      // Get benchmark data
+      const benchmarkIndex = await storage.getMarketIndex("NIFTY 50", parsedStartDate, parsedEndDate);
+      console.log(`Retrieved ${benchmarkIndex.length} benchmark data points`);
+      
+      // Generate performance data based on NAV changes
+      const portfolioPerformance = [];
+      const benchmarkPerformance = [];
+      
+      // Create a map of dates to track portfolio value over time
+      const dateMap = new Map();
+      
+      // Initialize with start date
+      let currentDate = new Date(parsedStartDate);
+      const endDateObj = new Date(parsedEndDate);
+      
+      // Generate dates between start and end
+      while (currentDate <= endDateObj) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        dateMap.set(dateKey, {
+          portfolioValue: 0,
+          benchmarkValue: 0,
+          hasRealData: false
+        });
+        
+        // Move to next date (increment by 1 day)
+        currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+      }
+      
+      // Calculate portfolio performance using real NAV data
+      for (const fund of allNavData) {
+        for (const nav of fund.navData) {
+          const navDate = new Date(nav.navDate);
+          const dateKey = navDate.toISOString().split('T')[0];
+          
+          if (dateMap.has(dateKey)) {
+            const data = dateMap.get(dateKey);
+            // Add fund's contribution based on allocation
+            const fundContribution = (parsedAmount * (fund.allocation / 100)) * 
+                                     (nav.navValue / fund.navData[0].navValue);
+            data.portfolioValue += fundContribution;
+            data.hasRealData = true;
+            dateMap.set(dateKey, data);
+          }
+        }
+      }
+      
+      // Calculate benchmark performance
+      for (const benchmark of benchmarkIndex) {
+        const benchmarkDate = new Date(benchmark.indexDate);
+        const dateKey = benchmarkDate.toISOString().split('T')[0];
+        
+        if (dateMap.has(dateKey)) {
+          const data = dateMap.get(dateKey);
+          data.benchmarkValue = parsedAmount * (benchmark.indexValue / benchmarkIndex[0].indexValue);
+          dateMap.set(dateKey, data);
+        }
+      }
+      
+      // Fill in missing data with linear interpolation
+      let prevDate = null;
+      let prevData = null;
+      
+      // Convert map to sorted array to properly handle interpolation
+      const sortedDates = Array.from(dateMap.keys()).sort();
+      
+      for (const dateKey of sortedDates) {
+        const data = dateMap.get(dateKey);
+        
+        // If no real data for this date but we have previous data
+        if (!data.hasRealData && prevData) {
+          // Find next date with real data for interpolation
+          let nextDate = null;
+          let nextData = null;
+          
+          for (let i = sortedDates.indexOf(dateKey) + 1; i < sortedDates.length; i++) {
+            const nextKey = sortedDates[i];
+            const nextEntry = dateMap.get(nextKey);
+            if (nextEntry.hasRealData) {
+              nextDate = nextKey;
+              nextData = nextEntry;
+              break;
+            }
+          }
+          
+          // If we found both previous and next data points, interpolate
+          if (nextData) {
+            const prevIndex = sortedDates.indexOf(prevDate);
+            const currentIndex = sortedDates.indexOf(dateKey);
+            const nextIndex = sortedDates.indexOf(nextDate);
+            
+            const totalSteps = nextIndex - prevIndex;
+            const currentStep = currentIndex - prevIndex;
+            const ratio = currentStep / totalSteps;
+            
+            data.portfolioValue = prevData.portfolioValue + 
+                                 (nextData.portfolioValue - prevData.portfolioValue) * ratio;
+          } else {
+            // If no future data, use previous value
+            data.portfolioValue = prevData.portfolioValue;
+          }
+        }
+        
+        // Set benchmark value if it's zero
+        if (data.benchmarkValue === 0 && prevData) {
+          data.benchmarkValue = prevData.benchmarkValue;
+        }
+        
+        // Only update prevData if we have real data or have calculated it
+        if (data.portfolioValue > 0) {
+          prevDate = dateKey;
+          prevData = data;
+        }
+        
+        // Add to performance arrays if we have data
+        if (data.portfolioValue > 0) {
+          portfolioPerformance.push({
+            date: dateKey,
+            value: parseFloat(data.portfolioValue.toFixed(2))
+          });
+        }
+        
+        if (data.benchmarkValue > 0) {
+          benchmarkPerformance.push({
+            date: dateKey,
+            value: parseFloat(data.benchmarkValue.toFixed(2))
+          });
+        }
+      }
+      
+      // Make sure we have values for each day by filling in any remaining gaps
+      const filledPortfolioPerformance = [];
+      const dateKeys = Object.keys(sortedDates);
+      
+      for (let i = 0; i < sortedDates.length; i++) {
+        const dateKey = sortedDates[i];
+        const data = dateMap.get(dateKey);
+        
+        // Add entry with best available data
+        filledPortfolioPerformance.push({
+          date: dateKey,
+          value: data.portfolioValue > 0 ? 
+                 parseFloat(data.portfolioValue.toFixed(2)) : 
+                 (filledPortfolioPerformance.length > 0 ? 
+                  filledPortfolioPerformance[filledPortfolioPerformance.length - 1].value : 
+                  parsedAmount)
+        });
+      }
+      
+      // Calculate metrics
+      const startValue = parsedAmount;
+      const endValue = filledPortfolioPerformance.length > 0 ? 
+                      filledPortfolioPerformance[filledPortfolioPerformance.length - 1].value : 
+                      parsedAmount;
+      
+      const totalDays = (parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24);
+      const years = totalDays / 365;
+      
       const netProfit = endValue - startValue;
       const percentageGain = ((endValue / startValue) - 1) * 100;
+      const annualizedReturn = (Math.pow((endValue / startValue), (1 / years)) - 1) * 100;
       
-      // Format the response with additional information
+      // Calculate volatility (standard deviation of daily returns)
+      const dailyReturns = [];
+      for (let i = 1; i < filledPortfolioPerformance.length; i++) {
+        const prevValue = filledPortfolioPerformance[i-1].value;
+        const currentValue = filledPortfolioPerformance[i].value;
+        const dailyReturn = (currentValue / prevValue) - 1;
+        dailyReturns.push(dailyReturn);
+      }
+      
+      // Calculate standard deviation
+      const mean = dailyReturns.reduce((sum, value) => sum + value, 0) / dailyReturns.length;
+      const squaredDiffs = dailyReturns.map(value => Math.pow(value - mean, 2));
+      const variance = squaredDiffs.reduce((sum, value) => sum + value, 0) / squaredDiffs.length;
+      const dailyVolatility = Math.sqrt(variance);
+      const annualizedVolatility = dailyVolatility * Math.sqrt(252) * 100; // 252 trading days in a year
+      
+      // Calculate max drawdown
+      let maxValue = filledPortfolioPerformance[0].value;
+      let maxDrawdown = 0;
+      
+      for (const point of filledPortfolioPerformance) {
+        if (point.value > maxValue) {
+          maxValue = point.value;
+        }
+        
+        const drawdown = (maxValue - point.value) / maxValue * 100;
+        if (drawdown > maxDrawdown) {
+          maxDrawdown = drawdown;
+        }
+      }
+      
+      // Calculate Sharpe ratio (using risk-free rate of 5%)
+      const riskFreeRate = 5; // 5% annual risk-free rate
+      const excessReturn = annualizedReturn - riskFreeRate;
+      const sharpeRatio = annualizedVolatility > 0 ? excessReturn / annualizedVolatility : 0;
+      
+      // Create enhanced result object
       const enhancedResult = {
-        ...backtestResult,
-        portfolioPerformance: backtestResult.returns.map(point => ({
-          date: point.date.toISOString().split('T')[0],
-          value: parseFloat(point.value.toFixed(2))
-        })),
-        benchmarkPerformance: backtestResult.benchmarkReturns.map(point => ({
-          date: point.date.toISOString().split('T')[0],
-          value: parseFloat(point.value.toFixed(2))
-        })),
+        portfolioPerformance: filledPortfolioPerformance,
+        benchmarkPerformance,
         metrics: {
-          totalReturn: parseFloat(backtestResult.annualizedReturn.toFixed(2)),
-          annualizedReturn: parseFloat(backtestResult.annualizedReturn.toFixed(2)),
-          volatility: parseFloat(backtestResult.volatility.toFixed(2)),
-          sharpeRatio: parseFloat(backtestResult.sharpeRatio.toFixed(2)),
-          maxDrawdown: parseFloat((backtestResult.maxDrawdown || 0).toFixed(2)),
-          successRate: 100 - parseFloat((backtestResult.maxDrawdown || 0).toFixed(2))
+          totalReturn: parseFloat(percentageGain.toFixed(2)),
+          annualizedReturn: parseFloat(annualizedReturn.toFixed(2)),
+          volatility: parseFloat(annualizedVolatility.toFixed(2)),
+          sharpeRatio: parseFloat(sharpeRatio.toFixed(2)),
+          maxDrawdown: parseFloat(maxDrawdown.toFixed(2)),
+          successRate: parseFloat((100 - maxDrawdown).toFixed(2))
         },
         summary: {
           startValue: parseFloat(startValue.toFixed(2)),
@@ -989,6 +1183,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           percentageGain: parseFloat(percentageGain.toFixed(2))
         }
       };
+      
+      console.log(`Generated backtest with ${enhancedResult.portfolioPerformance.length} portfolio data points and ${enhancedResult.benchmarkPerformance.length} benchmark data points`);
       
       res.json(enhancedResult);
     } catch (error) {
