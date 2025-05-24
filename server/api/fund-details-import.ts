@@ -10,27 +10,54 @@ import { storage } from '../storage';
 const router = express.Router();
 
 // Import fund details for all funds
-router.get('/', async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     console.log('Starting fund details import...');
     
+    // Log ETL run start
+    const etlRun = await storage.createETLRun({
+      pipelineName: 'Fund Details Collection',
+      status: 'running',
+      startTime: new Date(),
+      recordsProcessed: 0
+    });
+    
     // Check if specific fund IDs were provided
-    const fundIds = req.query.fundIds 
-      ? (Array.isArray(req.query.fundIds) 
-          ? req.query.fundIds.map(id => parseInt(id as string))
-          : [parseInt(req.query.fundIds as string)]
+    const fundIds = req.body.fundIds 
+      ? (Array.isArray(req.body.fundIds) 
+          ? req.body.fundIds.map(id => parseInt(id as string))
+          : [parseInt(req.body.fundIds as string)]
         ).filter(id => !isNaN(id))
       : undefined;
     
-    // Run the fund details collector
-    const result = await fundDetailsCollector.collectFundDetails(fundIds);
-    
-    console.log('Fund details import completed with result:', result);
+    // Run the fund details collector (in the background)
+    fundDetailsCollector.collectFundDetails(fundIds)
+      .then(async (result) => {
+        console.log('Fund details import completed with result:', result);
+        
+        // Update ETL run with completion status
+        await storage.updateETLRun(etlRun.id, {
+          status: result.success ? 'completed' : 'failed',
+          endTime: new Date(),
+          recordsProcessed: result.count || 0,
+          errorMessage: result.success ? undefined : result.message
+        });
+      })
+      .catch(async (error) => {
+        console.error('Fund details collection failed:', error);
+        
+        // Update ETL run with error status
+        await storage.updateETLRun(etlRun.id, {
+          status: 'failed',
+          endTime: new Date(),
+          errorMessage: error.message || 'Unknown error occurred'
+        });
+      });
     
     res.json({
-      success: result.success,
-      message: result.message,
-      count: result.count
+      success: true,
+      message: 'Fund details collection started',
+      etlRunId: etlRun.id
     });
   } catch (error: any) {
     console.error('Error importing fund details:', error);
@@ -44,10 +71,10 @@ router.get('/', async (req, res) => {
 });
 
 // Schedule regular fund details collection
-router.get('/schedule', async (req, res) => {
+router.post('/schedule', async (req, res) => {
   try {
     // Get interval in hours, default to weekly (168 hours)
-    const intervalHours = req.query.hours ? parseInt(req.query.hours as string) : 168;
+    const intervalHours = req.body.hours ? parseInt(req.body.hours as string) : 168;
     
     // Start the scheduled job
     fundDetailsCollector.startScheduledDetailsFetch(intervalHours);

@@ -61,8 +61,9 @@ export function useEtlStatus() {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate ETL status query
+      // Invalidate both ETL status and fund details status queries
       queryClient.invalidateQueries({ queryKey: ["/api/etl/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fund-details/status"] });
     },
   });
   
@@ -73,8 +74,9 @@ export function useEtlStatus() {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate ETL status query
+      // Invalidate both ETL status and fund details status queries
       queryClient.invalidateQueries({ queryKey: ["/api/etl/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fund-details/status"] });
     },
   });
   
