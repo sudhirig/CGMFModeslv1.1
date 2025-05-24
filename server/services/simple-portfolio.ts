@@ -1,4 +1,6 @@
 import { db, pool } from '../db';
+import { eq, and, or, like } from 'drizzle-orm';
+import { funds } from '../../shared/schema';
 
 /**
  * A simple service to generate portfolios with real fund allocations
@@ -11,77 +13,116 @@ export class SimplePortfolioService {
     try {
       console.log(`Generating ${riskProfile} portfolio with real fund allocations`);
       
-      // Fetch top funds for each category directly using SQL for reliability
-      const topFunds = await pool.query(`
-        SELECT 
-          id, 
-          scheme_code, 
-          fund_name, 
-          amc_name, 
-          category, 
-          subcategory
-        FROM funds
-        ORDER BY id
-        LIMIT 20
-      `);
-      
       // Get asset allocation based on risk profile
       const assetAllocation = this.getAllocationForRiskProfile(riskProfile);
       
       // Define expected returns
       const expectedReturns = this.getExpectedReturnsForRiskProfile(riskProfile);
       
-      // Create real fund allocations
+      // Fetch real fund data from different categories
+      const equityLargeCapFunds = await db.select().from(funds)
+        .where(like(funds.category, '%Large%'))
+        .limit(2);
+        
+      const equityMidCapFunds = await db.select().from(funds)
+        .where(like(funds.category, '%Mid%'))
+        .limit(2);
+        
+      const equitySmallCapFunds = await db.select().from(funds)
+        .where(like(funds.category, '%Small%'))
+        .limit(2);
+        
+      const debtShortTermFunds = await db.select().from(funds)
+        .where(like(funds.category, '%Short%'))
+        .limit(2);
+        
+      const debtMediumTermFunds = await db.select().from(funds)
+        .where(like(funds.category, '%Medium%'))
+        .limit(2);
+        
+      const hybridFunds = await db.select().from(funds)
+        .where(like(funds.category, '%Hybrid%'))
+        .limit(2);
+      
+      // If we didn't find enough categorized funds, get some more general ones
+      const generalFunds = await db.select().from(funds)
+        .limit(12);
+      
+      // Combine all funds into categories and ensure we have enough funds
+      const largeCaps = equityLargeCapFunds.length > 0 ? equityLargeCapFunds : generalFunds.slice(0, 2);
+      const midCaps = equityMidCapFunds.length > 0 ? equityMidCapFunds : generalFunds.slice(2, 4);
+      const smallCaps = equitySmallCapFunds.length > 0 ? equitySmallCapFunds : generalFunds.slice(4, 6);
+      const shortTerms = debtShortTermFunds.length > 0 ? debtShortTermFunds : generalFunds.slice(6, 8);
+      const mediumTerms = debtMediumTermFunds.length > 0 ? debtMediumTermFunds : generalFunds.slice(8, 10);
+      const hybrids = hybridFunds.length > 0 ? hybridFunds : generalFunds.slice(10, 12);
+      
+      // Create allocations from real fund data
       const allocations = [];
-      const fundsPerCategory = 2;
-      let fundIndex = 0;
       
-      // Create sample equity large cap allocation
-      for (let i = 0; i < fundsPerCategory && fundIndex < topFunds.rows.length; i++, fundIndex++) {
-        allocations.push({
-          fund: topFunds.rows[fundIndex],
-          allocationPercent: Math.round(assetAllocation.equityLargeCap / fundsPerCategory)
-        });
+      // Add large cap funds
+      if (assetAllocation.equityLargeCap > 0 && largeCaps.length > 0) {
+        const perFundAllocation = Math.round(assetAllocation.equityLargeCap / largeCaps.length);
+        for (const fund of largeCaps) {
+          allocations.push({
+            fund,
+            allocationPercent: perFundAllocation
+          });
+        }
       }
       
-      // Create sample equity mid cap allocation
-      for (let i = 0; i < fundsPerCategory && fundIndex < topFunds.rows.length; i++, fundIndex++) {
-        allocations.push({
-          fund: topFunds.rows[fundIndex],
-          allocationPercent: Math.round(assetAllocation.equityMidCap / fundsPerCategory)
-        });
+      // Add mid cap funds
+      if (assetAllocation.equityMidCap > 0 && midCaps.length > 0) {
+        const perFundAllocation = Math.round(assetAllocation.equityMidCap / midCaps.length);
+        for (const fund of midCaps) {
+          allocations.push({
+            fund,
+            allocationPercent: perFundAllocation
+          });
+        }
       }
       
-      // Create sample equity small cap allocation
-      for (let i = 0; i < fundsPerCategory && fundIndex < topFunds.rows.length; i++, fundIndex++) {
-        allocations.push({
-          fund: topFunds.rows[fundIndex],
-          allocationPercent: Math.round(assetAllocation.equitySmallCap / fundsPerCategory)
-        });
+      // Add small cap funds
+      if (assetAllocation.equitySmallCap > 0 && smallCaps.length > 0) {
+        const perFundAllocation = Math.round(assetAllocation.equitySmallCap / smallCaps.length);
+        for (const fund of smallCaps) {
+          allocations.push({
+            fund,
+            allocationPercent: perFundAllocation
+          });
+        }
       }
       
-      // Create sample debt short-term allocation
-      for (let i = 0; i < fundsPerCategory && fundIndex < topFunds.rows.length; i++, fundIndex++) {
-        allocations.push({
-          fund: topFunds.rows[fundIndex],
-          allocationPercent: Math.round(assetAllocation.debtShortTerm / fundsPerCategory)
-        });
+      // Add debt short term funds
+      if (assetAllocation.debtShortTerm > 0 && shortTerms.length > 0) {
+        const perFundAllocation = Math.round(assetAllocation.debtShortTerm / shortTerms.length);
+        for (const fund of shortTerms) {
+          allocations.push({
+            fund,
+            allocationPercent: perFundAllocation
+          });
+        }
       }
       
-      // Create sample debt medium-term allocation
-      for (let i = 0; i < fundsPerCategory && fundIndex < topFunds.rows.length; i++, fundIndex++) {
-        allocations.push({
-          fund: topFunds.rows[fundIndex],
-          allocationPercent: Math.round(assetAllocation.debtMediumTerm / fundsPerCategory)
-        });
+      // Add debt medium term funds
+      if (assetAllocation.debtMediumTerm > 0 && mediumTerms.length > 0) {
+        const perFundAllocation = Math.round(assetAllocation.debtMediumTerm / mediumTerms.length);
+        for (const fund of mediumTerms) {
+          allocations.push({
+            fund,
+            allocationPercent: perFundAllocation
+          });
+        }
       }
       
-      // Create sample hybrid allocation
-      for (let i = 0; i < fundsPerCategory && fundIndex < topFunds.rows.length; i++, fundIndex++) {
-        allocations.push({
-          fund: topFunds.rows[fundIndex],
-          allocationPercent: Math.round(assetAllocation.hybrid / fundsPerCategory)
-        });
+      // Add hybrid funds
+      if (assetAllocation.hybrid > 0 && hybrids.length > 0) {
+        const perFundAllocation = Math.round(assetAllocation.hybrid / hybrids.length);
+        for (const fund of hybrids) {
+          allocations.push({
+            fund,
+            allocationPercent: perFundAllocation
+          });
+        }
       }
       
       // Create portfolio object with allocations
