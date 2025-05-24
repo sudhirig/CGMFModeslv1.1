@@ -29,9 +29,20 @@ export class SimplePortfolioService {
       
       // Fetch funds with their quartile ratings, prioritizing Q1 and Q2 funds (top performers)
       // This implements the Spark Capital methodology for fund selection
+      // Q1: Top 25% - BUY recommendation
+      // Q2: 26-50% - HOLD recommendation
+      // Q3: 51-75% - REVIEW recommendation
+      // Q4: Bottom 25% - SELL recommendation
       const scoredFunds = await pool.query(`
         SELECT f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
-               fs.quartile, fs.total_score, fs.recommendation
+               fs.quartile, fs.total_score, 
+               CASE 
+                 WHEN fs.quartile = 1 THEN 'BUY'
+                 WHEN fs.quartile = 2 THEN 'HOLD'
+                 WHEN fs.quartile = 3 THEN 'REVIEW'
+                 WHEN fs.quartile = 4 THEN 'SELL'
+                 ELSE NULL
+               END as recommendation
         FROM funds f
         LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
         WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
