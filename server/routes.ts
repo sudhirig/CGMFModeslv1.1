@@ -18,6 +18,7 @@ import fixNavDataRoutes from "./api/fix-nav-data";
 import triggerRescoringRoutes from "./api/trigger-quartile-rescoring";
 import restartHistoricalImportRoutes from "./api/restart-historical-import";
 import realHistoricalNavImportRoutes from "./api/real-historical-nav-import";
+import realDailyNavUpdateRoutes from "./api/real-daily-nav-update";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
@@ -43,6 +44,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Authentic Historical NAV Import route
   app.use('/api/authentic-nav', realHistoricalNavImportRoutes);
+  
+  // Register Real Daily NAV Update route
+  app.use('/api/daily-nav', realDailyNavUpdateRoutes);
   
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
