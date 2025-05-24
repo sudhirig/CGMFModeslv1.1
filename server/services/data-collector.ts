@@ -377,19 +377,23 @@ export class DataCollector {
                              totalElivateScore >= 40 ? 'Neutral' :
                              totalElivateScore >= 30 ? 'Moderately Bearish' : 'Bearish';
         
-        await db.query(
-          `INSERT INTO elivate_scores (
-            score_date, external_influence_score, local_story_score, inflation_rates_score,
-            valuation_earnings_score, allocation_capital_score, trends_sentiments_score,
-            total_elivate_score, market_stance, created_at
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-          ON CONFLICT (score_date) DO NOTHING`,
-          [
-            scoreDate, externalInfluenceScore, localStoryScore, inflationRatesScore,
-            valuationEarningsScore, allocationCapitalScore, trendsSentimentsScore,
-            totalElivateScore, marketStance, new Date()
-          ]
-        );
+        // Check if an ELIVATE score already exists for this date
+        const existingElivateScore = await storage.getElivateScore(undefined, scoreDate);
+        
+        if (!existingElivateScore) {
+          // Create ELIVATE score using storage interface
+          await storage.createElivateScore({
+            scoreDate: scoreDate,
+            externalInfluenceScore: externalInfluenceScore,
+            localStoryScore: localStoryScore,
+            inflationRatesScore: inflationRatesScore,
+            valuationEarningsScore: valuationEarningsScore,
+            allocationCapitalScore: allocationCapitalScore,
+            trendsSentimentsScore: trendsSentimentsScore,
+            totalScore: totalElivateScore,
+            marketStance: marketStance
+          });
+        }
       } catch (err) {
         console.error('Error creating ELIVATE score:', err);
       }
@@ -403,20 +407,36 @@ export class DataCollector {
           const today = new Date();
           
           // Insert model portfolio
-          const portfolioResult = await db.query(
-            `INSERT INTO model_portfolios (
-              risk_profile, creation_date, min_expected_return, max_expected_return, created_at
-            ) VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (risk_profile, creation_date) DO NOTHING
-            RETURNING id`,
-            [
-              riskProfile, 
-              today,
-              5 + i * 2, // min return increases with risk
-              8 + i * 3, // max return increases with risk
-              new Date()
-            ]
-          );
+          // Check if portfolio already exists
+          const existingPortfolios = await storage.getModelPortfolios();
+          const existingPortfolio = existingPortfolios.find(p => p.name === `${riskProfile} Portfolio`);
+          
+          // Create model portfolio using storage interface if it doesn't exist
+          let portfolioId;
+          
+          if (!existingPortfolio) {
+            try {
+              const newPortfolio = await storage.createModelPortfolio(
+                {
+                  name: `${riskProfile} Portfolio`,
+                  riskLevel: i + 1,
+                  expectedReturn: 5 + i * 2,
+                  description: `A ${riskProfile.toLowerCase()} portfolio designed for investors with a ${riskProfile.toLowerCase()} risk tolerance.`
+                },
+                [] // Empty allocations array - we'll add these separately
+              );
+              
+              portfolioId = newPortfolio.id;
+            } catch (err) {
+              console.error(`Error creating model portfolio for ${riskProfile}:`, err);
+              continue; // Skip to the next risk profile
+            }
+          } else {
+            portfolioId = existingPortfolio.id;
+          }
+          
+          // Mock this for compatibility with existing code
+          const portfolioResult = { rows: [{ id: portfolioId }] };
           
           if (portfolioResult.rows && portfolioResult.rows.length > 0) {
             const portfolioId = portfolioResult.rows[0].id;
