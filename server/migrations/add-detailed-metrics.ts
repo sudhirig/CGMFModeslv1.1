@@ -1,5 +1,4 @@
-import { db, pool } from '../db';
-import { sql } from 'drizzle-orm';
+import { pool } from '../db';
 
 /**
  * Migration to add detailed fund metrics to the fund_scores table
