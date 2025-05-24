@@ -52,7 +52,7 @@ router.get('/distribution', async (req, res) => {
         SUM(CASE WHEN quartile = 4 THEN 1 ELSE 0 END) as q4_count
       FROM fund_scores fs
       JOIN funds f ON fs.fund_id = f.id
-      WHERE fs.score_date = (SELECT MAX(score_date) FROM fund_scores)
+      WHERE quartile IS NOT NULL
     `;
     
     const params: any[] = [];
@@ -64,7 +64,31 @@ router.get('/distribution', async (req, res) => {
     
     const result = await pool.query(query, params);
     
-    res.json(result.rows[0]);
+    // Calculate percentages based on actual counts
+    const data = result.rows[0];
+    const totalCount = parseInt(data.total_count);
+    const q1Count = parseInt(data.q1_count);
+    const q2Count = parseInt(data.q2_count);
+    const q3Count = parseInt(data.q3_count);
+    const q4Count = parseInt(data.q4_count);
+    
+    // Calculate percentages
+    const q1Percent = totalCount > 0 ? Math.round((q1Count / totalCount) * 100) : 0;
+    const q2Percent = totalCount > 0 ? Math.round((q2Count / totalCount) * 100) : 0;
+    const q3Percent = totalCount > 0 ? Math.round((q3Count / totalCount) * 100) : 0;
+    const q4Percent = totalCount > 0 ? Math.round((q4Count / totalCount) * 100) : 0;
+    
+    res.json({
+      totalCount,
+      q1Count,
+      q2Count,
+      q3Count,
+      q4Count,
+      q1Percent,
+      q2Percent,
+      q3Percent,
+      q4Percent
+    });
   } catch (error) {
     console.error('Error getting quartile distribution:', error);
     res.status(500).json({
