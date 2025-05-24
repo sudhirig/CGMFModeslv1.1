@@ -225,25 +225,27 @@ export class DataCollector {
         try {
           console.log(`Processing fund: ${fund.name}`);
           
-          // Execute direct SQL to insert fund (bypassing any middleware issues)
-          const fundResult = await db.query(
-            `INSERT INTO funds (id, scheme_code, isin_div_payout, isin_div_reinvest, fund_name, amc_name, category, subcategory, status, created_at) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-             ON CONFLICT (id) DO NOTHING
-             RETURNING id`,
-            [
-              fund.id,
-              fund.code,
-              'INF' + Math.floor(Math.random() * 1000000000).toString().padStart(9, '0'),
-              'INF' + Math.floor(Math.random() * 1000000000).toString().padStart(9, '0'),
-              fund.name,
-              fund.amc,
-              fund.category,
-              fund.subcategory,
-              'ACTIVE',
-              new Date()
-            ]
-          );
+          // Use the storage interface to insert fund instead of direct queries
+          const fundData = {
+            id: fund.id,
+            schemeCode: fund.code,
+            isinDivPayout: 'INF' + Math.floor(Math.random() * 1000000000).toString().padStart(9, '0'),
+            isinDivReinvest: 'INF' + Math.floor(Math.random() * 1000000000).toString().padStart(9, '0'),
+            fundName: fund.name,
+            amcName: fund.amc,
+            category: fund.category,
+            subcategory: fund.subcategory,
+            status: 'ACTIVE'
+          };
+          
+          // Using our storage interface to properly handle the fund creation
+          const existingFund = await storage.getFund(fund.id);
+          if (!existingFund) {
+            await storage.createFund(fundData);
+          }
+          
+          // Mock this for compatibility with existing code
+          const fundResult = { rows: [{ id: fund.id }] };
           
           if (fundResult.rows && fundResult.rows.length > 0) {
             const fundId = fund.id;
@@ -251,42 +253,57 @@ export class DataCollector {
             
             // Current NAV
             const today = new Date();
-            await db.query(
-              `INSERT INTO nav_data (fund_id, nav_date, nav_value, created_at) 
-               VALUES ($1, $2, $3, $4)
-               ON CONFLICT (fund_id, nav_date) DO NOTHING`,
-              [fundId, today, baseNav, new Date()]
-            );
+            const existingNavToday = await storage.getNavData(fundId, today, today);
+            
+            if (existingNavToday.length === 0) {
+              await storage.createNavData({
+                fundId: fundId,
+                navDate: today,
+                navValue: baseNav
+              });
+            }
             
             // 1 month ago NAV (typically 1-3% different)
             const oneMonthAgo = new Date();
             oneMonthAgo.setMonth(today.getMonth() - 1);
-            await db.query(
-              `INSERT INTO nav_data (fund_id, nav_date, nav_value, created_at) 
-               VALUES ($1, $2, $3, $4)
-               ON CONFLICT (fund_id, nav_date) DO NOTHING`,
-              [fundId, oneMonthAgo, baseNav * (1 - Math.random() * 0.03), new Date()]
-            );
+            
+            const existingNavOneMonth = await storage.getNavData(fundId, oneMonthAgo, oneMonthAgo);
+            
+            if (existingNavOneMonth.length === 0) {
+              await storage.createNavData({
+                fundId: fundId,
+                navDate: oneMonthAgo,
+                navValue: baseNav * (1 - Math.random() * 0.03)
+              });
+            }
             
             // 6 months ago NAV (typically 5-10% different)
             const sixMonthsAgo = new Date();
             sixMonthsAgo.setMonth(today.getMonth() - 6);
-            await db.query(
-              `INSERT INTO nav_data (fund_id, nav_date, nav_value, created_at) 
-               VALUES ($1, $2, $3, $4)
-               ON CONFLICT (fund_id, nav_date) DO NOTHING`,
-              [fundId, sixMonthsAgo, baseNav * (1 - Math.random() * 0.08), new Date()]
-            );
+            
+            const existingNavSixMonths = await storage.getNavData(fundId, sixMonthsAgo, sixMonthsAgo);
+            
+            if (existingNavSixMonths.length === 0) {
+              await storage.createNavData({
+                fundId: fundId,
+                navDate: sixMonthsAgo,
+                navValue: baseNav * (1 - Math.random() * 0.08)
+              });
+            }
             
             // 1 year ago NAV (typically 10-20% different)
             const oneYearAgo = new Date();
             oneYearAgo.setFullYear(today.getFullYear() - 1);
-            await db.query(
-              `INSERT INTO nav_data (fund_id, nav_date, nav_value, created_at) 
-               VALUES ($1, $2, $3, $4)
-               ON CONFLICT (fund_id, nav_date) DO NOTHING`,
-              [fundId, oneYearAgo, baseNav * (1 - 0.15 - Math.random() * 0.05), new Date()]
-            );
+            
+            const existingNavOneYear = await storage.getNavData(fundId, oneYearAgo, oneYearAgo);
+            
+            if (existingNavOneYear.length === 0) {
+              await storage.createNavData({
+                fundId: fundId,
+                navDate: oneYearAgo,
+                navValue: baseNav * (1 - 0.15 - Math.random() * 0.05)
+              });
+            }
             
             totalProcessed++;
           }
@@ -308,29 +325,33 @@ export class DataCollector {
                             totalScore >= 65 ? 3 : 4;
             const recommendation = quartile <= 2 ? 'Buy' : quartile === 3 ? 'Hold' : 'Sell';
             
-            // Insert fund score
-            await db.query(
-              `INSERT INTO fund_scores (
-                fund_id, score_date, total_score, quartile, recommendation,
-                return3m_score, return6m_score, return1y_score, return3y_score, return5y_score,
-                std_dev1y_score, std_dev3y_score, updown_capture1y_score, updown_capture3y_score, max_drawdown_score,
-                sectoral_similarity_score, forward_score, aum_size_score, expense_ratio_score,
-                created_at
-              ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-              ON CONFLICT (fund_id, score_date) DO NOTHING`,
-              [
-                fundId, scoreDate, totalScore, quartile, recommendation,
+            // Insert fund score using storage interface
+            const existingScore = await storage.getFundScore(fundId, scoreDate);
+            
+            if (!existingScore) {
+              await storage.createFundScore({
+                fundId,
+                scoreDate,
+                totalScore,
+                quartile,
+                recommendation,
                 // Individual component scores (random but realistic)
-                (Math.random() * 10).toFixed(2), (Math.random() * 10).toFixed(2), 
-                (Math.random() * 10).toFixed(2), (Math.random() * 10).toFixed(2), 
-                (Math.random() * 10).toFixed(2), (Math.random() * 10).toFixed(2), 
-                (Math.random() * 10).toFixed(2), (Math.random() * 10).toFixed(2), 
-                (Math.random() * 10).toFixed(2), (Math.random() * 10).toFixed(2), 
-                (Math.random() * 10).toFixed(2), (Math.random() * 10).toFixed(2), 
-                (Math.random() * 10).toFixed(2), (Math.random() * 10).toFixed(2),
-                new Date()
-              ]
-            );
+                return3mScore: parseFloat((Math.random() * 10).toFixed(2)),
+                return6mScore: parseFloat((Math.random() * 10).toFixed(2)),
+                return1yScore: parseFloat((Math.random() * 10).toFixed(2)),
+                return3yScore: parseFloat((Math.random() * 10).toFixed(2)),
+                return5yScore: parseFloat((Math.random() * 10).toFixed(2)),
+                stdDev1yScore: parseFloat((Math.random() * 10).toFixed(2)),
+                stdDev3yScore: parseFloat((Math.random() * 10).toFixed(2)),
+                updownCapture1yScore: parseFloat((Math.random() * 10).toFixed(2)),
+                updownCapture3yScore: parseFloat((Math.random() * 10).toFixed(2)),
+                maxDrawdownScore: parseFloat((Math.random() * 10).toFixed(2)),
+                sectoralSimilarityScore: parseFloat((Math.random() * 10).toFixed(2)),
+                forwardScore: parseFloat((Math.random() * 10).toFixed(2)),
+                aumSizeScore: parseFloat((Math.random() * 10).toFixed(2)),
+                expenseRatioScore: parseFloat((Math.random() * 10).toFixed(2))
+              });
+            }
           } catch (err) {
             console.error(`Error creating fund score for fund ID ${fundId}:`, err);
           }
