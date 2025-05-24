@@ -19,6 +19,7 @@ import triggerRescoringRoutes from "./api/trigger-quartile-rescoring";
 import restartHistoricalImportRoutes from "./api/restart-historical-import";
 import realHistoricalNavImportRoutes from "./api/real-historical-nav-import";
 import realDailyNavUpdateRoutes from "./api/real-daily-nav-update";
+import fundCountRoutes from "./api/fund-count";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
@@ -47,6 +48,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Real Daily NAV Update route
   app.use('/api/daily-nav', realDailyNavUpdateRoutes);
+  
+  // Register Fund Count route
+  app.use('/api/funds/count', fundCountRoutes);
   
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
