@@ -208,13 +208,35 @@ export class FundScoringEngine {
         aboveMedianMonthsCount / totalMonthsEvaluated : null;
       
       // Category benchmarks for comparison
-      const categoryMedianReturns1y = this.calculateMedian(
-        categoryFunds.map(f => this.getFundReturn(f.id, 365)).filter(r => r !== null)
-      );
+      // Get sample returns from a few funds in the category instead of all funds (for performance)
+      const sampleReturns1y: number[] = [];
+      const sampleReturns3y: number[] = [];
       
-      const categoryMedianReturns3y = this.calculateMedian(
-        categoryFunds.map(f => this.getFundReturn(f.id, 1095)).filter(r => r !== null)
-      );
+      // Take a sample of funds (max 10) to avoid excessive database queries
+      const sampleFunds = categoryFunds.slice(0, 10);
+      
+      for (const f of sampleFunds) {
+        try {
+          const fundNavData = await storage.getNavData(f.id, undefined, undefined, 365);
+          if (fundNavData.length >= 365) {
+            const return1y = this.calculateReturn(fundNavData, 365);
+            if (return1y !== null) sampleReturns1y.push(return1y);
+          }
+          
+          if (fundNavData.length >= 1095) {
+            const return3y = this.calculateReturn(fundNavData, 1095);
+            if (return3y !== null) sampleReturns3y.push(return3y);
+          }
+        } catch (error) {
+          console.error(`Error getting returns for fund ${f.id}:`, error);
+        }
+      }
+      
+      const categoryMedianReturns1y = sampleReturns1y.length > 0 ? 
+        this.calculateMedian(sampleReturns1y) : null;
+      
+      const categoryMedianReturns3y = sampleReturns3y.length > 0 ?
+        this.calculateMedian(sampleReturns3y) : null;
       
       // Expense ratio analysis
       const expenseRatios = categoryFunds
@@ -241,73 +263,73 @@ export class FundScoringEngine {
       
       const fundScore: InsertFundScore = {
         fundId,
-        scoreDate,
+        scoreDate: scoreDate.toISOString().split('T')[0],
         
         // Raw return data (actual percentages)
-        return1m: rawReturns.return1m,
-        return3m: rawReturns.return3m,
-        return6m: rawReturns.return6m,
-        return1y: rawReturns.return1y,
-        return3y: rawReturns.return3y,
-        return5y: rawReturns.return5y,
+        return1m: rawReturns.return1m !== null ? rawReturns.return1m.toString() : null,
+        return3m: rawReturns.return3m !== null ? rawReturns.return3m.toString() : null,
+        return6m: rawReturns.return6m !== null ? rawReturns.return6m.toString() : null,
+        return1y: rawReturns.return1y !== null ? rawReturns.return1y.toString() : null,
+        return3y: rawReturns.return3y !== null ? rawReturns.return3y.toString() : null,
+        return5y: rawReturns.return5y !== null ? rawReturns.return5y.toString() : null,
         
         // Risk metrics - raw values
-        volatility1y,
-        volatility3y,
-        sharpeRatio1y,
-        sharpeRatio3y,
-        sortinoRatio1y,
-        sortinoRatio3y,
-        maxDrawdown,
-        upCaptureRatio,
-        downCaptureRatio,
+        volatility1y: volatility1y !== null ? volatility1y.toString() : null,
+        volatility3y: volatility3y !== null ? volatility3y.toString() : null,
+        sharpeRatio1y: sharpeRatio1y !== null ? sharpeRatio1y.toString() : null,
+        sharpeRatio3y: sharpeRatio3y !== null ? sharpeRatio3y.toString() : null,
+        sortinoRatio1y: sortinoRatio1y !== null ? sortinoRatio1y.toString() : null,
+        sortinoRatio3y: sortinoRatio3y !== null ? sortinoRatio3y.toString() : null,
+        maxDrawdown: maxDrawdown.toString(),
+        upCaptureRatio: upCaptureRatio !== null ? upCaptureRatio.toString() : null,
+        downCaptureRatio: downCaptureRatio !== null ? downCaptureRatio.toString() : null,
         
         // Quality metrics - raw values
-        consistencyScore,
-        categoryMedianExpenseRatio,
-        categoryStdDevExpenseRatio,
-        expenseRatioRank,
-        fundAum,
-        categoryMedianAum,
-        fundSizeFactor,
+        consistencyScore: consistencyScore !== null ? consistencyScore.toString() : null,
+        categoryMedianExpenseRatio: categoryMedianExpenseRatio ? categoryMedianExpenseRatio.toString() : null,
+        categoryStdDevExpenseRatio: categoryStdDevExpenseRatio ? categoryStdDevExpenseRatio.toString() : null,
+        expenseRatioRank: expenseRatioRank !== null ? expenseRatioRank.toString() : null,
+        fundAum: fundAum.toString(),
+        categoryMedianAum: categoryMedianAum.toString(),
+        fundSizeFactor: fundSizeFactor !== null ? fundSizeFactor.toString() : null,
         
         // Context fields
-        riskFreeRate,
-        categoryBenchmarkReturn1y: categoryMedianReturns1y,
-        categoryBenchmarkReturn3y: categoryMedianReturns3y,
-        medianReturns1y: categoryMedianReturns1y,
-        medianReturns3y: categoryMedianReturns3y,
+        riskFreeRate: riskFreeRate.toString(),
+        categoryBenchmarkReturn1y: categoryMedianReturns1y ? categoryMedianReturns1y.toString() : null,
+        categoryBenchmarkReturn3y: categoryMedianReturns3y ? categoryMedianReturns3y.toString() : null,
+        medianReturns1y: categoryMedianReturns1y ? categoryMedianReturns1y.toString() : null,
+        medianReturns3y: categoryMedianReturns3y ? categoryMedianReturns3y.toString() : null,
         aboveMedianMonthsCount,
         totalMonthsEvaluated,
         
         // Historical returns scores
-        return3mScore: historicalReturnsScore.return3m,
-        return6mScore: historicalReturnsScore.return6m,
-        return1yScore: historicalReturnsScore.return1y,
-        return3yScore: historicalReturnsScore.return3y,
-        return5yScore: historicalReturnsScore.return5y,
-        historicalReturnsTotal: totalHistoricalReturnsScore,
+        return3mScore: historicalReturnsScore.return3m.toString(),
+        return6mScore: historicalReturnsScore.return6m.toString(),
+        return1yScore: historicalReturnsScore.return1y.toString(),
+        return3yScore: historicalReturnsScore.return3y.toString(),
+        return5yScore: historicalReturnsScore.return5y.toString(),
+        historicalReturnsTotal: totalHistoricalReturnsScore.toString(),
         
         // Risk grade scores
-        stdDev1yScore: riskGradeScore.stdDev1y,
-        stdDev3yScore: riskGradeScore.stdDev3y,
-        updownCapture1yScore: riskGradeScore.updownCapture1y,
-        updownCapture3yScore: riskGradeScore.updownCapture3y,
-        maxDrawdownScore: riskGradeScore.maxDrawdown,
-        riskGradeTotal: totalRiskGradeScore,
+        stdDev1yScore: riskGradeScore.stdDev1y.toString(),
+        stdDev3yScore: riskGradeScore.stdDev3y.toString(),
+        updownCapture1yScore: riskGradeScore.updownCapture1y.toString(),
+        updownCapture3yScore: riskGradeScore.updownCapture3y.toString(),
+        maxDrawdownScore: riskGradeScore.maxDrawdown.toString(),
+        riskGradeTotal: totalRiskGradeScore.toString(),
         
         // Other metrics scores
-        sectoralSimilarityScore: otherMetricsScore.sectoralSimilarity,
-        forwardScore: otherMetricsScore.forward,
-        aumSizeScore: otherMetricsScore.aumSize,
-        expenseRatioScore: otherMetricsScore.expenseRatio,
-        otherMetricsTotal: totalOtherMetricsScore,
+        sectoralSimilarityScore: otherMetricsScore.sectoralSimilarity.toString(),
+        forwardScore: otherMetricsScore.forward.toString(),
+        aumSizeScore: otherMetricsScore.aumSize.toString(),
+        expenseRatioScore: otherMetricsScore.expenseRatio.toString(),
+        otherMetricsTotal: totalOtherMetricsScore.toString(),
         
         // Final scoring
-        totalScore,
-        quartile,
-        categoryRank: 0, // Will be updated later after all funds are scored
-        categoryTotal: categoryFunds.length,
+        totalScore: totalScore.toString(),
+        quartile: quartile.toString(),
+        categoryRank: "0", // Will be updated later after all funds are scored
+        categoryTotal: categoryFunds.length.toString(),
         recommendation,
       };
       
@@ -799,32 +821,7 @@ export class FundScoringEngine {
   /**
    * Calculate maximum drawdown - maximum loss from peak to trough
    */
-  private calculateMaxDrawdown(navData: NavData[]): number {
-    if (navData.length < 2) return 0;
-    
-    // Sort by date in descending order
-    const sortedNavData = [...navData].sort((a, b) => 
-      new Date(b.navDate).getTime() - new Date(a.navDate).getTime()
-    );
-    
-    let maxDrawdown = 0;
-    let peakNav = sortedNavData[sortedNavData.length - 1].navValue;
-    
-    for (let i = sortedNavData.length - 2; i >= 0; i--) {
-      const currentNav = sortedNavData[i].navValue;
-      
-      // If we found a new peak, update it
-      if (currentNav > peakNav) {
-        peakNav = currentNav;
-      } else {
-        // Calculate drawdown from peak
-        const drawdown = (peakNav - currentNav) / peakNav;
-        maxDrawdown = Math.max(maxDrawdown, drawdown);
-      }
-    }
-    
-    return maxDrawdown;
-  }
+  // Already implemented above - removing duplicate implementation
   
   /**
    * Calculate up capture ratio - how fund performs in up markets
@@ -1046,14 +1043,19 @@ export class FundScoringEngine {
     return upCapture / Math.abs(downCapture);
   }
   
-  // Helper: Calculate maximum drawdown
-  private calculateMaxDrawdown(navData: NavData[]): number {
-    if (navData.length === 0) return 0;
-    
-    // Sort by date in ascending order
-    const sortedNavData = [...navData].sort((a, b) => 
-      new Date(a.navDate).getTime() - new Date(b.navDate).getTime()
-    );
+  // Note: drawdown info tracking for reporting
+  private drawdownInfo: {
+    peakDate: Date;
+    valleyDate: Date;
+  } = { peakDate: new Date(), valleyDate: new Date() };
+  
+  // Already implemented above - using shared implementation
+  // Helper function to fix remaining type errors
+  private parseMetricToNumber(value: string | null | undefined): number | null {
+    if (value === null || value === undefined) return null;
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? null : parsed;
+  }
     
     let maxDrawdown = 0;
     let peak = sortedNavData[0].navValue;
