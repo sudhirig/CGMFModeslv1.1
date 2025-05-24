@@ -7,6 +7,87 @@ import { storage } from '../storage';
 const router = express.Router();
 
 /**
+ * This endpoint restarts any stuck historical NAV import
+ * It will cancel the current stuck import and start a fresh one
+ */
+router.post('/restart', async (req, res) => {
+  try {
+    // First, cancel any running imports
+    await executeRawQuery(`
+      UPDATE etl_pipeline_runs
+      SET status = 'FAILED',
+          end_time = NOW(),
+          error_message = 'Process canceled due to being stuck - restarted with improved implementation'
+      WHERE status = 'RUNNING'
+      AND pipeline_name = 'authentic_historical_import'
+    `);
+    
+    // Create a new ETL run for this process
+    const etlRun = await storage.createETLRun({
+      pipelineName: 'authentic_historical_import',
+      status: 'RUNNING',
+      startTime: new Date(),
+      recordsProcessed: 0,
+      errorMessage: 'Restarting authentic historical NAV data import with improved reliability'
+    });
+    
+    // Get funds that need historical data - same as original query but with limit to focus on high priority funds
+    const fundsResult = await executeRawQuery(`
+      SELECT f.id, f.scheme_code, f.fund_name, fs.quartile
+      FROM funds f
+      LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = (
+        SELECT MAX(score_date) FROM fund_scores WHERE fund_id = f.id
+      )
+      JOIN nav_data n ON f.id = n.fund_id
+      GROUP BY f.id, f.scheme_code, f.fund_name, fs.quartile
+      HAVING COUNT(n.nav_date) <= 2
+      ORDER BY 
+        CASE 
+          WHEN fs.quartile = 1 THEN 1
+          WHEN fs.quartile = 2 THEN 2
+          WHEN fs.quartile = 3 THEN 3
+          WHEN fs.quartile = 4 THEN 4
+          ELSE 5
+        END,
+        f.id
+      LIMIT 500  -- Process top priority funds first
+    `);
+    
+    const fundsToProcess = fundsResult.rows;
+    
+    if (fundsToProcess.length === 0) {
+      await storage.updateETLRun(etlRun.id, {
+        status: 'COMPLETED',
+        endTime: new Date(),
+        errorMessage: 'No funds found that need historical NAV data'
+      });
+      
+      return res.status(200).json({
+        success: true,
+        message: 'No funds found that need historical NAV data'
+      });
+    }
+    
+    // Start the import process in the background
+    processAuthenticHistoricalImport(fundsToProcess, etlRun.id);
+    
+    res.status(200).json({
+      success: true,
+      message: `Restarted authentic historical NAV import for ${fundsToProcess.length} funds with improved implementation`,
+      etlRunId: etlRun.id
+    });
+  } catch (error: any) {
+    console.error('Error restarting authentic historical import:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to restart authentic historical import: ' + (error.message || 'Unknown error'),
+      error: String(error)
+    });
+  }
+});
+
+/**
  * This endpoint initiates a genuine historical NAV data import process
  * that fetches ONLY real data from AMFI, with no synthetic data generation
  */
