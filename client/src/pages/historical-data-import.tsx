@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { apiRequest } from '@/lib/queryClient';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 
 // Define interfaces for our API responses
 interface NavStatus {
@@ -13,6 +14,17 @@ interface NavStatus {
   navCount: number;
   earliestNavDate: string;
   latestNavDate: string;
+}
+
+interface ETLRun {
+  id: number;
+  pipelineName: string;
+  status: 'RUNNING' | 'COMPLETED' | 'FAILED';
+  startTime: string;
+  endTime: string | null;
+  recordsProcessed: number;
+  errorMessage: string;
+  createdAt: string;
 }
 
 export default function HistoricalDataImport() {
@@ -26,11 +38,21 @@ export default function HistoricalDataImport() {
   });
   
   // Also fetch the ETL status to show current import progress
-  const { data: etlStatus } = useQuery({
+  const { data: etlStatus } = useQuery<ETLRun[]>({
     queryKey: ['/api/etl/status'],
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
+  // Find the current historical NAV import process if it exists
+  const currentHistoricalImport = etlStatus?.find(run => 
+    (run.pipelineName === 'Historical NAV Import Restart' || run.pipelineName === 'scheduled_historical_import') && 
+    run.status === 'RUNNING'
+  );
+  
+  // Calculate import progress if available
+  const importProgress = currentHistoricalImport ? 
+    Math.min(Math.round((currentHistoricalImport.recordsProcessed / 14033) * 100), 100) : 0;
+  
   const startHistoricalImport = async () => {
     setIsImporting(true);
     setError(null);
@@ -38,7 +60,7 @@ export default function HistoricalDataImport() {
     try {
       const response = await apiRequest('/api/historical-restart/start', {
         method: 'POST',
-        body: {} // Empty body for POST request
+        body: JSON.stringify({}) // Empty body for POST request
       });
       
       setImportStatus(response);
@@ -53,7 +75,9 @@ export default function HistoricalDataImport() {
 
   const checkImportStatus = async () => {
     try {
-      const response = await apiRequest('/api/historical-restart/status');
+      const response = await apiRequest('/api/historical-restart/status', {
+        method: 'GET'
+      });
       
       setImportStatus(response);
       console.log('Import status:', response);
@@ -68,6 +92,40 @@ export default function HistoricalDataImport() {
       <h1 className="text-3xl font-bold mb-6">Historical NAV Data Import</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {currentHistoricalImport && (
+          <Card className="col-span-1 md:col-span-2 border-primary-500 shadow-md">
+            <CardHeader className="bg-primary-50">
+              <CardTitle className="flex items-center">
+                <Loader2 className="h-5 w-5 mr-2 animate-spin text-primary" />
+                Historical NAV Import in Progress
+              </CardTitle>
+              <CardDescription>
+                Importing real historical NAV data from AMFI for all funds
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                <Progress value={importProgress} className="h-2" />
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Processed: {currentHistoricalImport.recordsProcessed} funds</span>
+                  <span>{importProgress}% complete</span>
+                </div>
+                <Alert className="mt-4 bg-primary-50 border-primary-200">
+                  <AlertTitle className="text-primary-700">Current Status</AlertTitle>
+                  <AlertDescription className="text-primary-600">
+                    {currentHistoricalImport.errorMessage}
+                  </AlertDescription>
+                </Alert>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <p className="text-sm text-muted-foreground">
+                Started at: {new Date(currentHistoricalImport.startTime).toLocaleString()}
+              </p>
+            </CardFooter>
+          </Card>
+        )}
+      
         <Card>
           <CardHeader>
             <CardTitle>Current NAV Data Status</CardTitle>
