@@ -19,34 +19,38 @@ export class SimplePortfolioService {
       // Define expected returns
       const expectedReturns = this.getExpectedReturnsForRiskProfile(riskProfile);
       
-      // Fetch real fund data from different categories
-      const equityLargeCapFunds = await db.select().from(funds)
-        .where(like(funds.category, '%Large%'))
-        .limit(2);
-        
-      const equityMidCapFunds = await db.select().from(funds)
-        .where(like(funds.category, '%Mid%'))
-        .limit(2);
-        
-      const equitySmallCapFunds = await db.select().from(funds)
-        .where(like(funds.category, '%Small%'))
-        .limit(2);
-        
-      const debtShortTermFunds = await db.select().from(funds)
-        .where(like(funds.category, '%Short%'))
-        .limit(2);
-        
-      const debtMediumTermFunds = await db.select().from(funds)
-        .where(like(funds.category, '%Medium%'))
-        .limit(2);
-        
-      const hybridFunds = await db.select().from(funds)
-        .where(like(funds.category, '%Hybrid%'))
-        .limit(2);
+      // Directly fetch real mutual fund data from database with names and all details
+      const topFunds = await pool.query(`
+        SELECT id, scheme_code, fund_name, amc_name, category, subcategory 
+        FROM funds 
+        WHERE fund_name IS NOT NULL AND amc_name IS NOT NULL
+        ORDER BY id
+        LIMIT 20
+      `);
       
-      // If we didn't find enough categorized funds, get some more general ones
-      const generalFunds = await db.select().from(funds)
-        .limit(12);
+      console.log(`Found ${topFunds.rows.length} real mutual funds for portfolio`);
+      
+      // Create categorized fund lists
+      const equityLargeCapFunds = topFunds.rows.filter(fund => 
+        fund.category?.includes('Large') || fund.category?.includes('Equity')).slice(0, 2);
+      
+      const equityMidCapFunds = topFunds.rows.filter(fund => 
+        fund.category?.includes('Mid') || fund.subcategory?.includes('Mid')).slice(0, 2);
+      
+      const equitySmallCapFunds = topFunds.rows.filter(fund => 
+        fund.category?.includes('Small') || fund.subcategory?.includes('Small')).slice(0, 2);
+      
+      const debtShortTermFunds = topFunds.rows.filter(fund => 
+        fund.category?.includes('Debt') || fund.category?.includes('Short')).slice(0, 2);
+      
+      const debtMediumTermFunds = topFunds.rows.filter(fund => 
+        fund.category?.includes('Medium') || fund.category?.includes('Corporate')).slice(0, 2);
+      
+      const hybridFunds = topFunds.rows.filter(fund => 
+        fund.category?.includes('Hybrid') || fund.category?.includes('Balanced')).slice(0, 2);
+      
+      // General funds backup in case we didn't find specific categories
+      const generalFunds = topFunds.rows;
       
       // Combine all funds into categories and ensure we have enough funds
       const largeCaps = equityLargeCapFunds.length > 0 ? equityLargeCapFunds : generalFunds.slice(0, 2);
@@ -139,8 +143,8 @@ export class SimplePortfolioService {
           allocationPercent: allocation.allocationPercent,
           fund: {
             id: allocation.fund.id,
-            fundName: allocation.fund.fund_name,
-            amcName: allocation.fund.amc_name,
+            fundName: allocation.fund.fund_name, // Use the database field name
+            amcName: allocation.fund.amc_name,   // Use the database field name
             category: allocation.fund.category || 'Mixed Asset',
             subcategory: allocation.fund.subcategory
           }
