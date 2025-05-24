@@ -13,6 +13,7 @@ import DatabaseExplorer from "@/pages/database-explorer";
 import ElivateFramework from "@/pages/elivate-framework";
 import QuartileAnalysis from "@/pages/quartile-analysis";
 import HistoricalDataImport from "@/pages/historical-data-import";
+import DataImportStatus from "@/pages/data-import-status";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -33,6 +34,7 @@ function Router() {
             <Route path="/elivate-framework" component={ElivateFramework} />
             <Route path="/quartile-analysis" component={QuartileAnalysis} />
             <Route path="/historical-data-import" component={HistoricalDataImport} />
+            <Route path="/data-import-status" component={DataImportStatus} />
             <Route component={NotFound} />
           </Switch>
         </main>

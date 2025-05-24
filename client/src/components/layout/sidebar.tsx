@@ -58,6 +58,10 @@ export default function Sidebar() {
                 <span className="material-icons text-xl mr-3">sync</span>
                 <span>ETL Pipeline</span>
               </Link>
+              <Link href="/data-import-status" className={linkClass("/data-import-status")}>
+                <span className="material-icons text-xl mr-3">analytics</span>
+                <span>Data Import Status</span>
+              </Link>
               <Link href="/historical-data-import" className={linkClass("/historical-data-import")}>
                 <span className="material-icons text-xl mr-3">update</span>
                 <span>Historical NAV Import</span>
