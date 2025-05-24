@@ -124,8 +124,7 @@ router.get('/funds/:quartile', async (req, res) => {
         fs.recommendation
       FROM fund_scores fs
       JOIN funds f ON fs.fund_id = f.id
-      WHERE fs.score_date = (SELECT MAX(score_date) FROM fund_scores)
-      AND fs.quartile = $1
+      WHERE fs.quartile = $1
     `;
     
     const params: any[] = [quartile];
@@ -198,7 +197,7 @@ router.get('/metrics', async (req, res) => {
       JOIN funds f ON fs.fund_id = f.id
       JOIN latest_nav ln ON fs.fund_id = ln.fund_id
       JOIN year_ago_nav yn ON fs.fund_id = yn.fund_id
-      WHERE fs.score_date = (SELECT MAX(score_date) FROM fund_scores)
+      WHERE fs.quartile IS NOT NULL
       GROUP BY fs.quartile
       ORDER BY fs.quartile
     `;
