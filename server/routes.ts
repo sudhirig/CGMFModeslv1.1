@@ -687,16 +687,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Risk profile is required" });
       }
       
-      // Import our services
-      const { simplePortfolioService } = await import('./services/simple-portfolio');
-      const { removeDuplicateFundsFromPortfolio } = await import('./services/portfolio-deduplicator');
+      // Use our completely revised portfolio service that prevents duplicates at the source
+      const { revisedPortfolioService } = await import('./services/simple-portfolio-revised');
       
-      // Generate a portfolio with real fund allocations
-      let portfolio = await simplePortfolioService.generatePortfolio(riskProfile);
-      
-      // Apply our robust deduplication logic to ensure no duplicate funds
-      console.log("Starting deduplication process to ensure unique fund recommendations...");
-      portfolio = removeDuplicateFundsFromPortfolio(portfolio);
+      // Generate a portfolio with our new approach that guarantees unique funds
+      let portfolio = await revisedPortfolioService.generatePortfolio(riskProfile);
       
       res.json(portfolio);
     } catch (error) {
