@@ -75,14 +75,18 @@ export function usePortfolioBacktest() {
       // First generate the portfolio
       const generatedPortfolio = await generatePortfolio(riskProfile);
       
-      if (!generatedPortfolio || !generatedPortfolio.id) {
+      if (!generatedPortfolio) {
         throw new Error("Failed to generate portfolio");
       }
       
       // Then run a backtest on it
+      const portfolioId = typeof generatedPortfolio.id === 'string' 
+        ? parseInt(generatedPortfolio.id) 
+        : generatedPortfolio.id;
+
       return await runBacktest({
         ...backtestParams,
-        portfolioId: generatedPortfolio.id
+        portfolioId
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
