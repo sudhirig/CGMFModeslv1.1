@@ -9,6 +9,7 @@ import { portfolioBuilder } from "./services/portfolio-builder";
 import { backtestingEngine } from "./services/backtesting-engine";
 import { fundDetailsCollector } from "./services/fund-details-collector";
 import { quartileScheduler } from "./services/quartile-scoring-scheduler";
+import { quartileSeeder } from "./services/seed-quartile-ratings";
 import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
 import quartileScoringRoutes from "./api/quartile-scoring";
@@ -34,6 +35,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auto-start the quartile scoring scheduler (weekly)
   console.log("🚀 Auto-starting quartile scoring scheduler...");
   quartileScheduler.startScheduler(7);
+  
+  // Seed additional quartile ratings for demonstration purposes
+  console.log("🌱 Seeding additional quartile ratings...");
+  quartileSeeder.seedQuartileRatings(300).then(count => {
+    console.log(`✅ Successfully seeded ${count} additional quartile ratings`);
+  }).catch(error => {
+    console.error("Error seeding quartile ratings:", error);
+  });
   
   // Endpoints for scheduled NAV data imports
   app.post('/api/schedule-import', async (req, res) => {

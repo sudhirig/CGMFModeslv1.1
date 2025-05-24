@@ -43,6 +43,8 @@ router.get('/distribution', async (req, res) => {
   try {
     const category = req.query.category as string | undefined;
     
+    console.log("✓ DIRECT QUARTILE DISTRIBUTION QUERY RUNNING WITH DEBUGGING");
+    
     let query = `
       SELECT 
         COUNT(*) as total_count,
@@ -52,7 +54,7 @@ router.get('/distribution', async (req, res) => {
         SUM(CASE WHEN quartile = 4 THEN 1 ELSE 0 END) as q4_count
       FROM fund_scores fs
       JOIN funds f ON fs.fund_id = f.id
-      WHERE quartile IS NOT NULL
+      WHERE fs.quartile IS NOT NULL
     `;
     
     const params: any[] = [];
@@ -62,7 +64,24 @@ router.get('/distribution', async (req, res) => {
       params.push(category);
     }
     
+    // Let's first check how many fund scores have quartile values
+    const checkQuery = `SELECT COUNT(*) as count FROM fund_scores WHERE quartile IS NOT NULL`;
+    const checkResult = await pool.query(checkQuery);
+    console.log("Total funds with quartile scores:", checkResult.rows[0].count);
+    
+    // Now check how many funds have each quartile value
+    const quartileCheckQuery = `
+      SELECT quartile, COUNT(*) as count
+      FROM fund_scores
+      WHERE quartile IS NOT NULL
+      GROUP BY quartile
+      ORDER BY quartile
+    `;
+    const quartileCheckResult = await pool.query(quartileCheckQuery);
+    console.log("Quartile distribution in database:", quartileCheckResult.rows);
+    
     const result = await pool.query(query, params);
+    console.log("Query result:", result.rows[0]);
     
     // Calculate percentages based on actual counts
     const data = result.rows[0];
@@ -71,6 +90,8 @@ router.get('/distribution', async (req, res) => {
     const q2Count = parseInt(data.q2_count);
     const q3Count = parseInt(data.q3_count);
     const q4Count = parseInt(data.q4_count);
+    
+    console.log("Counts:", { totalCount, q1Count, q2Count, q3Count, q4Count });
     
     // Calculate percentages
     const q1Percent = totalCount > 0 ? Math.round((q1Count / totalCount) * 100) : 0;
