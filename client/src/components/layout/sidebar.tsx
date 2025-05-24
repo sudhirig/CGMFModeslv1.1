@@ -29,81 +29,59 @@ export default function Sidebar() {
               <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
                 Dashboard
               </div>
-              <Link href="/">
-                <a className={linkClass("/")}>
-                  <span className="material-icons text-xl mr-3">dashboard</span>
-                  <span>Overview</span>
-                </a>
+              <Link href="/" className={linkClass("/")}>
+                <span className="material-icons text-xl mr-3">dashboard</span>
+                <span>Overview</span>
               </Link>
-              <Link href="/elivate-framework">
-                <a className={linkClass("/elivate-framework")}>
-                  <span className="material-icons text-xl mr-3">trending_up</span>
-                  <span>ELIVATE Framework</span>
-                </a>
+              <Link href="/elivate-framework" className={linkClass("/elivate-framework")}>
+                <span className="material-icons text-xl mr-3">trending_up</span>
+                <span>ELIVATE Framework</span>
               </Link>
-              <Link href="/fund-analysis">
-                <a className={linkClass("/fund-analysis")}>
-                  <span className="material-icons text-xl mr-3">assessment</span>
-                  <span>Fund Analysis</span>
-                </a>
+              <Link href="/fund-analysis" className={linkClass("/fund-analysis")}>
+                <span className="material-icons text-xl mr-3">assessment</span>
+                <span>Fund Analysis</span>
               </Link>
-              <Link href="/quartile-analysis">
-                <a className={linkClass("/quartile-analysis")}>
-                  <span className="material-icons text-xl mr-3">pie_chart</span>
-                  <span>Quartile Analysis</span>
-                </a>
+              <Link href="/quartile-analysis" className={linkClass("/quartile-analysis")}>
+                <span className="material-icons text-xl mr-3">pie_chart</span>
+                <span>Quartile Analysis</span>
               </Link>
-              <Link href="/portfolio-builder">
-                <a className={linkClass("/portfolio-builder")}>
-                  <span className="material-icons text-xl mr-3">account_balance</span>
-                  <span>Portfolio Builder</span>
-                </a>
+              <Link href="/portfolio-builder" className={linkClass("/portfolio-builder")}>
+                <span className="material-icons text-xl mr-3">account_balance</span>
+                <span>Portfolio Builder</span>
               </Link>
             </div>
             <div className="mb-6">
               <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
                 Data Management
               </div>
-              <Link href="/etl-pipeline">
-                <a className={linkClass("/etl-pipeline")}>
-                  <span className="material-icons text-xl mr-3">sync</span>
-                  <span>ETL Pipeline</span>
-                </a>
+              <Link href="/etl-pipeline" className={linkClass("/etl-pipeline")}>
+                <span className="material-icons text-xl mr-3">sync</span>
+                <span>ETL Pipeline</span>
               </Link>
-              <Link href="/database-explorer">
-                <a className={linkClass("/database-explorer")}>
-                  <span className="material-icons text-xl mr-3">storage</span>
-                  <span>Database Explorer</span>
-                </a>
+              <Link href="/database-explorer" className={linkClass("/database-explorer")}>
+                <span className="material-icons text-xl mr-3">storage</span>
+                <span>Database Explorer</span>
               </Link>
-              <Link href="/backtesting">
-                <a className={linkClass("/backtesting")}>
-                  <span className="material-icons text-xl mr-3">history</span>
-                  <span>Backtesting</span>
-                </a>
+              <Link href="/backtesting" className={linkClass("/backtesting")}>
+                <span className="material-icons text-xl mr-3">history</span>
+                <span>Backtesting</span>
               </Link>
             </div>
             <div className="mb-6">
               <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
                 Administration
               </div>
-              <Link href="/settings">
-                <a className={linkClass("/settings")}>
-                  <span className="material-icons text-xl mr-3">settings</span>
-                  <span>Settings</span>
-                </a>
+              <Link href="/settings" className={linkClass("/settings")}>
+                <span className="material-icons text-xl mr-3">settings</span>
+                <span>Settings</span>
               </Link>
-              <Link href="/user-management">
-                <a className={linkClass("/user-management")}>
-                  <span className="material-icons text-xl mr-3">verified_user</span>
-                  <span>User Management</span>
-                </a>
+              <Link href="/user-management" className={linkClass("/user-management")}>
+                <span className="material-icons text-xl mr-3">verified_user</span>
+                <span>User Management</span>
               </Link>
-              <Link href="/system-health">
-                <a className={linkClass("/system-health")}>
-                  <span className="material-icons text-xl mr-3">monitor_heart</span>
-                  <span>System Health</span>
-                </a>
+              <Link href="/system-health" className={linkClass("/system-health")}>
+                <span className="material-icons text-xl mr-3">monitor_heart</span>
+                <span>System Health</span>
               </Link>
             </div>
           </div>
