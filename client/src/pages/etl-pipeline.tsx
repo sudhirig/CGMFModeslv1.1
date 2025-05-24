@@ -580,11 +580,15 @@ export default function EtlPipeline() {
                     </div>
                   </div>
                   
-                  {scheduledStatus.fundDetails.lastRun && (
+                  {scheduledStatus?.fundDetails?.lastRun ? (
                     <div className="mb-3 text-xs text-neutral-600">
                       <div>Last Run: {new Date(scheduledStatus.fundDetails.lastRun.startTime).toLocaleString()}</div>
                       <div>Status: {scheduledStatus.fundDetails.lastRun.status}</div>
                       <div>Records: {scheduledStatus.fundDetails.lastRun.recordsProcessed || 0}</div>
+                    </div>
+                  ) : (
+                    <div className="mb-3 text-xs text-neutral-600">
+                      <div>No recent collection runs</div>
                     </div>
                   )}
                   
