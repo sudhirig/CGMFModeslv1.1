@@ -106,81 +106,494 @@ export default function DatabaseExplorer() {
   }, [funds]);
 
   const renderDatabaseSchema = () => {
+    // Data Flow and API Overview section
+    const dataFlowOverview = (
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">Data Flow & API Overview</CardTitle>
+          </div>
+          <CardDescription>How data moves through the system and relevant APIs</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-md font-semibold mb-2">Data Ingestion Flow</h3>
+              <ol className="list-decimal list-inside space-y-2 pl-2">
+                <li>
+                  <span className="font-medium">AMFI Data Collection</span>
+                  <p className="text-sm text-muted-foreground pl-6">Source: Association of Mutual Funds in India (AMFI) API</p>
+                  <p className="text-sm text-muted-foreground pl-6">API: <code>/api/amfi-import</code> initiates data collection</p>
+                </li>
+                <li>
+                  <span className="font-medium">Historical Data Import</span>
+                  <p className="text-sm text-muted-foreground pl-6">Frequency: 36-month historical data refreshed weekly</p>
+                  <p className="text-sm text-muted-foreground pl-6">API: <code>/api/schedule-import?type=historical&interval=weekly</code></p>
+                </li>
+                <li>
+                  <span className="font-medium">Daily NAV Updates</span>
+                  <p className="text-sm text-muted-foreground pl-6">Frequency: Daily updates for current NAV values</p>
+                  <p className="text-sm text-muted-foreground pl-6">API: <code>/api/schedule-import?type=daily&interval=daily</code></p>
+                </li>
+                <li>
+                  <span className="font-medium">Data Processing</span>
+                  <p className="text-sm text-muted-foreground pl-6">Transformation: Raw data → Structured schema → Derived metrics</p>
+                  <p className="text-sm text-muted-foreground pl-6">API: <code>/api/etl-status</code> for monitoring progress</p>
+                </li>
+              </ol>
+            </div>
+            
+            <div>
+              <h3 className="text-md font-semibold mb-2">Key API Endpoints</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h4 className="text-sm font-semibold">Import & ETL APIs</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm pl-2">
+                    <li><code>/api/amfi-import</code> - Manual trigger for AMFI data import</li>
+                    <li><code>/api/schedule-import</code> - Schedule automated imports</li>
+                    <li><code>/api/stop-scheduled-import</code> - Cancel scheduled imports</li>
+                    <li><code>/api/etl-status</code> - Check ETL pipeline status</li>
+                    <li><code>/api/etl/runs</code> - View history of ETL processes</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold">Analysis & Query APIs</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm pl-2">
+                    <li><code>/api/funds</code> - List all mutual funds</li>
+                    <li><code>/api/nav-data/:fundId</code> - Get NAV history for a fund</li>
+                    <li><code>/api/quartile/distribution</code> - Get fund quartile distribution</li>
+                    <li><code>/api/elivate/latest</code> - Get latest ELIVATE market score</li>
+                    <li><code>/api/portfolio/model/:id</code> - Get model portfolio details</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h3 className="text-md font-semibold mb-2">Data Transformation Process</h3>
+              <div className="bg-black/5 p-3 rounded-md text-sm font-mono overflow-x-auto">
+                AMFI Raw Data → Fund Records → NAV History → Calculation Pipeline → Derived Metrics
+                <br />↓<br />
+                Fund Scoring → Quartile Analysis → ELIVATE Framework → Model Portfolios → Backtesting
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+    
+    // Complete table definitions
     const tables = [
       { 
         name: "funds", 
-        description: "Mutual fund master data", 
+        description: "Master data for mutual funds imported from AMFI", 
         columns: [
-          { name: "id", type: "SERIAL", description: "Primary key" },
-          { name: "scheme_code", type: "TEXT", description: "AMFI scheme code" },
-          { name: "isin_div_payout", type: "TEXT", description: "ISIN code for dividend payout" },
-          { name: "isin_div_reinvest", type: "TEXT", description: "ISIN code for dividend reinvestment" },
+          { name: "id", type: "SERIAL", description: "Primary Key" },
+          { name: "scheme_code", type: "TEXT", description: "AMFI scheme code (unique)" },
+          { name: "isin_div_payout", type: "TEXT", description: "ISIN code for dividend payout variant" },
+          { name: "isin_div_reinvest", type: "TEXT", description: "ISIN code for dividend reinvestment variant" },
           { name: "fund_name", type: "TEXT", description: "Name of the mutual fund" },
-          { name: "amc_name", type: "TEXT", description: "Asset Management Company" },
+          { name: "amc_name", type: "TEXT", description: "Asset Management Company name" },
           { name: "category", type: "TEXT", description: "Major category (Equity, Debt, Hybrid)" },
-          { name: "subcategory", type: "TEXT", description: "Subcategory (Large Cap, Mid Cap, etc.)" },
+          { name: "subcategory", type: "TEXT", description: "Specific subcategory (Large Cap, Mid Cap, etc.)" },
+          { name: "benchmark_name", type: "TEXT", description: "Benchmark index used for comparison" },
+          { name: "fund_manager", type: "TEXT", description: "Name of the fund manager" },
+          { name: "inception_date", type: "DATE", description: "Fund launch date" },
+          { name: "status", type: "TEXT", description: "Fund status (ACTIVE/INACTIVE)" },
+          { name: "minimum_investment", type: "INTEGER", description: "Minimum initial investment amount" },
+          { name: "minimum_additional", type: "INTEGER", description: "Minimum additional investment" },
+          { name: "exit_load", type: "DECIMAL(4,2)", description: "Exit load percentage" },
+          { name: "lock_in_period", type: "INTEGER", description: "Lock-in period in days" },
+          { name: "expense_ratio", type: "DECIMAL(4,2)", description: "Fund expense ratio percentage" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+          { name: "updated_at", type: "TIMESTAMP", description: "Record update timestamp" },
         ]
       },
       { 
         name: "nav_data", 
-        description: "Historical NAV values for funds", 
+        description: "Historical Net Asset Value (NAV) data for mutual funds with derived metrics", 
         columns: [
-          { name: "id", type: "SERIAL", description: "Primary key" },
-          { name: "fund_id", type: "INTEGER", description: "Foreign key to funds table" },
+          { name: "fund_id", type: "INTEGER", description: "Foreign Key to funds table" },
           { name: "nav_date", type: "DATE", description: "Date of the NAV value" },
-          { name: "nav_value", type: "DECIMAL", description: "NAV value for the date" },
-        ]
+          { name: "nav_value", type: "DECIMAL(12,4)", description: "NAV price per unit" },
+          { name: "nav_change", type: "DECIMAL(12,4)", description: "Derived: Absolute change from previous NAV" },
+          { name: "nav_change_pct", type: "DECIMAL(8,4)", description: "Derived: Percentage change from previous" },
+          { name: "aum_cr", type: "DECIMAL(15,2)", description: "Assets Under Management in crores" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+        ],
+        constraints: "Composite Primary Key (fund_id, nav_date)"
       },
       { 
         name: "fund_scores", 
-        description: "Calculated scores for funds", 
+        description: "Comprehensive fund scoring and ranking system with multiple derived components", 
         columns: [
-          { name: "fund_id", type: "INTEGER", description: "Foreign key to funds table" },
-          { name: "score_date", type: "DATE", description: "Date the score was calculated" },
-          { name: "total_score", type: "DECIMAL", description: "Overall fund score" },
-          { name: "return_score", type: "DECIMAL", description: "Score based on returns" },
-          { name: "risk_score", type: "DECIMAL", description: "Score based on risk metrics" },
+          { name: "fund_id", type: "INTEGER", description: "Foreign Key to funds table" },
+          { name: "score_date", type: "DATE", description: "Date of score calculation" },
+          { name: "return_3m_score", type: "DECIMAL(4,1)", description: "3-month return score (max 8)" },
+          { name: "return_6m_score", type: "DECIMAL(4,1)", description: "6-month return score (max 8)" },
+          { name: "return_1y_score", type: "DECIMAL(4,1)", description: "1-year return score (max 8)" },
+          { name: "return_3y_score", type: "DECIMAL(4,1)", description: "3-year return score (max 8)" },
+          { name: "return_5y_score", type: "DECIMAL(4,1)", description: "5-year return score (max 8)" },
+          { name: "historical_returns_total", type: "DECIMAL(5,1)", description: "Derived: Combined returns score (max 40)" },
+          { name: "std_dev_1y_score", type: "DECIMAL(4,1)", description: "1-year standard deviation score (max 6)" },
+          { name: "std_dev_3y_score", type: "DECIMAL(4,1)", description: "3-year standard deviation score (max 6)" },
+          { name: "updown_capture_1y_score", type: "DECIMAL(4,1)", description: "1-year up/down capture ratio score (max 6)" },
+          { name: "updown_capture_3y_score", type: "DECIMAL(4,1)", description: "3-year up/down capture ratio score (max 6)" },
+          { name: "max_drawdown_score", type: "DECIMAL(4,1)", description: "Maximum drawdown score (max 6)" },
+          { name: "risk_grade_total", type: "DECIMAL(5,1)", description: "Derived: Combined risk score (max 30)" },
+          { name: "sectoral_similarity_score", type: "DECIMAL(4,1)", description: "Sectoral allocation similarity score (max 7.5)" },
+          { name: "forward_score", type: "DECIMAL(4,1)", description: "Forward-looking metrics score (max 7.5)" },
+          { name: "aum_size_score", type: "DECIMAL(4,1)", description: "Fund size appropriateness score (max 7.5)" },
+          { name: "expense_ratio_score", type: "DECIMAL(4,1)", description: "Expense ratio competitiveness score (max 7.5)" },
+          { name: "other_metrics_total", type: "DECIMAL(5,1)", description: "Derived: Combined other metrics score (max 30)" },
+          { name: "total_score", type: "DECIMAL(5,1)", description: "Derived: Final weighted fund score (max 100)" },
+          { name: "quartile", type: "INTEGER", description: "Derived: Performance quartile (1-4, with 1 being best)" },
+          { name: "category_rank", type: "INTEGER", description: "Derived: Rank within category" },
+          { name: "category_total", type: "INTEGER", description: "Total number of funds in category" },
+          { name: "recommendation", type: "TEXT", description: "Investment recommendation" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+        ],
+        constraints: "Composite Primary Key (fund_id, score_date)"
+      },
+      { 
+        name: "portfolio_holdings", 
+        description: "Securities held by mutual funds at different points in time", 
+        columns: [
+          { name: "id", type: "SERIAL", description: "Primary Key" },
+          { name: "fund_id", type: "INTEGER", description: "Foreign Key to funds table" },
+          { name: "holding_date", type: "DATE", description: "Date of holding report" },
+          { name: "stock_symbol", type: "TEXT", description: "Stock/security ticker symbol" },
+          { name: "stock_name", type: "TEXT", description: "Name of the stock/security" },
+          { name: "holding_percent", type: "DECIMAL(5,2)", description: "Percentage of portfolio" },
+          { name: "market_value_cr", type: "DECIMAL(12,2)", description: "Market value in crores" },
+          { name: "sector", type: "TEXT", description: "Economic sector classification" },
+          { name: "industry", type: "TEXT", description: "Specific industry classification" },
+          { name: "market_cap_category", type: "TEXT", description: "Large/Mid/Small Cap classification" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+        ]
+      },
+      { 
+        name: "market_indices", 
+        description: "Market benchmark data for performance comparison", 
+        columns: [
+          { name: "index_name", type: "TEXT", description: "Name of the index (e.g., NIFTY 50)" },
+          { name: "index_date", type: "DATE", description: "Date of index value" },
+          { name: "open_value", type: "DECIMAL(12,2)", description: "Opening value for the day" },
+          { name: "high_value", type: "DECIMAL(12,2)", description: "Highest value during the day" },
+          { name: "low_value", type: "DECIMAL(12,2)", description: "Lowest value during the day" },
+          { name: "close_value", type: "DECIMAL(12,2)", description: "Closing value for the day" },
+          { name: "volume", type: "INTEGER", description: "Trading volume" },
+          { name: "market_cap", type: "DECIMAL(18,2)", description: "Total market capitalization" },
+          { name: "pe_ratio", type: "DECIMAL(6,2)", description: "Price to Earnings ratio" },
+          { name: "pb_ratio", type: "DECIMAL(6,2)", description: "Price to Book ratio" },
+          { name: "dividend_yield", type: "DECIMAL(4,2)", description: "Dividend yield percentage" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+        ],
+        constraints: "Composite Primary Key (index_name, index_date)"
+      },
+      { 
+        name: "elivate_scores", 
+        description: "ELIVATE Framework market analysis with component scores", 
+        columns: [
+          { name: "id", type: "SERIAL", description: "Primary Key" },
+          { name: "score_date", type: "DATE", description: "Date of analysis (unique)" },
+          { name: "us_gdp_growth", type: "DECIMAL(5,2)", description: "US GDP growth rate" },
+          { name: "fed_funds_rate", type: "DECIMAL(4,2)", description: "Federal Reserve interest rate" },
+          { name: "dxy_index", type: "DECIMAL(6,2)", description: "US Dollar index value" },
+          { name: "china_pmi", type: "DECIMAL(4,1)", description: "China Purchasing Managers' Index" },
+          { name: "external_influence_score", type: "DECIMAL(4,1)", description: "Derived: Global factors score (max 20)" },
+          { name: "india_gdp_growth", type: "DECIMAL(5,2)", description: "India GDP growth rate" },
+          { name: "gst_collection_cr", type: "DECIMAL(10,2)", description: "GST collection in crores" },
+          { name: "iip_growth", type: "DECIMAL(5,2)", description: "Index of Industrial Production growth" },
+          { name: "india_pmi", type: "DECIMAL(4,1)", description: "India Purchasing Managers' Index" },
+          { name: "local_story_score", type: "DECIMAL(4,1)", description: "Derived: Domestic factors score (max 20)" },
+          { name: "cpi_inflation", type: "DECIMAL(4,2)", description: "Consumer Price Index inflation" },
+          { name: "wpi_inflation", type: "DECIMAL(4,2)", description: "Wholesale Price Index inflation" },
+          { name: "repo_rate", type: "DECIMAL(4,2)", description: "RBI repo rate" },
+          { name: "ten_year_yield", type: "DECIMAL(4,2)", description: "10-year government bond yield" },
+          { name: "inflation_rates_score", type: "DECIMAL(4,1)", description: "Derived: Inflation & rates score (max 20)" },
+          { name: "nifty_pe", type: "DECIMAL(5,2)", description: "Nifty Price-to-Earnings ratio" },
+          { name: "nifty_pb", type: "DECIMAL(4,2)", description: "Nifty Price-to-Book ratio" },
+          { name: "earnings_growth", type: "DECIMAL(5,2)", description: "Earnings growth percentage" },
+          { name: "valuation_earnings_score", type: "DECIMAL(4,1)", description: "Derived: Valuation score (max 20)" },
+          { name: "fii_flows_cr", type: "DECIMAL(8,2)", description: "Foreign Institutional flows in crores" },
+          { name: "dii_flows_cr", type: "DECIMAL(8,2)", description: "Domestic Institutional flows in crores" },
+          { name: "sip_inflows_cr", type: "DECIMAL(8,2)", description: "Systematic Investment Plan inflows" },
+          { name: "allocation_capital_score", type: "DECIMAL(4,1)", description: "Derived: Capital flows score (max 10)" },
+          { name: "stocks_above_200dma_pct", type: "DECIMAL(4,1)", description: "% of stocks above 200-day moving avg" },
+          { name: "india_vix", type: "DECIMAL(5,2)", description: "India Volatility Index" },
+          { name: "advance_decline_ratio", type: "DECIMAL(4,2)", description: "Market breadth indicator" },
+          { name: "trends_sentiments_score", type: "DECIMAL(4,1)", description: "Derived: Sentiment score (max 10)" },
+          { name: "total_elivate_score", type: "DECIMAL(5,1)", description: "Derived: Overall ELIVATE score (max 100)" },
+          { name: "market_stance", type: "TEXT", description: "Recommended market stance (BULLISH/NEUTRAL/BEARISH)" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+        ]
+      },
+      { 
+        name: "model_portfolios", 
+        description: "Predefined investment portfolios for different risk profiles", 
+        columns: [
+          { name: "id", type: "SERIAL", description: "Primary Key" },
+          { name: "name", type: "TEXT", description: "Portfolio name" },
+          { name: "risk_profile", type: "TEXT", description: "Risk tolerance level (CONSERVATIVE/MODERATE/AGGRESSIVE)" },
+          { name: "elivate_score_id", type: "INTEGER", description: "Foreign Key to elivate_scores table" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+          { name: "updated_at", type: "TIMESTAMP", description: "Record update timestamp" },
+        ]
+      },
+      { 
+        name: "model_portfolio_allocations", 
+        description: "Fund allocations within model portfolios", 
+        columns: [
+          { name: "id", type: "SERIAL", description: "Primary Key" },
+          { name: "portfolio_id", type: "INTEGER", description: "Foreign Key to model_portfolios table" },
+          { name: "fund_id", type: "INTEGER", description: "Foreign Key to funds table" },
+          { name: "allocation_percent", type: "DECIMAL(5,2)", description: "Percentage allocation" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+        ],
+        indexes: "Index on (portfolio_id, fund_id)"
+      },
+      { 
+        name: "etl_pipeline_runs", 
+        description: "Tracks data import processes and statuses", 
+        columns: [
+          { name: "id", type: "SERIAL", description: "Primary Key" },
+          { name: "pipeline_name", type: "TEXT", description: "Name of data pipeline (historical_import, daily_update, etc.)" },
+          { name: "status", type: "TEXT", description: "Process status (RUNNING, COMPLETED, FAILED)" },
+          { name: "start_time", type: "TIMESTAMP", description: "Start time of ETL process" },
+          { name: "end_time", type: "TIMESTAMP", description: "End time of ETL process" },
+          { name: "records_processed", type: "INTEGER", description: "Count of records processed" },
+          { name: "error_message", type: "TEXT", description: "Error message if failed" },
+          { name: "created_at", type: "TIMESTAMP", description: "Record creation timestamp" },
+        ]
+      },
+      { 
+        name: "users", 
+        description: "Basic user management", 
+        columns: [
+          { name: "id", type: "SERIAL", description: "Primary Key" },
+          { name: "username", type: "TEXT", description: "User login name (unique)" },
+          { name: "password", type: "TEXT", description: "Hashed password" },
         ]
       },
     ];
     
+    // Entity Relationship Diagram explanation
+    const entityRelationships = (
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <Target className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">Entity Relationships</CardTitle>
+          </div>
+          <CardDescription>Key relationships between database tables</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-md font-semibold mb-2">Primary Relationships</h3>
+              <ul className="list-disc list-inside space-y-1 pl-2">
+                <li><code>nav_data.fund_id</code> → <code>funds.id</code> (Historical NAV records for each fund)</li>
+                <li><code>fund_scores.fund_id</code> → <code>funds.id</code> (Performance scores for each fund)</li>
+                <li><code>portfolio_holdings.fund_id</code> → <code>funds.id</code> (Securities held by each fund)</li>
+                <li><code>model_portfolios.elivate_score_id</code> → <code>elivate_scores.id</code> (Market analysis driving portfolios)</li>
+                <li><code>model_portfolio_allocations.portfolio_id</code> → <code>model_portfolios.id</code> (Funds in each model portfolio)</li>
+                <li><code>model_portfolio_allocations.fund_id</code> → <code>funds.id</code> (Fund allocations in portfolios)</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="text-md font-semibold mb-2">Composite Keys & Constraints</h3>
+              <ul className="list-disc list-inside space-y-1 pl-2">
+                <li><code>funds.scheme_code</code> - Unique constraint</li>
+                <li><code>(fund_id, nav_date)</code> - Composite primary key on nav_data</li>
+                <li><code>(fund_id, score_date)</code> - Composite primary key on fund_scores</li>
+                <li><code>(index_name, index_date)</code> - Composite primary key on market_indices</li>
+                <li><code>elivate_scores.score_date</code> - Unique constraint</li>
+              </ul>
+            </div>
+            
+            <div className="bg-black/5 p-3 rounded-md text-sm overflow-x-auto">
+              <pre>{`
++----------------+      +---------------+      +------------------+
+|     funds      |<-----| nav_data      |      | market_indices   |
++----------------+      +---------------+      +------------------+
+| id (PK)        |      | fund_id (FK)  |      | index_name       |
+| scheme_code    |      | nav_date      |      | index_date       |
+| fund_name      |      | nav_value     |      | close_value      |
+| amc_name       |      +---------------+      +------------------+
++----------------+            |                       |
+        |                     |                       |
+        |                     |                       |
+        v                     |                       |
++----------------+            |                       |
+| fund_scores    |<-----------+                       |
++----------------+                                    |
+| fund_id (FK)   |                                    |
+| score_date     |              +------------------+  |
+| total_score    |<-------------| elivate_scores   |<-+
++----------------+              +------------------+
+        |                       | id (PK)          |
+        |                       | score_date       |
+        |                       | total_elivate_   |
+        v                       | score            |
++------------------+            +------------------+
+| portfolio_       |                    |
+| holdings         |                    |
++------------------+                    |
+| id (PK)          |                    |
+| fund_id (FK)     |                    v
+| holding_date     |          +------------------+
++------------------+          | model_portfolios |
+                              +------------------+
+                              | id (PK)          |
+                              | elivate_score_id |
+                              +------------------+
+                                      |
+                                      v
+                              +------------------+
+                              | model_portfolio_ |
+                              | allocations      |
+                              +------------------+
+                              | portfolio_id (FK)|
+                              | fund_id (FK)     |
+                              +------------------+
+              `}</pre>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+    
+    // Scheduled Data Operations
+    const scheduledOperations = (
+      <Card className="mb-6">
+        <CardHeader>
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="h-5 w-5 text-muted-foreground" />
+            <CardTitle className="text-lg">Automated Data Operations</CardTitle>
+          </div>
+          <CardDescription>Scheduled database maintenance and updates</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-md font-semibold mb-2">Scheduled Operations</h3>
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 pr-4">Operation</th>
+                    <th className="text-left py-2 pr-4">Frequency</th>
+                    <th className="text-left py-2">API Endpoint</th>
+                  </tr>
+                </thead>
+                <tbody className="text-sm">
+                  <tr className="border-b">
+                    <td className="py-2 pr-4">Historical NAV Import</td>
+                    <td className="py-2 pr-4">Weekly (Sunday)</td>
+                    <td className="py-2"><code>/api/schedule-import?type=historical&interval=weekly</code></td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 pr-4">Daily NAV Updates</td>
+                    <td className="py-2 pr-4">Daily (5:30 PM)</td>
+                    <td className="py-2"><code>/api/schedule-import?type=daily&interval=daily</code></td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 pr-4">Fund Scoring</td>
+                    <td className="py-2 pr-4">Daily (6:30 PM)</td>
+                    <td className="py-2"><code>/api/calculate-fund-scores</code></td>
+                  </tr>
+                  <tr className="border-b">
+                    <td className="py-2 pr-4">ELIVATE Framework</td>
+                    <td className="py-2 pr-4">Weekly (Monday)</td>
+                    <td className="py-2"><code>/api/elivate/calculate</code></td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-4">Optimize Database</td>
+                    <td className="py-2 pr-4">Monthly</td>
+                    <td className="py-2"><code>/api/db/optimize</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div>
+              <h3 className="text-md font-semibold mb-2">Current Import Statistics</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-black/5 p-3 rounded-md text-center">
+                  <p className="text-sm text-muted-foreground">Total Funds</p>
+                  <p className="text-xl font-bold">11,766</p>
+                </div>
+                <div className="bg-black/5 p-3 rounded-md text-center">
+                  <p className="text-sm text-muted-foreground">NAV Records</p>
+                  <p className="text-xl font-bold">10,116+</p>
+                </div>
+                <div className="bg-black/5 p-3 rounded-md text-center">
+                  <p className="text-sm text-muted-foreground">Historical Range</p>
+                  <p className="text-xl font-bold">36 months</p>
+                </div>
+                <div className="bg-black/5 p-3 rounded-md text-center">
+                  <p className="text-sm text-muted-foreground">Update Frequency</p>
+                  <p className="text-xl font-bold">Daily</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+    
     return (
       <div className="space-y-6">
-        {tables.map(table => (
-          <Card key={table.name}>
-            <CardHeader>
-              <div className="flex items-center space-x-2">
-                <TableIcon className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-lg">{table.name}</CardTitle>
-              </div>
-              <CardDescription>{table.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[200px]">Column</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Description</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {table.columns.map(column => (
-                      <TableRow key={column.name}>
-                        <TableCell className="font-medium">{column.name}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{column.type}</Badge>
-                        </TableCell>
-                        <TableCell>{column.description}</TableCell>
+        {dataFlowOverview}
+        {entityRelationships}
+        {scheduledOperations}
+        
+        <div className="space-y-6">
+          <h3 className="text-xl font-bold">Complete Database Schema</h3>
+          {tables.map(table => (
+            <Card key={table.name}>
+              <CardHeader>
+                <div className="flex items-center space-x-2">
+                  <TableIcon className="h-5 w-5 text-muted-foreground" />
+                  <CardTitle className="text-lg">{table.name}</CardTitle>
+                </div>
+                <CardDescription>{table.description}</CardDescription>
+                {table.constraints && (
+                  <Badge variant="secondary" className="mt-2">{table.constraints}</Badge>
+                )}
+                {table.indexes && (
+                  <Badge variant="outline" className="mt-2">{table.indexes}</Badge>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[200px]">Column</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Description</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                    </TableHeader>
+                    <TableBody>
+                      {table.columns.map(column => (
+                        <TableRow key={column.name}>
+                          <TableCell className="font-medium">{column.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{column.type}</Badge>
+                          </TableCell>
+                          <TableCell>{column.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   };
