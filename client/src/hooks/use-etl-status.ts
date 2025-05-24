@@ -12,6 +12,21 @@ interface ETLRun {
   createdAt: string;
 }
 
+// Fund Details Stats interface
+export interface FundDetailsStats {
+  totalFunds: number;
+  enhancedFunds: number;
+  pendingFunds: number;
+  percentComplete: number;
+  isCollectionInProgress: boolean;
+}
+
+interface FundDetailsStatus {
+  success: boolean;
+  status: ETLRun | null;
+  detailsStats: FundDetailsStats;
+}
+
 export function useEtlStatus() {
   const queryClient = useQueryClient();
   
@@ -19,6 +34,12 @@ export function useEtlStatus() {
   const { data: etlRuns, isLoading, error, refetch: refreshEtlStatus } = useQuery<ETLRun[]>({
     queryKey: ["/api/etl/status"],
     staleTime: 60 * 1000, // 1 minute
+  });
+  
+  // Get fund details status and stats
+  const { data: fundDetailsData, isLoading: isLoadingFundDetails } = useQuery<FundDetailsStatus>({
+    queryKey: ["/api/fund-details/status"],
+    staleTime: 30 * 1000, // 30 seconds
   });
   
   // Trigger data collection
@@ -57,6 +78,15 @@ export function useEtlStatus() {
     },
   });
   
+  // Extract fund details stats from the response or provide defaults
+  const fundDetailsStats: FundDetailsStats = fundDetailsData?.detailsStats || {
+    totalFunds: 0,
+    enhancedFunds: 0,
+    pendingFunds: 0,
+    percentComplete: 0,
+    isCollectionInProgress: false
+  };
+
   return {
     etlRuns,
     isLoading,
@@ -66,6 +96,8 @@ export function useEtlStatus() {
     isCollecting,
     triggerFundDetailsCollection,
     isCollectingDetails,
-    scheduleFundDetailsCollection
+    scheduleFundDetailsCollection,
+    fundDetailsStats,
+    isLoadingFundDetails
   };
 }

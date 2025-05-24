@@ -1,5 +1,11 @@
 import express from 'express';
 import { fundDetailsCollector } from '../services/fund-details-collector';
+import { db } from '../db';
+import { funds } from '../../shared/schema';
+import { sql } from 'drizzle-orm';
+import { isNotNull } from 'drizzle-orm/expressions';
+import { and } from 'drizzle-orm/expressions';
+import { storage } from '../storage';
 
 const router = express.Router();
 
@@ -57,6 +63,57 @@ router.get('/schedule', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to schedule fund details collection: ' + (error.message || 'Unknown error')
+    });
+  }
+});
+
+// Get detailed status of fund details collection
+router.get('/status', async (req, res) => {
+  try {
+    // Get status from the ETL runs database
+    const status = await storage.getETLRuns('Fund Details Collection', 1);
+    
+    // Get total funds count
+    const totalFunds = await db.select({ count: sql`count(*)` }).from(funds);
+    const totalFundsCount = Number(totalFunds[0].count);
+    
+    // Get count of funds with enhanced details
+    const fundsWithDetails = await db.select({ count: sql`count(*)` })
+      .from(funds)
+      .where(and(
+        isNotNull(funds.inceptionDate),
+        isNotNull(funds.expenseRatio)
+      ));
+    const enhancedFundsCount = Number(fundsWithDetails[0].count);
+    
+    // Calculate funds pending enhanced details
+    const pendingFundsCount = totalFundsCount - enhancedFundsCount;
+    
+    // Calculate percentage completion
+    const percentComplete = totalFundsCount > 0 
+      ? Math.round((enhancedFundsCount / totalFundsCount) * 100) 
+      : 0;
+    
+    // Check if collection is in progress
+    const isCollectionInProgress = status.length > 0 && 
+      status[0].status === 'running';
+    
+    return res.json({
+      success: true,
+      status: status.length > 0 ? status[0] : null,
+      detailsStats: {
+        totalFunds: totalFundsCount,
+        enhancedFunds: enhancedFundsCount,
+        pendingFunds: pendingFundsCount,
+        percentComplete: percentComplete,
+        isCollectionInProgress: isCollectionInProgress
+      }
+    });
+  } catch (error: any) {
+    console.error('Error getting fund details status:', error);
+    return res.status(500).json({
+      success: false,
+      message: `Failed to get fund details status: ${error.message}`
     });
   }
 });
