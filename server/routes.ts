@@ -22,6 +22,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Fund details scheduling moved to dedicated router in api/fund-details-import.ts
   
+  // Auto-start the scheduled bulk processing on server startup
+  console.log("🚀 Auto-starting fund details bulk processing scheduler...");
+  fundDetailsCollector.startScheduledBulkProcessing(100, 5, 24);
+  
   // Endpoints for scheduled NAV data imports
   app.post('/api/schedule-import', async (req, res) => {
     try {
