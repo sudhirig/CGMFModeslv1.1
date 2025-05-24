@@ -13,6 +13,7 @@ import { quartileSeeder } from "./services/seed-quartile-ratings";
 import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
 import quartileScoringRoutes from "./api/quartile-scoring";
+import historicalNavImportRoutes from "./api/import-historical-nav";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
@@ -23,6 +24,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Quartile Scoring routes
   app.use('/api/quartile', quartileScoringRoutes);
+  
+  // Register Historical NAV import route
+  app.use('/api/historical-nav', historicalNavImportRoutes);
   
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
@@ -36,13 +40,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log("🚀 Auto-starting quartile scoring scheduler...");
   quartileScheduler.startScheduler(7);
   
-  // Seed additional quartile ratings for demonstration purposes
-  console.log("🌱 Seeding additional quartile ratings...");
-  quartileSeeder.seedQuartileRatings(300).then(count => {
-    console.log(`✅ Successfully seeded ${count} additional quartile ratings`);
-  }).catch(error => {
-    console.error("Error seeding quartile ratings:", error);
-  });
+  // We're not using any synthetic data for quartile ratings
+  console.log("🚫 No synthetic quartile ratings will be used - only real data allowed");
   
   // Endpoints for scheduled NAV data imports
   app.post('/api/schedule-import', async (req, res) => {
