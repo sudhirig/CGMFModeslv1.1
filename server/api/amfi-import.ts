@@ -14,45 +14,7 @@ router.get('/', async (req, res) => {
     
     console.log(`Import options: includeHistorical=${includeHistorical}`);
     
-    // If historical import requested, initialize progress tracking first for UI updates
-    if (includeHistorical) {
-      updateImportProgress({
-        isImporting: true,
-        totalMonths: 12,
-        completedMonths: 0,
-        currentMonth: 'Initializing',
-        currentYear: new Date().getFullYear().toString(),
-        totalImported: 0,
-        errors: []
-      });
-      
-      // Response sent immediately to allow UI to update
-      res.json({
-        success: true,
-        message: "Historical NAV data import started. Check progress status for updates.",
-        inProgress: true
-      });
-      
-      // Start the historical data import in the background (non-blocking)
-      fetchAMFIMutualFundData(includeHistorical)
-        .then(result => {
-          console.log('AMFI data import completed with result:', {
-            success: result.success,
-            counts: result.counts
-          });
-        })
-        .catch(error => {
-          console.error('Error in background AMFI data import:', error);
-          updateImportProgress({
-            isImporting: false,
-            errors: [String(error)]
-          });
-        });
-      
-      return; // Return early after starting background process
-    }
-    
-    // For regular import (non-historical), proceed as normal
+    // Fetch AMFI data with or without historical data
     const result = await fetchAMFIMutualFundData(includeHistorical);
     
     console.log('AMFI data import completed with result:', {
@@ -73,32 +35,6 @@ router.get('/', async (req, res) => {
       error: String(error)
     });
   }
-});
-
-// Track import progress globally
-let importProgress = {
-  isImporting: false,
-  totalMonths: 0,
-  completedMonths: 0,
-  currentMonth: '',
-  currentYear: '',
-  totalImported: 0,
-  lastUpdated: new Date(),
-  errors: [] as string[]
-};
-
-// Update import progress
-export function updateImportProgress(update: Partial<typeof importProgress>) {
-  importProgress = {
-    ...importProgress,
-    ...update,
-    lastUpdated: new Date()
-  };
-}
-
-// Get current import progress
-router.get('/progress', (req, res) => {
-  res.json(importProgress);
 });
 
 // Check NAV data count

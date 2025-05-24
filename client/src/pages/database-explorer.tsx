@@ -5,12 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useAllFunds } from "@/hooks/use-all-funds";
-import { Loader2, Database, Table as TableIcon, BarChart3, Target, TrendingUp, AlertTriangle, Calendar, Download } from "lucide-react";
+import { Loader2, Database, Table as TableIcon, BarChart3, Target, TrendingUp, AlertTriangle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip as RechartsTooltip } from "recharts";
-import { Progress } from "@/components/ui/progress";
 
 export default function DatabaseExplorer() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -19,29 +18,6 @@ export default function DatabaseExplorer() {
   const [topAmcs, setTopAmcs] = useState<{name: string, count: number}[]>([]);
   const [categoryData, setCategoryData] = useState<{name: string, value: number}[]>([]);
   const [topSubcategories, setTopSubcategories] = useState<{name: string, count: number}[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [importingHistorical, setImportingHistorical] = useState(false);
-  
-  // For tracking import progress
-  const [importProgress, setImportProgress] = useState<{
-    isImporting: boolean;
-    totalMonths: number;
-    completedMonths: number;
-    currentMonth: string;
-    currentYear: string;
-    totalImported: number;
-    lastUpdated: string;
-    errors: string[];
-  }>({
-    isImporting: false,
-    totalMonths: 0,
-    completedMonths: 0,
-    currentMonth: '',
-    currentYear: '',
-    totalImported: 0,
-    lastUpdated: '',
-    errors: []
-  });
 
   // Fetch fund scoring data for quartiles tab
   const { data: quartileDistribution } = useQuery({
@@ -72,130 +48,6 @@ export default function DatabaseExplorer() {
   
   // State for inner quartile tabs
   const [activeQuartileTab, setActiveQuartileTab] = useState("q1");
-  
-  // For database stats
-  const { data: navCount, refetch: refetchNavCounts } = useQuery({
-    queryKey: ['/api/amfi/status'],
-    staleTime: 60 * 1000,
-  });
-  
-  // For progress tracking of historical data import
-  const { data: progressData, refetch: refetchProgress } = useQuery({
-    queryKey: ['/api/amfi/progress'],
-    staleTime: 2 * 1000, // Update every 2 seconds to show real-time progress
-    refetchInterval: importingHistorical ? 2000 : false, // Poll every 2 seconds while importing
-  });
-  
-  // Update local import progress state when new data is received
-  useEffect(() => {
-    if (progressData) {
-      console.log('Progress data received:', progressData);
-      setImportProgress(progressData);
-      
-      // If import has completed, refresh NAV counts and reset importing flags
-      if (progressData.isImporting === false && 
-          (importing || importingHistorical) && 
-          progressData.currentMonth === 'Complete') {
-        setImporting(false);
-        setImportingHistorical(false);
-        refetchNavCounts();
-      }
-    }
-  }, [progressData]);
-  
-  // Force-poll for progress updates when importing historical data
-  useEffect(() => {
-    let interval: any = null;
-    if (importingHistorical) {
-      interval = setInterval(() => {
-        console.log("Polling for progress updates...");
-        refetchProgress();
-      }, 2000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [importingHistorical]);
-  
-  // For managing database imports
-  const importAMFIData = async (includeHistorical: boolean = false) => {
-    try {
-      if (includeHistorical) {
-        // Set state immediately for UI feedback
-        setImportingHistorical(true);
-        setImportProgress({
-          ...importProgress,
-          isImporting: true,
-          currentMonth: 'Initializing',
-          currentYear: new Date().getFullYear().toString(),
-          totalMonths: 12,
-          completedMonths: 0,
-          totalImported: 0
-        });
-      } else {
-        setImporting(true);
-      }
-      
-      const endpoint = includeHistorical 
-        ? '/api/amfi/import?historical=true'
-        : '/api/amfi/import';
-        
-      const response = await fetch(endpoint);
-      const data = await response.json();
-      
-      if (data.success) {
-        // Show success toast
-        // @ts-ignore
-        window.toast?.({
-          title: includeHistorical ? 'Historical NAV Data Import Started' : 'AMFI Data Imported',
-          description: includeHistorical 
-            ? 'Historical data import is running in the background. You can track the progress here.' 
-            : data.message,
-          variant: 'success'
-        });
-        
-        // For historical imports, keep state active since process continues in background
-        if (includeHistorical) {
-          // Keep importingHistorical true until process completes
-          // The progress endpoint will be polled to show real-time updates
-        } else {
-          // For regular imports, we can reset state and refresh counts
-          setImporting(false);
-          refetchNavCounts();
-        }
-      } else {
-        // Show error toast
-        // @ts-ignore
-        window.toast?.({
-          title: 'Import Failed',
-          description: data.message,
-          variant: 'destructive'
-        });
-        
-        // Reset states on error
-        if (includeHistorical) {
-          setImportingHistorical(false);
-        } else {
-          setImporting(false);
-        }
-      }
-    } catch (error) {
-      console.error('Import error:', error);
-      // @ts-ignore
-      window.toast?.({
-        title: 'Import Error',
-        description: 'Failed to import AMFI data. See console for details.',
-        variant: 'destructive'
-      });
-      
-      // Reset states on error
-      if (includeHistorical) {
-        setImportingHistorical(false);
-      } else {
-        setImporting(false);
-      }
-    }
-  };
 
   useEffect(() => {
     if (funds && funds.length > 0) {
@@ -674,108 +526,12 @@ export default function DatabaseExplorer() {
   return (
     <div className="py-6">
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-neutral-900">Database Explorer</h1>
-            <p className="mt-1 text-sm text-neutral-500">
-              Explore and analyze the mutual fund and ELIVATE framework databases
-            </p>
-          </div>
-          
-          {/* Data Management Controls */}
-          <div className="flex flex-col space-y-3">
-            <div className="flex space-x-3">
-              <Button 
-                variant="outline" 
-                onClick={() => importAMFIData(false)}
-                disabled={importing || importingHistorical}
-              >
-                {importing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importing...
-                  </>
-                ) : (
-                  "Import AMFI Data"
-                )}
-              </Button>
-              
-              <Button 
-                variant="default" 
-                onClick={() => importAMFIData(true)}
-                disabled={importing || importingHistorical}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {importingHistorical ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importing Historical NAV...
-                  </>
-                ) : (
-                  "Import Historical NAV Data"
-                )}
-              </Button>
-            </div>
-            
-            {/* Historical Import Progress Indicator */}
-            {(importProgress.isImporting || importingHistorical) && (
-              <div className="w-[320px] space-y-2 p-3 border rounded-lg border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-900">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center">
-                    <Calendar className="h-4 w-4 mr-2 text-blue-600" />
-                    Month: {importProgress.currentMonth || "Initializing"}/{importProgress.currentYear || "..."}
-                  </span>
-                  <span className="text-blue-700 dark:text-blue-400 font-medium">
-                    {importProgress.completedMonths || 0} of {importProgress.totalMonths || 12}
-                  </span>
-                </div>
-                
-                <Progress 
-                  value={importProgress.totalMonths > 0 
-                    ? (importProgress.completedMonths / importProgress.totalMonths) * 100 
-                    : 0} 
-                  className="h-2 bg-blue-100 dark:bg-blue-900"
-                />
-                
-                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                  <span className="flex items-center">
-                    <Download className="h-3 w-3 mr-1 text-blue-600" />
-                    {importProgress.totalImported.toLocaleString()} records
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-neutral-900">Database Explorer</h1>
+          <p className="mt-1 text-sm text-neutral-500">
+            Explore and analyze the mutual fund and ELIVATE framework databases
+          </p>
         </div>
-        
-        {/* NAV Data Status */}
-        <Card className="bg-blue-50 mb-6">
-          <CardContent className="pt-4 pb-3 flex justify-between items-center">
-            <div>
-              <span className="text-sm font-medium text-blue-800">NAV Data Status:</span>{" "}
-              <span className="text-sm">
-                {navCount ? (
-                  <>
-                    <strong>{navCount.totalFunds}</strong> mutual funds with{" "}
-                    <strong>{navCount.totalNavRecords}</strong> NAV data points available
-                  </>
-                ) : (
-                  "Loading data statistics..."
-                )}
-              </span>
-            </div>
-            <div>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => refetchNavCounts()}
-                className="text-blue-700 hover:text-blue-800 hover:bg-blue-100"
-              >
-                <Loader2 className="mr-1 h-3 w-3" /> Refresh
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
         
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full md:w-[600px] grid-cols-5">
