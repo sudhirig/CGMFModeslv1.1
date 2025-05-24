@@ -12,6 +12,7 @@ import type {
 export class DataCollector {
   private static instance: DataCollector;
   private scheduledImportInterval: NodeJS.Timeout | null = null;
+  private dailyNavUpdateInterval: NodeJS.Timeout | null = null;
   
   private constructor() {
     // Default constructor
@@ -80,6 +81,67 @@ export class DataCollector {
       return await fetchAMFIMutualFundData(true);
     } catch (error) {
       console.error('Error in one-time historical NAV import:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Start a scheduled daily NAV update job
+   * This performs a lightweight daily update of only the most recent NAV values
+   * @param intervalHours How often to run the update (in hours)
+   */
+  public startDailyNavUpdates(intervalHours: number = 24): void { // Default to daily (24 hours)
+    console.log(`Starting daily NAV update job every ${intervalHours} hours`);
+    
+    // Clear any existing interval
+    if (this.dailyNavUpdateInterval) {
+      clearInterval(this.dailyNavUpdateInterval);
+    }
+    
+    // Convert hours to milliseconds
+    const intervalMs = intervalHours * 60 * 60 * 1000;
+    
+    // Set up the interval
+    this.dailyNavUpdateInterval = setInterval(async () => {
+      console.log('Running daily NAV update...');
+      try {
+        // Import current NAV data only (no historical data)
+        const { fetchAMFIMutualFundData } = require('../amfi-scraper');
+        const result = await fetchAMFIMutualFundData(false);
+        console.log('Daily NAV update completed:', result);
+      } catch (error) {
+        console.error('Error in daily NAV update:', error);
+      }
+    }, intervalMs);
+    
+    // Run immediately once
+    console.log('Running initial daily NAV update...');
+    this.runDailyNavUpdate().catch(err => 
+      console.error('Error in initial daily NAV update:', err)
+    );
+  }
+  
+  /**
+   * Stop the scheduled daily NAV update job
+   */
+  public stopDailyNavUpdates(): void {
+    if (this.dailyNavUpdateInterval) {
+      clearInterval(this.dailyNavUpdateInterval);
+      this.dailyNavUpdateInterval = null;
+      console.log('Stopped daily NAV update job');
+    }
+  }
+  
+  /**
+   * Run a one-time daily NAV update
+   */
+  public async runDailyNavUpdate(): Promise<any> {
+    try {
+      console.log('Running one-time daily NAV update...');
+      const { fetchAMFIMutualFundData } = require('../amfi-scraper');
+      return await fetchAMFIMutualFundData(false);
+    } catch (error) {
+      console.error('Error in one-time daily NAV update:', error);
       throw error;
     }
   }

@@ -79,6 +79,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Endpoints for daily NAV updates
+  app.post('/api/schedule-daily-updates', async (req, res) => {
+    try {
+      const { intervalHours } = req.body;
+      // Default to daily (24 hours) if not specified
+      const hours = intervalHours ? Number(intervalHours) : 24;
+      
+      if (isNaN(hours) || hours < 1) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid interval. Please provide a positive number of hours.' 
+        });
+      }
+      
+      // Start the daily NAV update job
+      dataCollector.startDailyNavUpdates(hours);
+      
+      res.json({
+        success: true,
+        message: `Successfully scheduled daily NAV updates every ${hours} hours.`
+      });
+    } catch (error) {
+      console.error('Error setting up daily NAV updates:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to set up daily NAV updates: ' + (error instanceof Error ? error.message : 'Unknown error')
+      });
+    }
+  });
+  
+  app.post('/api/stop-daily-updates', async (_req, res) => {
+    try {
+      // Stop any running daily update job
+      dataCollector.stopDailyNavUpdates();
+      
+      res.json({
+        success: true,
+        message: 'Successfully stopped daily NAV updates.'
+      });
+    } catch (error) {
+      console.error('Error stopping daily NAV updates:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to stop daily NAV updates: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
+    }
+  });
+  
+  app.post('/api/run-daily-update', async (_req, res) => {
+    try {
+      // Run a one-time daily NAV update immediately
+      const result = await dataCollector.runDailyNavUpdate();
+      
+      res.json({
+        success: true,
+        message: 'Daily NAV update completed successfully.',
+        result
+      });
+    } catch (error) {
+      console.error('Error running daily NAV update:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to run daily NAV update: ' + (error instanceof Error ? error.message : 'Unknown error')
+      });
+    }
+  });
   // API route for direct SQL category filtering
   app.get("/api/funds/sql-category/:category", async (req, res) => {
     try {
