@@ -1279,6 +1279,18 @@ export class FundScoringEngine {
     const parsed = parseFloat(value);
     return isNaN(parsed) ? null : parsed;
   }
+  
+  /**
+   * Calculate maximum drawdown - the largest peak-to-valley decline in NAV
+   * This metric shows the largest percentage drop in value that the fund has experienced
+   */
+  private calculateMaxDrawdown(navData: NavData[]): number {
+    if (!navData || navData.length < 2) return 0;
+    
+    // Sort NAV data by date (oldest first)
+    const sortedNavData = [...navData].sort((a, b) => 
+      new Date(a.navDate).getTime() - new Date(b.navDate).getTime()
+    );
     
     let maxDrawdown = 0;
     let peak = sortedNavData[0].navValue;
