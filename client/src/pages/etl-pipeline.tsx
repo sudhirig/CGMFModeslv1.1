@@ -19,7 +19,8 @@ export default function EtlPipeline() {
     scheduleFundDetailsCollection,
     isLoading, 
     isCollecting, 
-    isCollectingDetails, 
+    isCollectingDetails,
+    fundDetailsStats,
     error 
   } = useEtlStatus();
   const [scheduledStatus, setScheduledStatus] = useState<{
@@ -555,6 +556,27 @@ export default function EtlPipeline() {
                   </div>
                   <div className="text-xs text-neutral-600 mb-1">Source: AMFI Web Scraping</div>
                   <div className="text-xs text-neutral-600 mb-3">Frequency: Weekly</div>
+                  
+                  {/* Fund Details Progress */}
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-xs text-neutral-600">Collection Progress</span>
+                      <span className="text-xs font-medium">{fundDetailsStats.percentComplete}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full" 
+                        style={{ width: `${fundDetailsStats.percentComplete}%` }}
+                      ></div>
+                    </div>
+                    <div className="flex justify-between mt-1 text-xs text-neutral-600">
+                      <span>Enhanced: {fundDetailsStats.enhancedFunds.toLocaleString()}</span>
+                      <span>Pending: {fundDetailsStats.pendingFunds.toLocaleString()}</span>
+                    </div>
+                    <div className="text-xs text-neutral-600 mt-1">
+                      Total Funds: {fundDetailsStats.totalFunds.toLocaleString()}
+                    </div>
+                  </div>
                   
                   {scheduledStatus.fundDetails.lastRun && (
                     <div className="mb-3 text-xs text-neutral-600">
