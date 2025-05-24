@@ -186,7 +186,10 @@ export default function PortfolioBuilder() {
                         <div className="mt-4">
                           <div className="text-sm font-medium text-neutral-700 mb-2">Expected Returns (Annualized)</div>
                           <div className="text-lg font-semibold text-neutral-900">
-                            {portfolio.expectedReturns ? `${portfolio.expectedReturns.min}% - ${portfolio.expectedReturns.max}%` : "N/A"}
+                            {portfolio.expectedReturns ? 
+                              <span className="px-2.5 py-1 rounded-md bg-green-50 text-green-700">
+                                {portfolio.expectedReturns.min}% - {portfolio.expectedReturns.max}%
+                              </span> : "N/A"}
                           </div>
                         </div>
                       </div>
