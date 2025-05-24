@@ -32,14 +32,25 @@ router.post('/start', async (req, res) => {
     });
 
     // Get funds that need historical data (have only one NAV entry)
+    // Process all funds in the database, prioritizing Q1 and Q2 funds first
     const fundsResult = await executeRawQuery(`
-      SELECT f.id, f.scheme_code, f.fund_name
+      SELECT f.id, f.scheme_code, f.fund_name, fs.quartile
       FROM funds f
+      LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = (
+        SELECT MAX(score_date) FROM fund_scores WHERE fund_id = f.id
+      )
       JOIN nav_data n ON f.id = n.fund_id
-      GROUP BY f.id, f.scheme_code, f.fund_name
+      GROUP BY f.id, f.scheme_code, f.fund_name, fs.quartile
       HAVING COUNT(n.nav_date) <= 1
-      ORDER BY f.id
-      LIMIT 1000
+      ORDER BY 
+        CASE 
+          WHEN fs.quartile = 1 THEN 1
+          WHEN fs.quartile = 2 THEN 2
+          WHEN fs.quartile = 3 THEN 3
+          WHEN fs.quartile = 4 THEN 4
+          ELSE 5
+        END,
+        f.id
     `);
     
     const fundsToProcess = fundsResult.rows;

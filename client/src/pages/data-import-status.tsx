@@ -110,15 +110,31 @@ export default function DataImportStatus() {
     return `(${formatDistanceToNow(new Date(dateString), { addSuffix: true })})`;
   };
 
+  // Get total number of funds to process
+  const [totalFundsToProcess, setTotalFundsToProcess] = useState(16766); // We have 16,766 funds total
+  
+  // Fetch the actual count on component mount
+  useEffect(() => {
+    axios.get('/api/funds/count')
+      .then(response => {
+        if (response.data && response.data.count) {
+          setTotalFundsToProcess(response.data.count);
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching fund count:", error);
+      });
+  }, []);
+  
   // Calculate progress percentages
   const calculateProgress = (run: ETLRun | null | undefined) => {
     if (!run) return 0;
     if (run.status === "COMPLETED") return 100;
     if (run.status === "FAILED") return 0;
     
-    // If we have the authentic historical import with a target of 1000 funds
+    // If we have the authentic historical import with a target of all funds
     if (run.pipelineName === "authentic_historical_import" && run.recordsProcessed) {
-      return Math.min(99, (run.recordsProcessed / 1000) * 100);
+      return Math.min(99, (run.recordsProcessed / totalFundsToProcess) * 100);
     }
     
     // Generic progress calculation
@@ -356,7 +372,7 @@ export default function DataImportStatus() {
                         <div className="space-y-2">
                           <div className="flex justify-between text-sm">
                             <span>Progress</span>
-                            <span>{historicalImportStatus.etlRun.recordsProcessed || 0} / 1000 funds processed</span>
+                            <span>{historicalImportStatus.etlRun.recordsProcessed || 0} / {totalFundsToProcess.toLocaleString()} funds processed</span>
                           </div>
                           <Progress value={calculateProgress(historicalImportStatus.etlRun)} className="h-2" />
                         </div>
