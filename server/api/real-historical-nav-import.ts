@@ -146,7 +146,7 @@ async function processAuthenticHistoricalFund(fund: any): Promise<void> {
               navEntries.push({
                 fundId: fund.id,
                 navDate: entry.date,
-                navValue: parseFloat(entry.nav)
+                navValue: entry.nav // Keep as string to match the expected type
               });
             }
             
@@ -165,8 +165,15 @@ async function processAuthenticHistoricalFund(fund: any): Promise<void> {
       // Batch insert the NAV entries
       if (navEntries.length > 0) {
         try {
+          // Convert entries to match the expected schema type
+          const formattedEntries = navEntries.map(entry => ({
+            fundId: entry.fundId,
+            navDate: entry.navDate,
+            navValue: entry.navValue
+          }));
+          
           // Use the storage interface to insert NAV data
-          await storage.bulkInsertNavData(navEntries);
+          await storage.bulkInsertNavData(formattedEntries);
           console.log(`Inserted ${navEntries.length} authentic historical NAV entries for fund ${fund.id}`);
         } catch (error) {
           console.error(`Error inserting authentic NAV data for fund ${fund.id}:`, error);
