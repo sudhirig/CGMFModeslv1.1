@@ -547,10 +547,10 @@ export default function EtlPipeline() {
                 <div className="bg-neutral-50 p-4 rounded-lg border">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-medium text-neutral-900">Enhanced Fund Details</h3>
-                    {scheduledStatus.fundDetails.active && (
+                    {/* Use optional chaining to safely access properties */}
+                    {scheduledStatus?.fundDetails?.active ? (
                       <Badge className="bg-green-100 text-green-800">Active</Badge>
-                    )}
-                    {!scheduledStatus.fundDetails.active && (
+                    ) : (
                       <Badge variant="outline" className="bg-neutral-200 text-neutral-600">Inactive</Badge>
                     )}
                   </div>
