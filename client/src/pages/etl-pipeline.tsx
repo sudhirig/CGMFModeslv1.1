@@ -28,9 +28,12 @@ export default function EtlPipeline() {
     triggerDataCollection, 
     triggerFundDetailsCollection,
     scheduleFundDetailsCollection,
+    scheduleBulkProcessing,
+    stopBulkProcessing,
     isLoading, 
     isCollecting, 
     isCollectingDetails,
+    isSchedulingBulk,
     fundDetailsStats,
     error 
   } = useEtlStatus();
@@ -38,10 +41,19 @@ export default function EtlPipeline() {
     daily: { active: boolean; lastRun: any };
     historical: { active: boolean; lastRun: any };
     fundDetails: { active: boolean; lastRun: any };
+    bulkProcessing: { active: boolean; lastRun: any };
   }>({
     daily: { active: false, lastRun: null },
     historical: { active: false, lastRun: null },
-    fundDetails: { active: false, lastRun: null }
+    fundDetails: { active: false, lastRun: null },
+    bulkProcessing: { active: false, lastRun: null }
+  });
+  
+  // Bulk processing configuration
+  const [bulkConfig, setBulkConfig] = useState({
+    batchSize: 100,
+    batchCount: 5,
+    intervalHours: 24
   });
   const [isScheduling, setIsScheduling] = useState(false);
   
@@ -421,6 +433,172 @@ export default function EtlPipeline() {
                     </div>
                   </div>
                 )}
+                
+                {/* Bulk Processing Configuration */}
+                <div className="mt-6 border-t pt-4">
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-sm font-semibold text-neutral-800">
+                      Automated Bulk Processing
+                    </h3>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          Configure
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>Configure Bulk Processing</DialogTitle>
+                          <DialogDescription>
+                            Set up automated enhancement of fund details. This will process multiple batches of funds at regular intervals.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="batchSize" className="text-right">
+                              Batch Size
+                            </Label>
+                            <Input
+                              id="batchSize"
+                              type="number"
+                              value={bulkConfig.batchSize}
+                              onChange={(e) => setBulkConfig({
+                                ...bulkConfig,
+                                batchSize: parseInt(e.target.value) || 100
+                              })}
+                              className="col-span-3"
+                            />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="batchCount" className="text-right">
+                              Batch Count
+                            </Label>
+                            <Input
+                              id="batchCount"
+                              type="number"
+                              value={bulkConfig.batchCount}
+                              onChange={(e) => setBulkConfig({
+                                ...bulkConfig,
+                                batchCount: parseInt(e.target.value) || 5
+                              })}
+                              className="col-span-3"
+                            />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="intervalHours" className="text-right">
+                              Interval (hrs)
+                            </Label>
+                            <Input
+                              id="intervalHours"
+                              type="number"
+                              value={bulkConfig.intervalHours}
+                              onChange={(e) => setBulkConfig({
+                                ...bulkConfig,
+                                intervalHours: parseInt(e.target.value) || 24
+                              })}
+                              className="col-span-3"
+                            />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button 
+                            type="submit" 
+                            onClick={() => {
+                              scheduleBulkProcessing(bulkConfig);
+                              toast({
+                                title: "Bulk Processing Scheduled",
+                                description: `Will process ${bulkConfig.batchSize * bulkConfig.batchCount} funds every ${bulkConfig.intervalHours} hours`,
+                              });
+                              
+                              // Update local state
+                              setScheduledStatus({
+                                ...scheduledStatus,
+                                bulkProcessing: {
+                                  active: true,
+                                  lastRun: new Date()
+                                }
+                              });
+                            }}
+                            disabled={isSchedulingBulk}
+                          >
+                            {isSchedulingBulk ? "Scheduling..." : "Schedule"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                  
+                  <div className="bg-neutral-50 p-3 rounded-md mb-2">
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div>
+                        <span className="text-neutral-500">Funds per run:</span>
+                        <span className="ml-1 font-medium">{bulkConfig.batchSize * bulkConfig.batchCount}</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500">Frequency:</span>
+                        <span className="ml-1 font-medium">Every {bulkConfig.intervalHours} hours</span>
+                      </div>
+                      <div>
+                        <span className="text-neutral-500">Status:</span>
+                        <span className={`ml-1 font-medium ${scheduledStatus.bulkProcessing.active ? "text-green-600" : "text-amber-600"}`}>
+                          {scheduledStatus.bulkProcessing.active ? "Active" : "Inactive"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      onClick={() => {
+                        scheduleBulkProcessing(bulkConfig);
+                        toast({
+                          title: "Bulk Processing Started",
+                          description: `Processing ${bulkConfig.batchSize * bulkConfig.batchCount} funds automatically`,
+                        });
+                        
+                        // Update local state
+                        setScheduledStatus({
+                          ...scheduledStatus,
+                          bulkProcessing: {
+                            active: true,
+                            lastRun: new Date()
+                          }
+                        });
+                      }}
+                      disabled={isSchedulingBulk || scheduledStatus.bulkProcessing.active}
+                    >
+                      Start Automated Processing
+                    </Button>
+                    
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => {
+                        stopBulkProcessing();
+                        toast({
+                          title: "Bulk Processing Stopped",
+                          description: "Automated fund details processing has been stopped",
+                        });
+                        
+                        // Update local state
+                        setScheduledStatus({
+                          ...scheduledStatus,
+                          bulkProcessing: {
+                            active: false,
+                            lastRun: scheduledStatus.bulkProcessing.lastRun
+                          }
+                        });
+                      }}
+                      disabled={!scheduledStatus.bulkProcessing.active}
+                    >
+                      Stop Processing
+                    </Button>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
