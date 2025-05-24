@@ -246,6 +246,39 @@ export class RevisedPortfolioService {
         portfolioExpectedReturn += (allocation.allocationPercent / 100) * allocation.expectedReturn;
       });
       
+      // Calculate asset allocation percentages for the pie chart
+      const assetAllocationData = {
+        equityLargeCap: 0,
+        equityMidCap: 0,
+        equitySmallCap: 0,
+        debtShortTerm: 0,
+        debtMediumTerm: 0,
+        hybrid: 0
+      };
+      
+      // Map each allocation to the correct category in the pie chart
+      allocations.forEach(allocation => {
+        const fund = allocation.fund;
+        if (fund.asset_class === 'Equity') {
+          if (fund.equity_subcategory === 'Large Cap') {
+            assetAllocationData.equityLargeCap += allocation.allocationPercent;
+          } else if (fund.equity_subcategory === 'Mid Cap') {
+            assetAllocationData.equityMidCap += allocation.allocationPercent;
+          } else if (fund.equity_subcategory === 'Small Cap') {
+            assetAllocationData.equitySmallCap += allocation.allocationPercent;
+          } else {
+            // Default to large cap if subcategory isn't specified
+            assetAllocationData.equityLargeCap += allocation.allocationPercent;
+          }
+        } else if (fund.asset_class === 'Debt') {
+          // Split debt between short and medium term
+          assetAllocationData.debtShortTerm += allocation.allocationPercent / 2;
+          assetAllocationData.debtMediumTerm += allocation.allocationPercent / 2;
+        } else if (fund.asset_class === 'Hybrid') {
+          assetAllocationData.hybrid += allocation.allocationPercent;
+        }
+      });
+      
       // Create the portfolio object
       const portfolio = {
         id: Date.now(), // Using timestamp as simple ID
@@ -254,6 +287,7 @@ export class RevisedPortfolioService {
         description: `A ${riskProfile.toLowerCase()} risk portfolio with real funds and no duplicates`,
         expectedReturn: portfolioExpectedReturn.toFixed(2),
         allocations,
+        assetAllocation: assetAllocationData, // Add allocation data for the pie chart
         createdAt: new Date()
       };
       
