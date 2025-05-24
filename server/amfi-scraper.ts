@@ -255,16 +255,19 @@ export async function fetchAMFIMutualFundData(includeHistorical: boolean = false
       const historicalDates = generateHistoricalDates();
       console.log(`Will fetch historical data for ${historicalDates.length} months.`);
       
-      // Update progress tracking
+      // Update progress tracking with initial values
       updateImportProgress({
         isImporting: true,
         totalMonths: historicalDates.length,
         completedMonths: 0,
-        currentMonth: '',
-        currentYear: '',
+        currentMonth: 'Initializing',
+        currentYear: new Date().getFullYear().toString(),
         totalImported: 0,
         errors: []
       });
+      
+      // Small delay to ensure UI updates with initial state
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Fetch and import historical data for each month
       // Start with the most recent months first as they're most relevant for backtesting
