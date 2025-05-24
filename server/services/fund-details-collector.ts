@@ -46,18 +46,18 @@ export class FundDetailsCollector {
    * @param fundIds Optional specific fund IDs to collect details for
    */
   public async collectFundDetails(fundIds?: number[]): Promise<{ success: boolean, message: string, count: number }> {
+    // Store ETL run reference for access in catch block
+    let etlRun: any = null;
+    
     try {
       console.log('Starting collection of enhanced fund details...');
       
       // Log ETL operation start
-      const etlRun = await storage.createETLRun({
+      etlRun = await storage.createETLRun({
         pipelineName: 'Fund Details Collection',
         status: 'RUNNING',
         startTime: new Date()
       });
-      
-      // Store the ETL run ID for later update
-      const etlRunId = etlRun.id;
       
       // Get funds to process - either the specific funds requested or all funds
       const fundsToProcess = fundIds 

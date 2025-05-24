@@ -123,7 +123,17 @@ router.get('/status', async (req, res) => {
     
     // Check if collection is in progress
     const isCollectionInProgress = status.length > 0 && 
-      status[0].status === 'running';
+      status[0].status === 'RUNNING';
+    
+    // Add detailed logging to help with debugging
+    console.log('Fund details status response:', {
+      totalFunds: totalFundsCount,
+      enhanced: enhancedFundsCount,
+      pending: pendingFundsCount,
+      percent: percentComplete,
+      inProgress: isCollectionInProgress,
+      etlStatus: status.length > 0 ? status[0] : 'No ETL run found'
+    });
     
     return res.json({
       success: true,
