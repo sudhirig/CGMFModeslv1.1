@@ -63,16 +63,50 @@ async function processRealDailyUpdate(etlRunId: number): Promise<void> {
   try {
     console.log('Starting real daily NAV update from AMFI...');
     
-    // Fetch the latest NAV data from AMFI
-    const response = await axios.get(AMFI_NAV_ALL_URL, {
-      timeout: 30000 // 30 second timeout
+    // Update ETL record to show we're fetching data
+    await storage.updateETLRun(etlRunId, {
+      recordsProcessed: 0,
+      errorMessage: 'Fetching latest NAV data from AMFI...'
     });
     
-    if (!response.data) {
+    // Fetch the latest NAV data from AMFI with increased timeout and retries
+    let response;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        response = await axios.get(AMFI_NAV_ALL_URL, {
+          timeout: 60000, // 60 second timeout
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          }
+        });
+        
+        // If we got data, break out of retry loop
+        if (response && response.data) {
+          break;
+        }
+      } catch (error) {
+        console.error(`AMFI fetch attempt ${retryCount + 1} failed:`, error);
+        retryCount++;
+        
+        // Update ETL status with retry information
+        await storage.updateETLRun(etlRunId, {
+          errorMessage: `Retry ${retryCount}/${maxRetries}: Fetching latest NAV data from AMFI...`
+        });
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 5000 * Math.pow(2, retryCount)));
+      }
+    }
+    
+    // Check if we have data after all retries
+    if (!response || !response.data) {
       await storage.updateETLRun(etlRunId, {
         status: 'FAILED',
         endTime: new Date(),
-        errorMessage: 'No data received from AMFI'
+        errorMessage: 'No data received from AMFI after multiple attempts'
       });
       return;
     }
@@ -105,62 +139,121 @@ async function processRealDailyUpdate(etlRunId: number): Promise<void> {
         continue;
       }
       
+      // Skip header lines
+      if (line.startsWith('Scheme Code') || line.includes('ISIN Div Payout') || line.includes('ISIN Growth')) {
+        continue;
+      }
+      
       // Parse fund data line (semicolon separated)
       if (line.includes(';')) {
         const parts = line.split(';');
         
         if (parts.length >= 5) {
           const schemeCode = parts[0].trim();
+          const navValueStr = parts[4].trim().replace(/,/g, '');
           
-          // Look up the fund by scheme code
-          try {
-            const fundResult = await executeRawQuery(
-              `SELECT id FROM funds WHERE scheme_code = $1`,
-              [schemeCode]
-            );
+          // Only process if we have valid NAV data
+          if (schemeCode && navValueStr && !isNaN(parseFloat(navValueStr))) {
+            // Store the scheme code and NAV value for batch processing later
+            // We'll look up all fund IDs in a single query rather than one query per fund
+            navEntries.push({
+              schemeCode,
+              navValue: parseFloat(navValueStr),
+              navDate: new Date().toISOString().split('T')[0] // Today's date
+            });
             
-            if (fundResult.rows && fundResult.rows.length > 0) {
-              const fundId = fundResult.rows[0].id;
-              
-              // Parse NAV value
-              let navValueStr = parts[4].trim().replace(/,/g, '');
-              if (navValueStr && !isNaN(parseFloat(navValueStr))) {
-                // Get current date as ISO string (YYYY-MM-DD)
-                const today = new Date().toISOString().split('T')[0];
-                
-                // Add NAV entry
-                navEntries.push({
-                  fundId,
-                  navDate: today,
-                  navValue: navValueStr
-                });
-                
-                processedCount++;
-                
-                // Update progress every 100 funds
-                if (processedCount % 100 === 0) {
-                  await storage.updateETLRun(etlRunId, {
-                    recordsProcessed: processedCount,
-                    errorMessage: `Processed ${processedCount} NAV entries so far`
-                  });
-                  console.log(`Processed ${processedCount} NAV entries so far`);
-                }
-              }
+            processedCount++;
+            
+            // Update progress every 1000 funds for better performance
+            if (processedCount % 1000 === 0) {
+              await storage.updateETLRun(etlRunId, {
+                recordsProcessed: processedCount,
+                errorMessage: `Processed ${processedCount} NAV entries so far`
+              });
+              console.log(`Processed ${processedCount} NAV entries so far`);
             }
-          } catch (error) {
-            console.error(`Error processing fund with scheme code ${schemeCode}:`, error);
           }
         }
       }
     }
     
-    // Batch insert NAV entries (100 at a time)
-    console.log(`Inserting ${navEntries.length} NAV entries to database...`);
-    const batchSize = 100;
+    // We need to convert scheme codes to fund IDs
+    console.log(`Found ${navEntries.length} valid NAV entries from AMFI data, looking up fund IDs...`);
+    
+    // Update ETL run status
+    await storage.updateETLRun(etlRunId, {
+      recordsProcessed: navEntries.length,
+      errorMessage: `Looking up fund IDs for ${navEntries.length} entries...`
+    });
+    
+    // Get all scheme codes
+    const schemeCodes = navEntries.map(entry => entry.schemeCode);
+    
+    // Create a lookup map of scheme code to fund ID with a single query
+    console.log(`Looking up fund IDs for ${schemeCodes.length} unique scheme codes...`);
+    
+    // Split into chunks of 1000 to avoid query size limits
+    const schemeCodeChunks = [];
+    const chunkSize = 1000;
+    for (let i = 0; i < schemeCodes.length; i += chunkSize) {
+      schemeCodeChunks.push(schemeCodes.slice(i, i + chunkSize));
+    }
+    
+    const schemeCodeToFundId = new Map();
+    let fundIdLookupCount = 0;
+    
+    for (const schemeCodeChunk of schemeCodeChunks) {
+      try {
+        // Build a query to get all fund IDs in one go
+        const placeholders = schemeCodeChunk.map((_, index) => `$${index + 1}`).join(',');
+        const query = `SELECT id, scheme_code FROM funds WHERE scheme_code IN (${placeholders})`;
+        
+        const fundResult = await executeRawQuery(query, schemeCodeChunk);
+        
+        // Map scheme codes to fund IDs
+        for (const row of fundResult.rows) {
+          schemeCodeToFundId.set(row.scheme_code, row.id);
+          fundIdLookupCount++;
+        }
+        
+        // Update progress
+        await storage.updateETLRun(etlRunId, {
+          errorMessage: `Looked up ${fundIdLookupCount} fund IDs so far...`
+        });
+      } catch (error) {
+        console.error('Error looking up fund IDs:', error);
+      }
+    }
+    
+    console.log(`Successfully looked up ${fundIdLookupCount} fund IDs`);
+    
+    // Create the final NAV entries with fund IDs
+    const navDataToInsert = [];
+    for (const entry of navEntries) {
+      const fundId = schemeCodeToFundId.get(entry.schemeCode);
+      if (fundId) {
+        navDataToInsert.push({
+          fundId,
+          navDate: entry.navDate,
+          navValue: entry.navValue
+        });
+      }
+    }
+    
+    console.log(`Prepared ${navDataToInsert.length} NAV entries for insertion`);
+    
+    // Batch insert NAV entries with larger batch size for better performance
+    console.log(`Inserting ${navDataToInsert.length} NAV entries to database...`);
+    const batchSize = 500; // Increased batch size
     let insertedCount = 0;
     
-    for (let i = 0; i < navEntries.length; i += batchSize) {
-      const batch = navEntries.slice(i, i + batchSize);
+    // Update ETL run with insertion status
+    await storage.updateETLRun(etlRunId, {
+      errorMessage: `Starting to insert ${navDataToInsert.length} NAV entries...`
+    });
+    
+    for (let i = 0; i < navDataToInsert.length; i += batchSize) {
+      const batch = navDataToInsert.slice(i, i + batchSize);
       
       try {
         await storage.bulkInsertNavData(batch);
@@ -169,15 +262,12 @@ async function processRealDailyUpdate(etlRunId: number): Promise<void> {
         // Update progress
         await storage.updateETLRun(etlRunId, {
           recordsProcessed: insertedCount,
-          errorMessage: `Inserted ${insertedCount} of ${navEntries.length} NAV entries`
+          errorMessage: `Inserted ${insertedCount} of ${navDataToInsert.length} NAV entries`
         });
-        console.log(`Inserted batch ${Math.floor(i / batchSize) + 1}, progress: ${insertedCount}/${navEntries.length}`);
+        console.log(`Inserted batch ${Math.floor(i / batchSize) + 1}, progress: ${insertedCount}/${navDataToInsert.length}`);
       } catch (error) {
         console.error(`Error inserting NAV batch ${Math.floor(i / batchSize) + 1}:`, error);
       }
-      
-      // Small delay to avoid database overload
-      await new Promise(resolve => setTimeout(resolve, 500));
     }
     
     // Mark the ETL run as completed
