@@ -219,7 +219,28 @@ export default function PortfolioBuilder() {
                       </div>
                     ) : (
                       <div>
-                        <h3 className="text-base font-medium text-neutral-900 mb-4">Recommended Funds</h3>
+                        <div className="mb-4">
+                          <h3 className="text-base font-medium text-neutral-900 mb-2">Recommended Funds</h3>
+                          
+                          <div className="flex flex-wrap gap-3 mb-3 bg-white p-3 rounded border border-neutral-200">
+                            <div className="flex items-center">
+                              <div className="w-6 h-6 flex items-center justify-center rounded-full bg-green-100 text-green-800 text-xs font-bold mr-1">Q1</div>
+                              <span className="text-xs">Top 25%</span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 text-blue-800 text-xs font-bold mr-1">Q2</div>
+                              <span className="text-xs">26-50%</span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="w-6 h-6 flex items-center justify-center rounded-full bg-yellow-100 text-yellow-800 text-xs font-bold mr-1">Q3</div>
+                              <span className="text-xs">51-75%</span>
+                            </div>
+                            <div className="flex items-center">
+                              <div className="w-6 h-6 flex items-center justify-center rounded-full bg-red-100 text-red-800 text-xs font-bold mr-1">Q4</div>
+                              <span className="text-xs">Bottom 25%</span>
+                            </div>
+                          </div>
+                        </div>
                         
                         <div className="bg-neutral-50 rounded-lg overflow-hidden">
                           <table className="min-w-full divide-y divide-neutral-200">
