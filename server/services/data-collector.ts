@@ -11,14 +11,77 @@ import type {
 // ETL Pipeline for Indian Market Data
 export class DataCollector {
   private static instance: DataCollector;
+  private scheduledImportInterval: NodeJS.Timeout | null = null;
   
-  private constructor() {}
+  private constructor() {
+    // Default constructor
+  }
   
   public static getInstance(): DataCollector {
     if (!DataCollector.instance) {
       DataCollector.instance = new DataCollector();
     }
     return DataCollector.instance;
+  }
+  
+  /**
+   * Start a scheduled historical NAV data import job
+   * @param intervalHours How often to run the import (in hours)
+   */
+  public startScheduledHistoricalImport(intervalHours: number = 168): void { // Default to weekly (168 hours)
+    console.log(`Starting scheduled historical NAV import job every ${intervalHours} hours`);
+    
+    // Clear any existing interval
+    if (this.scheduledImportInterval) {
+      clearInterval(this.scheduledImportInterval);
+    }
+    
+    // Convert hours to milliseconds
+    const intervalMs = intervalHours * 60 * 60 * 1000;
+    
+    // Set up the interval
+    this.scheduledImportInterval = setInterval(async () => {
+      console.log('Running scheduled historical NAV data import...');
+      try {
+        // Import with historical data flag set to true
+        const { fetchAMFIMutualFundData } = require('../amfi-scraper');
+        const result = await fetchAMFIMutualFundData(true);
+        console.log('Scheduled historical NAV import completed:', result);
+      } catch (error) {
+        console.error('Error in scheduled historical NAV import:', error);
+      }
+    }, intervalMs);
+    
+    // Run immediately once
+    console.log('Running initial historical NAV data import...');
+    this.runOneTimeHistoricalImport().catch(err => 
+      console.error('Error in initial historical import:', err)
+    );
+  }
+  
+  /**
+   * Stop the scheduled historical NAV data import job
+   */
+  public stopScheduledHistoricalImport(): void {
+    if (this.scheduledImportInterval) {
+      clearInterval(this.scheduledImportInterval);
+      this.scheduledImportInterval = null;
+      console.log('Stopped scheduled historical NAV import job');
+    }
+  }
+  
+  /**
+   * Run a one-time historical NAV data import
+   */
+  public async runOneTimeHistoricalImport(): Promise<any> {
+    try {
+      console.log('Running one-time historical NAV data import...');
+      const { fetchAMFIMutualFundData } = require('../amfi-scraper');
+      return await fetchAMFIMutualFundData(true);
+    } catch (error) {
+      console.error('Error in one-time historical NAV import:', error);
+      throw error;
+    }
   }
   
   // Main collection method - runs all collectors

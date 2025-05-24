@@ -12,6 +12,73 @@ import amfiImportRoutes from "./api/amfi-import";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
   app.use('/api/amfi', amfiImportRoutes);
+  
+  // Endpoints for scheduled NAV data imports
+  app.post('/api/schedule-import', async (req, res) => {
+    try {
+      const { intervalHours } = req.body;
+      // Default to weekly (168 hours) if not specified
+      const hours = intervalHours ? Number(intervalHours) : 168;
+      
+      if (isNaN(hours) || hours < 1) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid interval. Please provide a positive number of hours.' 
+        });
+      }
+      
+      // Start the scheduled import job
+      dataCollector.startScheduledHistoricalImport(hours);
+      
+      res.json({
+        success: true,
+        message: `Successfully scheduled historical NAV data import every ${hours} hours.`
+      });
+    } catch (error) {
+      console.error('Error setting up scheduled import:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to set up scheduled import: ' + (error instanceof Error ? error.message : 'Unknown error')
+      });
+    }
+  });
+  
+  app.post('/api/stop-scheduled-import', async (_req, res) => {
+    try {
+      // Stop any running scheduled import job
+      dataCollector.stopScheduledHistoricalImport();
+      
+      res.json({
+        success: true,
+        message: 'Successfully stopped scheduled historical NAV data import.'
+      });
+    } catch (error) {
+      console.error('Error stopping scheduled import:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to stop scheduled import: ' + (error instanceof Error ? error.message : 'Unknown error') 
+      });
+    }
+  });
+  
+  app.post('/api/run-one-time-import', async (_req, res) => {
+    try {
+      // Run a one-time historical import immediately
+      const result = await dataCollector.runOneTimeHistoricalImport();
+      
+      res.json({
+        success: true,
+        message: 'One-time historical NAV data import completed successfully.',
+        result
+      });
+    } catch (error) {
+      console.error('Error running one-time import:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to run one-time import: ' + (error instanceof Error ? error.message : 'Unknown error')
+      });
+    }
+  });
   // API route for direct SQL category filtering
   app.get("/api/funds/sql-category/:category", async (req, res) => {
     try {
