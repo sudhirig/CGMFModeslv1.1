@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import axios from "axios";
 import { Progress } from "@/components/ui/progress";
+import { NavImportStatus } from "@/components/nav-import-status";
 import { 
   Dialog,
   DialogContent,
@@ -56,6 +57,8 @@ export default function EtlPipeline() {
     intervalHours: 24
   });
   const [isScheduling, setIsScheduling] = useState(false);
+  
+
   
   // Fetch the scheduled import status
   const fetchScheduledStatus = async () => {
@@ -131,9 +134,7 @@ export default function EtlPipeline() {
     }
   };
   
-  // Fetch AMFI status data
-  const [amfiStatus, setAmfiStatus] = useState<any>(null);
-  const [isLoadingAmfiStatus, setIsLoadingAmfiStatus] = useState(false);
+  // Fetch AMFI status data for NAV import tracking
   
   const fetchAmfiStatus = async () => {
     try {

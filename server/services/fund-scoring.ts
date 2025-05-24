@@ -1359,19 +1359,6 @@ export class FundScoringEngine {
     const score = 5 + expenseRatioRank * 2;
     return Math.max(0, Math.min(10, score));
   }
-      const nav = sortedNavData[i];
-      
-      if (nav.navValue > peak) {
-        peak = nav.navValue;
-        peakIndex = i;
-      } else {
-        const drawdown = (peak - nav.navValue) / peak;
-        if (drawdown > maxDrawdown) {
-          maxDrawdown = drawdown;
-          valleyIndex = i;
-        }
-      }
-    }
     
     // Find recovery date (when NAV returns to the peak level)
     let recoveryIndex = -1;
