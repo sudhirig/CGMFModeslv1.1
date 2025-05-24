@@ -27,26 +27,36 @@ export class SimplePortfolioService {
       
       const latestScoreDate = scoreDate.rows[0]?.latest_date || new Date().toISOString().split('T')[0];
       
-      // Fetch funds with their quartile ratings, prioritizing Q1 and Q2 funds (top performers)
+      // Fetch ALL funds with their quartile ratings using a MUCH more selective approach
       // This implements the Spark Capital methodology for fund selection
       // Q1: Top 25% - BUY recommendation
       // Q2: 26-50% - HOLD recommendation
       // Q3: 51-75% - REVIEW recommendation
       // Q4: Bottom 25% - SELL recommendation
-      const scoredFunds = await pool.query(`
-        SELECT f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
-               fs.quartile, fs.total_score, 
-               CASE 
-                 WHEN fs.quartile = 1 THEN 'BUY'
-                 WHEN fs.quartile = 2 THEN 'HOLD'
-                 WHEN fs.quartile = 3 THEN 'REVIEW'
-                 WHEN fs.quartile = 4 THEN 'SELL'
-                 ELSE NULL
-               END as recommendation
+      
+      // STEP 1: Create a completely fresh approach to fund selection
+      // Fetch funds by category with quartile ratings and proper deduplication
+      
+      // First, get LARGE CAP EQUITY funds
+      const largeCapQuery = await pool.query(`
+        SELECT DISTINCT ON (f.fund_name, f.amc_name) 
+          f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
+          fs.quartile, fs.total_score, 
+          CASE 
+            WHEN fs.quartile = 1 THEN 'BUY'
+            WHEN fs.quartile = 2 THEN 'HOLD'
+            WHEN fs.quartile = 3 THEN 'REVIEW'
+            WHEN fs.quartile = 4 THEN 'SELL'
+            ELSE NULL
+          END as recommendation
         FROM funds f
         LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
         WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
-        ORDER BY 
+        AND (
+          (f.category LIKE '%Equity%' AND (f.subcategory LIKE '%Large Cap%' OR f.fund_name LIKE '%Large Cap%' OR f.fund_name LIKE '%Bluechip%'))
+          OR f.category LIKE '%Large Cap%'
+        )
+        ORDER BY f.fund_name, f.amc_name,
           CASE 
             WHEN fs.quartile = 1 THEN 1  -- First prioritize Q1 funds (top 25%)
             WHEN fs.quartile = 2 THEN 2  -- Then Q2 funds (26-50%)
@@ -55,149 +65,201 @@ export class SimplePortfolioService {
             ELSE 5                       -- Unrated funds last
           END,
           fs.total_score DESC NULLS LAST
-        LIMIT 50
+        LIMIT 10
       `, [latestScoreDate]);
       
-      console.log(`Found ${scoredFunds.rows.length} funds with quartile ratings for portfolio`);
+      // Next, get MID CAP EQUITY funds
+      const midCapQuery = await pool.query(`
+        SELECT DISTINCT ON (f.fund_name, f.amc_name) 
+          f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
+          fs.quartile, fs.total_score, 
+          CASE 
+            WHEN fs.quartile = 1 THEN 'BUY'
+            WHEN fs.quartile = 2 THEN 'HOLD'
+            WHEN fs.quartile = 3 THEN 'REVIEW'
+            WHEN fs.quartile = 4 THEN 'SELL'
+            ELSE NULL
+          END as recommendation
+        FROM funds f
+        LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
+        WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
+        AND (
+          (f.category LIKE '%Equity%' AND (f.subcategory LIKE '%Mid Cap%' OR f.fund_name LIKE '%Mid Cap%'))
+          OR f.category LIKE '%Mid Cap%'
+        )
+        ORDER BY f.fund_name, f.amc_name,
+          CASE 
+            WHEN fs.quartile = 1 THEN 1
+            WHEN fs.quartile = 2 THEN 2
+            WHEN fs.quartile = 3 THEN 3
+            WHEN fs.quartile = 4 THEN 4
+            ELSE 5
+          END,
+          fs.total_score DESC NULLS LAST
+        LIMIT 10
+      `, [latestScoreDate]);
       
-      // If we have less than 10 scored funds, get additional funds to ensure we have enough
-      let topFunds = scoredFunds.rows;
-      if (topFunds.length < 10) {
-        const additionalFunds = await pool.query(`
-          SELECT id, scheme_code, fund_name, amc_name, category, subcategory 
-          FROM funds 
-          WHERE fund_name IS NOT NULL AND amc_name IS NOT NULL
-          AND id NOT IN (SELECT fund_id FROM fund_scores WHERE score_date = $1)
-          ORDER BY id
-          LIMIT $2
-        `, [latestScoreDate, 20 - topFunds.length]);
-        
-        topFunds = [...topFunds, ...additionalFunds.rows];
-      }
+      // Get SMALL CAP EQUITY funds
+      const smallCapQuery = await pool.query(`
+        SELECT DISTINCT ON (f.fund_name, f.amc_name) 
+          f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
+          fs.quartile, fs.total_score, 
+          CASE 
+            WHEN fs.quartile = 1 THEN 'BUY'
+            WHEN fs.quartile = 2 THEN 'HOLD'
+            WHEN fs.quartile = 3 THEN 'REVIEW'
+            WHEN fs.quartile = 4 THEN 'SELL'
+            ELSE NULL
+          END as recommendation
+        FROM funds f
+        LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
+        WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
+        AND (
+          (f.category LIKE '%Equity%' AND (f.subcategory LIKE '%Small Cap%' OR f.fund_name LIKE '%Small Cap%'))
+          OR f.category LIKE '%Small Cap%'
+        )
+        ORDER BY f.fund_name, f.amc_name,
+          CASE 
+            WHEN fs.quartile = 1 THEN 1
+            WHEN fs.quartile = 2 THEN 2
+            WHEN fs.quartile = 3 THEN 3
+            WHEN fs.quartile = 4 THEN 4
+            ELSE 5
+          END,
+          fs.total_score DESC NULLS LAST
+        LIMIT 10
+      `, [latestScoreDate]);
       
-      // First, deduplicate funds by creating a map using fund name and AMC as the unique key
-      // This prevents the same fund from appearing multiple times in different categories
-      const uniqueFundMap = new Map();
+      // Get SHORT TERM DEBT funds
+      const shortTermDebtQuery = await pool.query(`
+        SELECT DISTINCT ON (f.fund_name, f.amc_name) 
+          f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
+          fs.quartile, fs.total_score, 
+          CASE 
+            WHEN fs.quartile = 1 THEN 'BUY'
+            WHEN fs.quartile = 2 THEN 'HOLD'
+            WHEN fs.quartile = 3 THEN 'REVIEW'
+            WHEN fs.quartile = 4 THEN 'SELL'
+            ELSE NULL
+          END as recommendation
+        FROM funds f
+        LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
+        WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
+        AND (
+          (f.category LIKE '%Debt%' AND (f.subcategory LIKE '%Short%' OR f.fund_name LIKE '%Short%'))
+          OR (f.fund_name LIKE '%Liquid%' OR f.subcategory LIKE '%Liquid%')
+        )
+        ORDER BY f.fund_name, f.amc_name,
+          CASE 
+            WHEN fs.quartile = 1 THEN 1
+            WHEN fs.quartile = 2 THEN 2
+            WHEN fs.quartile = 3 THEN 3
+            WHEN fs.quartile = 4 THEN 4
+            ELSE 5
+          END,
+          fs.total_score DESC NULLS LAST
+        LIMIT 10
+      `, [latestScoreDate]);
       
-      for (const fund of topFunds) {
-        // Create a unique key using fund name and AMC
-        const key = `${fund.fund_name}-${fund.amc_name}`;
-        
-        // If we've seen this fund before, keep only the one with better quartile
-        if (!uniqueFundMap.has(key) || 
-            ((fund.quartile || 5) < (uniqueFundMap.get(key).quartile || 5))) {
-          uniqueFundMap.set(key, fund);
-        }
-      }
+      // Get MEDIUM TERM DEBT funds
+      const mediumTermDebtQuery = await pool.query(`
+        SELECT DISTINCT ON (f.fund_name, f.amc_name) 
+          f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
+          fs.quartile, fs.total_score, 
+          CASE 
+            WHEN fs.quartile = 1 THEN 'BUY'
+            WHEN fs.quartile = 2 THEN 'HOLD'
+            WHEN fs.quartile = 3 THEN 'REVIEW'
+            WHEN fs.quartile = 4 THEN 'SELL'
+            ELSE NULL
+          END as recommendation
+        FROM funds f
+        LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
+        WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
+        AND (
+          (f.category LIKE '%Debt%' AND (
+            f.subcategory LIKE '%Medium%' OR 
+            f.fund_name LIKE '%Medium%' OR
+            f.fund_name LIKE '%Corporate Bond%' OR
+            f.subcategory LIKE '%Corporate Bond%'
+          ))
+        )
+        ORDER BY f.fund_name, f.amc_name,
+          CASE 
+            WHEN fs.quartile = 1 THEN 1
+            WHEN fs.quartile = 2 THEN 2
+            WHEN fs.quartile = 3 THEN 3
+            WHEN fs.quartile = 4 THEN 4
+            ELSE 5
+          END,
+          fs.total_score DESC NULLS LAST
+        LIMIT 10
+      `, [latestScoreDate]);
       
-      // Convert the map back to an array
-      const uniqueFunds = Array.from(uniqueFundMap.values());
+      // Get HYBRID funds
+      const hybridQuery = await pool.query(`
+        SELECT DISTINCT ON (f.fund_name, f.amc_name) 
+          f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
+          fs.quartile, fs.total_score, 
+          CASE 
+            WHEN fs.quartile = 1 THEN 'BUY'
+            WHEN fs.quartile = 2 THEN 'HOLD'
+            WHEN fs.quartile = 3 THEN 'REVIEW'
+            WHEN fs.quartile = 4 THEN 'SELL'
+            ELSE NULL
+          END as recommendation
+        FROM funds f
+        LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
+        WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
+        AND (
+          f.category LIKE '%Hybrid%' OR 
+          f.category LIKE '%Balanced%' OR
+          f.fund_name LIKE '%Balanced%' OR
+          f.fund_name LIKE '%Hybrid%'
+        )
+        ORDER BY f.fund_name, f.amc_name,
+          CASE 
+            WHEN fs.quartile = 1 THEN 1
+            WHEN fs.quartile = 2 THEN 2
+            WHEN fs.quartile = 3 THEN 3
+            WHEN fs.quartile = 4 THEN 4
+            ELSE 5
+          END,
+          fs.total_score DESC NULLS LAST
+        LIMIT 10
+      `, [latestScoreDate]);
       
-      // Group funds by category AND quartile for better selection
-      // For each category, we'll prioritize Q1 and Q2 funds
-      
-      // Create categorized fund lists with quartile prioritization from our deduplicated list
-      const equityLargeCapFunds = uniqueFunds
-        .filter(fund => (fund.category?.includes('Large') || (fund.category?.includes('Equity') && fund.subcategory?.includes('Large'))))
-        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
-        .slice(0, 2);
-      
-      const equityMidCapFunds = uniqueFunds
-        .filter(fund => (fund.category?.includes('Mid') || fund.subcategory?.includes('Mid')))
-        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
-        .slice(0, 2);
-      
-      const equitySmallCapFunds = uniqueFunds
-        .filter(fund => (fund.category?.includes('Small') || fund.subcategory?.includes('Small')))
-        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
-        .slice(0, 2);
-      
-      const debtShortTermFunds = uniqueFunds
-        .filter(fund => (fund.category?.includes('Debt') && (fund.subcategory?.includes('Short') || fund.fund_name?.includes('Short'))))
-        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
-        .slice(0, 2);
-      
-      const debtMediumTermFunds = uniqueFunds
-        .filter(fund => (fund.category?.includes('Debt') && (fund.subcategory?.includes('Medium') || fund.fund_name?.includes('Medium') || fund.fund_name?.includes('Corporate'))))
-        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
-        .slice(0, 2);
-      
-      const hybridFunds = uniqueFunds
-        .filter(fund => (fund.category?.includes('Hybrid') || fund.category?.includes('Balanced')))
-        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
-        .slice(0, 2);
-      
-      // General funds backup in case we didn't find specific categories
-      // Sort by quartile to ensure we're using the best-rated funds
-      const generalFunds = uniqueFunds.sort((a, b) => (a.quartile || 5) - (b.quartile || 5));
-      
-      // Filter out duplicates and prioritize funds with quartile ratings
-      const getUniqueFunds = (funds: any[], count: number) => {
-        // First get funds with quartile ratings (Q1 and Q2 preferred)
-        const ratedFunds = funds
-          .filter(fund => fund.quartile && fund.quartile <= 2) // Only Q1 and Q2 funds
-          .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
-          .slice(0, count);
-          
-        // If we still need more funds, try Q3 funds
-        let remainingCount = count - ratedFunds.length;
-        let result = [...ratedFunds];
-        
-        if (remainingCount > 0) {
-          const q3Funds = funds
-            .filter(fund => fund.quartile === 3)
-            .slice(0, remainingCount);
-          
-          result = [...result, ...q3Funds];
-          remainingCount -= q3Funds.length;
-        }
-        
-        // Only if we absolutely need more, include Q4 funds
-        if (remainingCount > 0) {
-          const q4Funds = funds
-            .filter(fund => fund.quartile === 4)
-            .slice(0, remainingCount);
-          
-          result = [...result, ...q4Funds];
-          remainingCount -= q4Funds.length;
-        }
-        
-        // As a last resort, get unrated funds
-        if (remainingCount > 0) {
-          const unratedFunds = funds
-            .filter(fund => !fund.quartile)
-            .slice(0, remainingCount);
-          
-          result = [...result, ...unratedFunds];
-        }
-        
-        return result;
-      };
-      
-      // Create unique ID sets to track all selected funds and avoid duplication
+      // STEP 2: Track a master set of selected fund IDs to absolutely ensure no duplicates
       const selectedFundIds = new Set<number>();
       
-      // Get unique funds for each category, avoiding duplicates across categories
-      // And strictly enforcing quartile-based recommendations
-      const getFundsForCategory = (funds: any[], count: number) => {
+      // STEP 3: Create a function to get the best funds from a category, prioritizing quartile
+      const getBestFundsFromCategory = (funds: any[], count: number) => {
         const result = [];
         
-        // First pass: Get only Q1 and Q2 funds (BUY/HOLD recommendations)
+        // First try to get Q1 funds
         for (const fund of funds) {
           if (result.length >= count) break;
-          
-          // Only use a fund if it hasn't been selected before
-          if (!selectedFundIds.has(fund.id) && (fund.quartile === 1 || fund.quartile === 2)) {
+          if (!selectedFundIds.has(fund.id) && fund.quartile === 1) {
             selectedFundIds.add(fund.id);
             result.push(fund);
           }
         }
         
-        // If we still need more funds and can't find enough Q1/Q2, only then use Q3 (REVIEW)
+        // Then Q2 funds
         if (result.length < count) {
           for (const fund of funds) {
             if (result.length >= count) break;
-            
+            if (!selectedFundIds.has(fund.id) && fund.quartile === 2) {
+              selectedFundIds.add(fund.id);
+              result.push(fund);
+            }
+          }
+        }
+        
+        // Then Q3 funds as a backup
+        if (result.length < count) {
+          for (const fund of funds) {
+            if (result.length >= count) break;
             if (!selectedFundIds.has(fund.id) && fund.quartile === 3) {
               selectedFundIds.add(fund.id);
               result.push(fund);
@@ -205,12 +267,11 @@ export class SimplePortfolioService {
           }
         }
         
-        // As a last resort, include Q4 (SELL) or unrated funds if we absolutely must
+        // As a last resort, use Q4 or unrated funds
         if (result.length < count) {
           for (const fund of funds) {
             if (result.length >= count) break;
-            
-            if (!selectedFundIds.has(fund.id) && (fund.quartile === 4 || !fund.quartile)) {
+            if (!selectedFundIds.has(fund.id)) {
               selectedFundIds.add(fund.id);
               result.push(fund);
             }
@@ -220,38 +281,15 @@ export class SimplePortfolioService {
         return result;
       };
       
-      // Combine all funds into categories and ensure we have enough funds
-      const largeCaps = getFundsForCategory(
-        equityLargeCapFunds.length > 0 ? equityLargeCapFunds : generalFunds.filter(f => f.category?.includes('Equity')),
-        2
-      );
+      // STEP 4: Select the best funds for each category
+      const largeCaps = getBestFundsFromCategory(largeCapQuery.rows, 2);
+      const midCaps = getBestFundsFromCategory(midCapQuery.rows, 2);
+      const smallCaps = getBestFundsFromCategory(smallCapQuery.rows, 2);
+      const shortTerms = getBestFundsFromCategory(shortTermDebtQuery.rows, 2);
+      const mediumTerms = getBestFundsFromCategory(mediumTermDebtQuery.rows, 2);
+      const hybrids = getBestFundsFromCategory(hybridQuery.rows, 2);
       
-      const midCaps = getFundsForCategory(
-        equityMidCapFunds.length > 0 ? equityMidCapFunds : generalFunds.filter(f => f.category?.includes('Equity')),
-        2
-      );
-      
-      const smallCaps = getFundsForCategory(
-        equitySmallCapFunds.length > 0 ? equitySmallCapFunds : generalFunds.filter(f => f.category?.includes('Equity')),
-        2
-      );
-      
-      const shortTerms = getFundsForCategory(
-        debtShortTermFunds.length > 0 ? debtShortTermFunds : generalFunds.filter(f => f.category?.includes('Debt')),
-        2
-      );
-      
-      const mediumTerms = getFundsForCategory(
-        debtMediumTermFunds.length > 0 ? debtMediumTermFunds : generalFunds.filter(f => f.category?.includes('Debt')),
-        2
-      );
-      
-      const hybrids = getFundsForCategory(
-        hybridFunds.length > 0 ? hybridFunds : generalFunds.filter(f => f.category?.includes('Hybrid')),
-        2
-      );
-      
-      // Create allocations from real fund data
+      // STEP 5: Create allocations from selected funds
       const allocations = [];
       
       // Add large cap funds
