@@ -29,6 +29,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Historical NAV import route
   app.use('/api/historical-nav', historicalNavImportRoutes);
   
+  // Register Fix NAV Data route
+  app.use('/api/fix-nav', fixNavDataRoutes);
+  
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
   // Fund details scheduling moved to dedicated router in api/fund-details-import.ts
