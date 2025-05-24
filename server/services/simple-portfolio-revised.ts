@@ -367,9 +367,10 @@ export class RevisedPortfolioService {
   
   /**
    * Format allocation percentage to clean display value
+   * Returns a number instead of a string to match the expected format in the UI
    */
-  formatAllocationPercentage(percentage: number): string {
-    return percentage.toFixed(0) + "%";
+  formatAllocationPercentage(percentage: number): number {
+    return Math.round(percentage);
   }
 }
 

@@ -264,20 +264,22 @@ export default function PortfolioBuilder() {
                                       {allocation.fund?.category?.split(': ')[1] || allocation.fund?.category || "Mixed Asset"}
                                     </td>
                                     <td className="px-4 py-3 text-sm font-medium text-primary-600 break-words max-w-xs">
-                                      {allocation.fund?.fundName || `Fund ${allocation.fundId || index + 1}`}
+                                      {allocation.fund?.fundName || allocation.fund?.name || `Fund ${allocation.fundId || index + 1}`}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                      {allocation.allocationPercent}%
+                                      {typeof allocation.allocationPercent === 'number' 
+                                        ? `${allocation.allocationPercent}%` 
+                                        : allocation.allocationPercent}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                                      {allocation.fund?.quartile ? (
+                                      {allocation.fund?.quartile || allocation.fund?.latestScore?.quartile ? (
                                         <span className={`inline-flex items-center justify-center w-8 h-8 text-sm font-bold rounded-full ${
-                                          allocation.fund.quartile === 1 ? 'bg-green-100 text-green-800' :
-                                          allocation.fund.quartile === 2 ? 'bg-blue-100 text-blue-800' :
-                                          allocation.fund.quartile === 3 ? 'bg-yellow-100 text-yellow-800' :
+                                          (allocation.fund?.quartile === 1 || allocation.fund?.latestScore?.quartile === 1) ? 'bg-green-100 text-green-800' :
+                                          (allocation.fund?.quartile === 2 || allocation.fund?.latestScore?.quartile === 2) ? 'bg-blue-100 text-blue-800' :
+                                          (allocation.fund?.quartile === 3 || allocation.fund?.latestScore?.quartile === 3) ? 'bg-yellow-100 text-yellow-800' :
                                           'bg-red-100 text-red-800'
                                         }`}>
-                                          Q{allocation.fund.quartile}
+                                          Q{allocation.fund?.quartile || allocation.fund?.latestScore?.quartile}
                                         </span>
                                       ) : (
                                         <span className="inline-flex items-center justify-center w-8 h-8 text-sm font-bold rounded-full bg-gray-100 text-gray-800">
