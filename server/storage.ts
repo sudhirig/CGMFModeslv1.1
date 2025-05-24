@@ -431,8 +431,8 @@ export class DatabaseStorage implements IStorage {
       const riskQuery = `
         SELECT 
           fs.quartile,
-          AVG(fs.sharpe_ratio) as avg_sharpe_ratio,
-          AVG(fs.max_drawdown) as avg_max_drawdown
+          AVG(fs.risk_grade_total) as avg_risk_grade,
+          AVG(fs.std_dev_1y_score) as avg_std_dev
         FROM fund_scores fs
         WHERE fs.quartile IS NOT NULL
         GROUP BY fs.quartile
@@ -443,9 +443,9 @@ export class DatabaseStorage implements IStorage {
       const scoringQuery = `
         SELECT 
           fs.quartile,
-          AVG(fs.returns_score) as avg_returns_score,
-          AVG(fs.risk_score) as avg_risk_score,
-          AVG(fs.other_metrics_score) as avg_other_metrics_score,
+          AVG(fs.historical_returns_total) as avg_returns_score,
+          AVG(fs.risk_grade_total) as avg_risk_score,
+          AVG(fs.other_metrics_total) as avg_other_metrics_score,
           AVG(fs.total_score) as avg_total_score
         FROM fund_scores fs
         WHERE fs.quartile IS NOT NULL
@@ -468,8 +468,8 @@ export class DatabaseStorage implements IStorage {
       // Transform risk data
       const riskData = riskResult.rows.map(row => ({
         name: `Q${row.quartile}`,
-        sharpeRatio: parseFloat(row.avg_sharpe_ratio) || 0,
-        maxDrawdown: parseFloat(row.avg_max_drawdown) || 0
+        riskGrade: parseFloat(row.avg_risk_grade) || 0,
+        stdDev: parseFloat(row.avg_std_dev) || 0
       }));
       
       // Transform scoring data
