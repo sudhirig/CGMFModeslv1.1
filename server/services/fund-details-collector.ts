@@ -147,7 +147,7 @@ export class FundDetailsCollector {
         const fundUpdate = {
           inceptionDate: new Date(inceptionYear, 0, 1),
           expenseRatio: parseFloat((0.75 + (fundId % 10) / 10).toFixed(2)),
-          exitLoad: (0.5 + (fundId % 10) / 10).toFixed(1) + "% if redeemed within 1 year",
+          exitLoad: parseFloat((0.5 + (fundId % 10) / 10).toFixed(2)), // Store just the numeric value
           benchmarkName: "Nifty 50 TRI",
           minimumInvestment: 1000 * (1 + (fundId % 10)),
           fundManager: "Fund Manager Name",
