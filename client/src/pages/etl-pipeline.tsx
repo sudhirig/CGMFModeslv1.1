@@ -16,6 +16,7 @@ export default function EtlPipeline() {
     refreshEtlStatus, 
     triggerDataCollection, 
     triggerFundDetailsCollection,
+    scheduleFundDetailsCollection,
     isLoading, 
     isCollecting, 
     isCollectingDetails, 
@@ -24,9 +25,11 @@ export default function EtlPipeline() {
   const [scheduledStatus, setScheduledStatus] = useState<{
     daily: { active: boolean; lastRun: any };
     historical: { active: boolean; lastRun: any };
+    fundDetails: { active: boolean; lastRun: any };
   }>({
     daily: { active: false, lastRun: null },
-    historical: { active: false, lastRun: null }
+    historical: { active: false, lastRun: null },
+    fundDetails: { active: false, lastRun: null }
   });
   const [isScheduling, setIsScheduling] = useState(false);
   
@@ -173,6 +176,30 @@ export default function EtlPipeline() {
     await triggerDataCollection();
   };
   
+  const handleTriggerFundDetailsCollection = async () => {
+    try {
+      toast({
+        title: "Starting Fund Details Collection",
+        description: "Collecting additional fund details like inception date, expense ratio, and more...",
+        variant: "default",
+      });
+      
+      await triggerFundDetailsCollection();
+      
+      toast({
+        title: "Fund Details Collection Started",
+        description: "The system is now collecting enhanced fund details in the background.",
+        variant: "default",
+      });
+    } catch (error) {
+      toast({
+        title: "Collection Failed",
+        description: "Failed to start fund details collection. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  
   return (
     <div className="py-6">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -200,7 +227,16 @@ export default function EtlPipeline() {
                 className="flex items-center"
               >
                 <span className="material-icons text-sm mr-1">sync</span>
-                Collect Data
+                Collect NAV Data
+              </Button>
+              <Button 
+                onClick={handleTriggerFundDetailsCollection} 
+                disabled={isCollectingDetails}
+                className="flex items-center"
+                variant="outline"
+              >
+                <span className="material-icons text-sm mr-1">analytics</span>
+                Collect Fund Details
               </Button>
             </div>
           </div>
@@ -360,15 +396,15 @@ export default function EtlPipeline() {
           <Card>
             <CardHeader>
               <CardTitle>Automated Import Schedule</CardTitle>
-              <CardDescription>Configure scheduled AMFI data imports to keep mutual fund data fresh</CardDescription>
+              <CardDescription>Configure scheduled data imports to keep mutual fund data fresh</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-neutral-50 p-4 rounded-lg border">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-medium text-neutral-900">Daily NAV Updates</h3>
                     {scheduledStatus.daily.active && (
-                      <Badge variant="success" className="bg-green-100 text-green-800">Active</Badge>
+                      <Badge className="bg-green-100 text-green-800">Active</Badge>
                     )}
                     {!scheduledStatus.daily.active && (
                       <Badge variant="outline" className="bg-neutral-200 text-neutral-600">Inactive</Badge>
@@ -435,7 +471,7 @@ export default function EtlPipeline() {
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-medium text-neutral-900">36-Month Historical Import</h3>
                     {scheduledStatus.historical.active && (
-                      <Badge variant="success" className="bg-green-100 text-green-800">Active</Badge>
+                      <Badge className="bg-green-100 text-green-800">Active</Badge>
                     )}
                     {!scheduledStatus.historical.active && (
                       <Badge variant="outline" className="bg-neutral-200 text-neutral-600">Inactive</Badge>
