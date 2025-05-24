@@ -200,7 +200,7 @@ export class RevisedPortfolioService {
         return selected.map(fund => ({
           fund,
           allocationPercent: this.formatAllocationPercentage(allocPerFund),
-          expectedReturn: this.getExpectedReturnByQuartile(fund.quartile)
+          expectedReturn: this.getExpectedReturnByQuartile(fund.quartile || 'Unrated')
         }));
       };
       
@@ -358,8 +358,12 @@ export class RevisedPortfolioService {
   /**
    * Get expected return by quartile
    */
-  getExpectedReturnByQuartile(quartile: number) {
-    switch (quartile) {
+  getExpectedReturnByQuartile(quartile: number | string) {
+    if (quartile === 'Unrated' || quartile === null || quartile === undefined) {
+      return 10.0; // Default for unrated funds
+    }
+    
+    switch (Number(quartile)) {
       case 1: return 14.0;  // Q1 funds expected to outperform
       case 2: return 12.0;  // Q2 funds slight outperformance
       case 3: return 10.0;  // Q3 funds average performance
