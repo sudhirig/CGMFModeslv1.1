@@ -37,6 +37,9 @@ export class SimplePortfolioService {
       // STEP 1: Create a completely fresh approach to fund selection
       // Fetch funds by category with quartile ratings and proper deduplication
       
+      // First, initialize an array to track all selected fund names for 100% duplicate prevention
+      const allSelectedFundNames = new Set<string>();
+      
       // First, get LARGE CAP EQUITY funds
       const largeCapQuery = await pool.query(`
         SELECT DISTINCT ON (f.fund_name, f.amc_name) 
@@ -310,13 +313,48 @@ export class SimplePortfolioService {
         return result;
       };
       
-      // STEP 4: Select the best funds for each category
-      const largeCaps = getBestFundsFromCategory(largeCapQuery.rows, 2);
-      const midCaps = getBestFundsFromCategory(midCapQuery.rows, 2);
-      const smallCaps = getBestFundsFromCategory(smallCapQuery.rows, 2);
-      const shortTerms = getBestFundsFromCategory(shortTermDebtQuery.rows, 2);
-      const mediumTerms = getBestFundsFromCategory(mediumTermDebtQuery.rows, 2);
-      const hybrids = getBestFundsFromCategory(hybridQuery.rows, 2);
+      // STEP 4: Select the best funds for each category, being absolutely sure 
+      // there's no overlap of fund names across categories
+      
+      // First, create a filtering function that removes any funds already selected
+      // across ALL categories using our global tracking Set
+      const filterDuplicateFunds = (funds: any[]) => {
+        return funds.filter(fund => {
+          const fundName = fund.fund_name;
+          return !allSelectedFundNames.has(fundName);
+        });
+      };
+      
+      // Process large cap funds first
+      const filteredLargeCaps = filterDuplicateFunds(largeCapQuery.rows);
+      const largeCaps = getBestFundsFromCategory(filteredLargeCaps, 2);
+      // Add selected fund names to global tracking set
+      largeCaps.forEach(fund => allSelectedFundNames.add(fund.fund_name));
+      
+      // Process mid cap funds next
+      const filteredMidCaps = filterDuplicateFunds(midCapQuery.rows);
+      const midCaps = getBestFundsFromCategory(filteredMidCaps, 2);
+      midCaps.forEach(fund => allSelectedFundNames.add(fund.fund_name));
+      
+      // Process small cap funds
+      const filteredSmallCaps = filterDuplicateFunds(smallCapQuery.rows);
+      const smallCaps = getBestFundsFromCategory(filteredSmallCaps, 2);
+      smallCaps.forEach(fund => allSelectedFundNames.add(fund.fund_name));
+      
+      // Process short term debt funds
+      const filteredShortTerms = filterDuplicateFunds(shortTermDebtQuery.rows);
+      const shortTerms = getBestFundsFromCategory(filteredShortTerms, 2);
+      shortTerms.forEach(fund => allSelectedFundNames.add(fund.fund_name));
+      
+      // Process medium term debt funds
+      const filteredMediumTerms = filterDuplicateFunds(mediumTermDebtQuery.rows);
+      const mediumTerms = getBestFundsFromCategory(filteredMediumTerms, 2);
+      mediumTerms.forEach(fund => allSelectedFundNames.add(fund.fund_name));
+      
+      // Process hybrid funds
+      const filteredHybrids = filterDuplicateFunds(hybridQuery.rows);
+      const hybrids = getBestFundsFromCategory(filteredHybrids, 2);
+      hybrids.forEach(fund => allSelectedFundNames.add(fund.fund_name));
       
       // STEP 5: Create allocations from selected funds
       const allocations = [];
