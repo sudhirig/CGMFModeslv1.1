@@ -687,7 +687,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Risk profile is required" });
       }
       
-      const portfolio = await portfolioBuilder.generateModelPortfolio(riskProfile);
+      // Import our new portfolio generator that uses real fund data
+      const { portfolioGenerator } = await import('./services/mock-portfolio-generator');
+      
+      // Generate a portfolio with real fund allocations
+      const portfolio = await portfolioGenerator.generatePortfolio(riskProfile);
+      
       res.json(portfolio);
     } catch (error) {
       console.error("Error generating model portfolio:", error);
