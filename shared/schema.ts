@@ -76,6 +76,43 @@ export const fundScores = pgTable("fund_scores", {
   fundId: integer("fund_id").references(() => funds.id),
   scoreDate: date("score_date").notNull(),
   
+  // Raw return data (actual percentages)
+  return1m: decimal("return_1m", { precision: 6, scale: 2 }),
+  return3m: decimal("return_3m", { precision: 6, scale: 2 }),
+  return6m: decimal("return_6m", { precision: 6, scale: 2 }),
+  return1y: decimal("return_1y", { precision: 6, scale: 2 }),
+  return3y: decimal("return_3y", { precision: 6, scale: 2 }),
+  return5y: decimal("return_5y", { precision: 6, scale: 2 }),
+  
+  // Risk metrics - raw values
+  volatility1y: decimal("volatility_1y", { precision: 6, scale: 4 }),
+  volatility3y: decimal("volatility_3y", { precision: 6, scale: 4 }),
+  sharpeRatio1y: decimal("sharpe_ratio_1y", { precision: 5, scale: 2 }),
+  sharpeRatio3y: decimal("sharpe_ratio_3y", { precision: 5, scale: 2 }),
+  sortinoRatio1y: decimal("sortino_ratio_1y", { precision: 5, scale: 2 }),
+  sortinoRatio3y: decimal("sortino_ratio_3y", { precision: 5, scale: 2 }),
+  maxDrawdown: decimal("max_drawdown", { precision: 5, scale: 2 }),
+  upCaptureRatio: decimal("up_capture_ratio", { precision: 5, scale: 2 }),
+  downCaptureRatio: decimal("down_capture_ratio", { precision: 5, scale: 2 }),
+  
+  // Quality metrics - raw values
+  consistencyScore: decimal("consistency_score", { precision: 4, scale: 2 }),
+  categoryMedianExpenseRatio: decimal("category_median_expense_ratio", { precision: 4, scale: 2 }),
+  categoryStdDevExpenseRatio: decimal("category_std_dev_expense_ratio", { precision: 4, scale: 2 }),
+  expenseRatioRank: decimal("expense_ratio_rank", { precision: 5, scale: 2 }),
+  fundAum: decimal("fund_aum", { precision: 12, scale: 2 }),
+  categoryMedianAum: decimal("category_median_aum", { precision: 12, scale: 2 }),
+  fundSizeFactor: decimal("fund_size_factor", { precision: 4, scale: 2 }),
+  
+  // Context fields
+  riskFreeRate: decimal("risk_free_rate", { precision: 4, scale: 2 }),
+  categoryBenchmarkReturn1y: decimal("category_benchmark_return_1y", { precision: 6, scale: 2 }),
+  categoryBenchmarkReturn3y: decimal("category_benchmark_return_3y", { precision: 6, scale: 2 }),
+  medianReturns1y: decimal("median_returns_1y", { precision: 6, scale: 2 }),
+  medianReturns3y: decimal("median_returns_3y", { precision: 6, scale: 2 }),
+  aboveMedianMonthsCount: integer("above_median_months_count"),
+  totalMonthsEvaluated: integer("total_months_evaluated"),
+  
   // Historical returns scores (40 points)
   return3mScore: decimal("return_3m_score", { precision: 4, scale: 1 }),
   return6mScore: decimal("return_6m_score", { precision: 4, scale: 1 }),
