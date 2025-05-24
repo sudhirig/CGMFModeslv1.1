@@ -1359,38 +1359,6 @@ export class FundScoringEngine {
     const score = 5 + expenseRatioRank * 2;
     return Math.max(0, Math.min(10, score));
   }
-    
-    // Find recovery date (when NAV returns to the peak level)
-    let recoveryIndex = -1;
-    for (let i = valleyIndex + 1; i < sortedNavData.length; i++) {
-      if (sortedNavData[i].navValue >= peak) {
-        recoveryIndex = i;
-        break;
-      }
-    }
-    
-    // Store drawdown details for reporting
-    this.drawdownInfo = {
-      maxDrawdown,
-      peakDate: sortedNavData[peakIndex].navDate,
-      valleyDate: sortedNavData[valleyIndex].navDate,
-      recoveryDate: recoveryIndex !== -1 ? sortedNavData[recoveryIndex].navDate : null,
-      recoveryPeriod: recoveryIndex !== -1 ? 
-        (new Date(sortedNavData[recoveryIndex].navDate).getTime() - 
-         new Date(sortedNavData[valleyIndex].navDate).getTime()) / (1000 * 60 * 60 * 24) : null
-    };
-    
-    return maxDrawdown;
-  }
-  
-  // Store information about the latest drawdown analysis
-  private drawdownInfo: {
-    maxDrawdown: number;
-    peakDate: Date;
-    valleyDate: Date;
-    recoveryDate: Date | null;
-    recoveryPeriod: number | null;
-  } | null = null;
   
   /**
    * Calculate Beta - measure of systematic risk relative to the market
