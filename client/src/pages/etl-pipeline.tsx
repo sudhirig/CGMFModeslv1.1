@@ -62,7 +62,11 @@ export default function EtlPipeline() {
     try {
       const response = await axios.get('/api/amfi/scheduled-status');
       if (response.data.success) {
-        setScheduledStatus(response.data.scheduledImports);
+        // Preserve bulkProcessing state which is managed client-side for now
+        setScheduledStatus({
+          ...response.data.scheduledImports,
+          bulkProcessing: scheduledStatus?.bulkProcessing || { active: false, lastRun: null }
+        });
       }
     } catch (error) {
       console.error('Error fetching scheduled status:', error);
@@ -540,8 +544,8 @@ export default function EtlPipeline() {
                       </div>
                       <div>
                         <span className="text-neutral-500">Status:</span>
-                        <span className={`ml-1 font-medium ${scheduledStatus.bulkProcessing.active ? "text-green-600" : "text-amber-600"}`}>
-                          {scheduledStatus.bulkProcessing.active ? "Active" : "Inactive"}
+                        <span className={`ml-1 font-medium ${scheduledStatus?.bulkProcessing?.active ? "text-green-600" : "text-amber-600"}`}>
+                          {scheduledStatus?.bulkProcessing?.active ? "Active" : "Inactive"}
                         </span>
                       </div>
                     </div>
@@ -568,7 +572,7 @@ export default function EtlPipeline() {
                           }
                         });
                       }}
-                      disabled={isSchedulingBulk || scheduledStatus.bulkProcessing.active}
+                      disabled={isSchedulingBulk || scheduledStatus?.bulkProcessing?.active}
                     >
                       Start Automated Processing
                     </Button>
@@ -589,11 +593,11 @@ export default function EtlPipeline() {
                           ...scheduledStatus,
                           bulkProcessing: {
                             active: false,
-                            lastRun: scheduledStatus.bulkProcessing.lastRun
+                            lastRun: scheduledStatus?.bulkProcessing?.lastRun || null
                           }
                         });
                       }}
-                      disabled={!scheduledStatus.bulkProcessing.active}
+                      disabled={!scheduledStatus?.bulkProcessing?.active}
                     >
                       Stop Processing
                     </Button>
