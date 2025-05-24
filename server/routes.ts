@@ -15,6 +15,7 @@ import fundDetailsImportRoutes from "./api/fund-details-import";
 import quartileScoringRoutes from "./api/quartile-scoring";
 import historicalNavImportRoutes from "./api/import-historical-nav";
 import fixNavDataRoutes from "./api/fix-nav-data";
+import triggerRescoringRoutes from "./api/trigger-quartile-rescoring";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
@@ -31,6 +32,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Fix NAV Data route
   app.use('/api/fix-nav', fixNavDataRoutes);
+  
+  // Register Quartile Rescoring route
+  app.use('/api/rescoring', triggerRescoringRoutes);
   
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
