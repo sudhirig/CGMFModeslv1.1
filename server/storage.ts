@@ -418,9 +418,9 @@ export class DatabaseStorage implements IStorage {
       const returnsQuery = `
         SELECT 
           fs.quartile,
-          AVG(fs.return_1y) as avg_return_1y,
-          AVG(fs.return_3y) as avg_return_3y,
-          AVG(fs.return_5y) as avg_return_5y
+          AVG(fs.return_1y_score) as avg_return_1y,
+          AVG(fs.return_3y_score) as avg_return_3y,
+          AVG(fs.return_5y_score) as avg_return_5y
         FROM fund_scores fs
         WHERE fs.quartile IS NOT NULL
         GROUP BY fs.quartile
