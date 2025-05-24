@@ -11,6 +11,57 @@ const AMFI_NAV_ALL_URL = 'https://www.amfiindia.com/spages/NAVAll.txt';
 /**
  * Start daily NAV update with real AMFI data
  */
+/**
+ * Cancel any running daily NAV updates and start a fresh one
+ */
+router.post('/restart', async (req, res) => {
+  try {
+    // Check if any daily import is running
+    const runningImports = await executeRawQuery(`
+      SELECT id FROM etl_pipeline_runs 
+      WHERE pipeline_name = 'real_daily_nav_update'
+      AND status = 'RUNNING'
+    `);
+    
+    // Mark any running imports as cancelled
+    if (runningImports.rows.length > 0) {
+      const importId = runningImports.rows[0].id;
+      await storage.updateETLRun(importId, {
+        status: 'CANCELLED',
+        endTime: new Date(),
+        errorMessage: 'Cancelled to start a fresh import with improved implementation'
+      });
+      console.log(`Cancelled daily NAV update with ID ${importId}`);
+    }
+    
+    // Create a new ETL run
+    const etlRun = await storage.createETLRun({
+      pipelineName: 'real_daily_nav_update',
+      status: 'RUNNING',
+      startTime: new Date(),
+      recordsProcessed: 0,
+      errorMessage: 'Starting fresh daily NAV update with real AMFI data (improved implementation)'
+    });
+    
+    // Start the import process in the background
+    processRealDailyUpdate(etlRun.id);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Started fresh daily NAV update with improved implementation',
+      etlRunId: etlRun.id
+    });
+  } catch (error: any) {
+    console.error('Error restarting daily NAV update:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to restart daily NAV update: ' + (error.message || 'Unknown error'),
+      error: String(error)
+    });
+  }
+});
+
 router.post('/start', async (req, res) => {
   try {
     // First, check if a daily import is already running
