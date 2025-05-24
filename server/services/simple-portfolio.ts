@@ -75,43 +75,61 @@ export class SimplePortfolioService {
         topFunds = [...topFunds, ...additionalFunds.rows];
       }
       
+      // First, deduplicate funds by creating a map using fund name and AMC as the unique key
+      // This prevents the same fund from appearing multiple times in different categories
+      const uniqueFundMap = new Map();
+      
+      for (const fund of topFunds) {
+        // Create a unique key using fund name and AMC
+        const key = `${fund.fund_name}-${fund.amc_name}`;
+        
+        // If we've seen this fund before, keep only the one with better quartile
+        if (!uniqueFundMap.has(key) || 
+            ((fund.quartile || 5) < (uniqueFundMap.get(key).quartile || 5))) {
+          uniqueFundMap.set(key, fund);
+        }
+      }
+      
+      // Convert the map back to an array
+      const uniqueFunds = Array.from(uniqueFundMap.values());
+      
       // Group funds by category AND quartile for better selection
       // For each category, we'll prioritize Q1 and Q2 funds
       
-      // Create categorized fund lists with quartile prioritization
-      const equityLargeCapFunds = topFunds
+      // Create categorized fund lists with quartile prioritization from our deduplicated list
+      const equityLargeCapFunds = uniqueFunds
         .filter(fund => (fund.category?.includes('Large') || (fund.category?.includes('Equity') && fund.subcategory?.includes('Large'))))
         .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
         .slice(0, 2);
       
-      const equityMidCapFunds = topFunds
+      const equityMidCapFunds = uniqueFunds
         .filter(fund => (fund.category?.includes('Mid') || fund.subcategory?.includes('Mid')))
         .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
         .slice(0, 2);
       
-      const equitySmallCapFunds = topFunds
+      const equitySmallCapFunds = uniqueFunds
         .filter(fund => (fund.category?.includes('Small') || fund.subcategory?.includes('Small')))
         .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
         .slice(0, 2);
       
-      const debtShortTermFunds = topFunds
+      const debtShortTermFunds = uniqueFunds
         .filter(fund => (fund.category?.includes('Debt') && (fund.subcategory?.includes('Short') || fund.fund_name?.includes('Short'))))
         .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
         .slice(0, 2);
       
-      const debtMediumTermFunds = topFunds
+      const debtMediumTermFunds = uniqueFunds
         .filter(fund => (fund.category?.includes('Debt') && (fund.subcategory?.includes('Medium') || fund.fund_name?.includes('Medium') || fund.fund_name?.includes('Corporate'))))
         .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
         .slice(0, 2);
       
-      const hybridFunds = topFunds
+      const hybridFunds = uniqueFunds
         .filter(fund => (fund.category?.includes('Hybrid') || fund.category?.includes('Balanced')))
         .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
         .slice(0, 2);
       
       // General funds backup in case we didn't find specific categories
       // Sort by quartile to ensure we're using the best-rated funds
-      const generalFunds = topFunds.sort((a, b) => (a.quartile || 5) - (b.quartile || 5));
+      const generalFunds = uniqueFunds.sort((a, b) => (a.quartile || 5) - (b.quartile || 5));
       
       // Filter out duplicates and prioritize funds with quartile ratings
       const getUniqueFunds = (funds: any[], count: number) => {
