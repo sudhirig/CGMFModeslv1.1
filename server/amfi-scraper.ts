@@ -59,7 +59,7 @@ export function generateHistoricalDates(months: number = 12): { year: number, mo
 /**
  * Fetch historical NAV data for a particular month/year
  */
-async function fetchHistoricalNavData(year: number, month: number): Promise<ParsedFund[]> {
+export async function fetchHistoricalNavData(year: number, month: number): Promise<ParsedFund[]> {
   try {
     // Format the URL parameters according to AMFI's format
     // AMFI archive format: ?fDate=25-May-2023
@@ -129,19 +129,9 @@ async function fetchHistoricalNavData(year: number, month: number): Promise<Pars
             ? parseFloat(navValueStr) 
             : 100; // Default to 100 if can't parse
           
-          // Generate a realistic historical NAV value
-          // The algorithm uses the month and year to create a varying but realistic value
-          // This is a deterministic function to ensure consistency across runs
-          const yearFactor = 1 + ((year % 5) * 0.02); // 0-10% variation based on year
-          const monthFactor = 1 + ((month - 1) / 12 * 0.05); // 0-5% variation based on month
-          const schemeFactor = 1 + (parseInt(schemeCode) % 10) * 0.005; // 0-5% variation based on scheme
-          
-          // Apply the factors to create a realistic NAV value that will vary by date
-          // The variation ensures each historical date has a different value
-          const historicalNavValue = baseNavValue * yearFactor * monthFactor * schemeFactor;
-          
-          // Round to 4 decimal places for realism
-          const navValue = Math.round(historicalNavValue * 10000) / 10000;
+          // Use the actual NAV value without modification
+          // We're working with real data, so we'll use the base NAV value as is
+          const navValue = baseNavValue;
           
           // Use the date for this historical data point
           const navDate = `${year}-${month.toString().padStart(2, '0')}-${lastDay.toString().padStart(2, '0')}`;
