@@ -890,6 +890,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to run backtest", error: (error as Error).message });
     }
   });
+  
+  // Enhanced portfolio backtest API with additional metrics
+  app.post("/api/backtest/portfolio", async (req, res) => {
+    try {
+      const { 
+        portfolioId, 
+        startDate: startDateString, 
+        endDate: endDateString, 
+        initialAmount,
+        rebalancePeriod = 'quarterly'
+      } = req.body;
+      
+      // Validate required parameters
+      if (!portfolioId) {
+        return res.status(400).json({ 
+          message: "Portfolio ID is required for portfolio backtesting." 
+        });
+      }
+      
+      if (!startDateString || !endDateString || !initialAmount) {
+        return res.status(400).json({ 
+          message: "Start date, end date, and initial amount are required." 
+        });
+      }
+      
+      // Parse dates and amount
+      const parsedStartDate = new Date(startDateString);
+      const parsedEndDate = new Date(endDateString);
+      const parsedAmount = parseFloat(initialAmount.toString());
+      
+      // Validate parsed values
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ 
+          message: "Initial amount must be a positive number." 
+        });
+      }
+      
+      if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+        return res.status(400).json({ 
+          message: "Invalid date format." 
+        });
+      }
+      
+      if (parsedStartDate >= parsedEndDate) {
+        return res.status(400).json({ 
+          message: "Start date must be before end date." 
+        });
+      }
+      
+      // Get the portfolio first to validate it exists
+      const portfolio = await storage.getModelPortfolio(parseInt(portfolioId.toString()));
+      
+      if (!portfolio) {
+        return res.status(404).json({
+          message: `Portfolio with ID ${portfolioId} not found.`
+        });
+      }
+      
+      // Run the backtest with the portfolio
+      const backtestResult = await backtestingEngine.runBacktest({
+        portfolioId: parseInt(portfolioId.toString()),
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        initialAmount: parsedAmount,
+        rebalancePeriod: rebalancePeriod as 'monthly' | 'quarterly' | 'annually'
+      });
+      
+      // Calculate additional metrics
+      const startValue = backtestResult.returns[0]?.value || parsedAmount;
+      const endValue = backtestResult.returns[backtestResult.returns.length - 1]?.value || parsedAmount;
+      const netProfit = endValue - startValue;
+      const percentageGain = ((endValue / startValue) - 1) * 100;
+      
+      // Format the response with additional information
+      const enhancedResult = {
+        ...backtestResult,
+        portfolioPerformance: backtestResult.returns.map(point => ({
+          date: point.date.toISOString().split('T')[0],
+          value: parseFloat(point.value.toFixed(2))
+        })),
+        benchmarkPerformance: backtestResult.benchmarkReturns.map(point => ({
+          date: point.date.toISOString().split('T')[0],
+          value: parseFloat(point.value.toFixed(2))
+        })),
+        metrics: {
+          totalReturn: parseFloat(backtestResult.annualizedReturn.toFixed(2)),
+          annualizedReturn: parseFloat(backtestResult.annualizedReturn.toFixed(2)),
+          volatility: parseFloat(backtestResult.volatility.toFixed(2)),
+          sharpeRatio: parseFloat(backtestResult.sharpeRatio.toFixed(2)),
+          maxDrawdown: parseFloat((backtestResult.maxDrawdown || 0).toFixed(2)),
+          successRate: 100 - parseFloat((backtestResult.maxDrawdown || 0).toFixed(2))
+        },
+        summary: {
+          startValue: parseFloat(startValue.toFixed(2)),
+          endValue: parseFloat(endValue.toFixed(2)),
+          netProfit: parseFloat(netProfit.toFixed(2)),
+          percentageGain: parseFloat(percentageGain.toFixed(2))
+        }
+      };
+      
+      res.json(enhancedResult);
+    } catch (error) {
+      console.error("Error running portfolio backtest:", error);
+      res.status(500).json({ 
+        message: "Failed to run portfolio backtest", 
+        error: (error as Error).message 
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
