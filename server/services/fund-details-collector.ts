@@ -276,3 +276,25 @@ export class FundDetailsCollector {
 
 // Export a singleton instance
 export const fundDetailsCollector = FundDetailsCollector.getInstance();
+
+// Initialize with a small batch of test data on startup
+(async () => {
+  try {
+    console.log('Initializing fund details collector with sample data...');
+    // Start with a small batch to verify functionality
+    const sampleSize = 10;
+    const allFunds = await storage.getAllFunds(sampleSize);
+    if (allFunds.length > 0) {
+      console.log(`Found ${allFunds.length} funds, starting initial details collection test...`);
+      fundDetailsCollector.collectFundDetails(allFunds.map(f => f.id))
+        .then(result => {
+          console.log(`Initial fund details collection test completed: ${result.message}`);
+        })
+        .catch(error => {
+          console.error('Error in initial fund details collection:', error);
+        });
+    }
+  } catch (error) {
+    console.error('Error initializing fund details collector:', error);
+  }
+})();
