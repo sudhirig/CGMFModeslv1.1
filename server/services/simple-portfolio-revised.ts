@@ -58,7 +58,7 @@ export class RevisedPortfolioService {
               WHEN f.subcategory LIKE '%Large%' OR f.fund_name LIKE '%Large%' THEN 'Large Cap'
               WHEN f.subcategory LIKE '%Mid%' OR f.fund_name LIKE '%Mid%' THEN 'Mid Cap'
               WHEN f.subcategory LIKE '%Small%' OR f.fund_name LIKE '%Small%' THEN 'Small Cap'
-              ELSE NULL
+              ELSE 'Other'
             END as equity_subcategory,
             -- Add row number partitioned by fund_name to ensure no duplicates
             ROW_NUMBER() OVER (PARTITION BY f.fund_name ORDER BY 

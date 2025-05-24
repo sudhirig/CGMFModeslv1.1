@@ -77,13 +77,14 @@ export default function PortfolioBuilder() {
   const getAllocationData = () => {
     if (!portfolio?.assetAllocation) return [];
     
+    // Create allocation data with proper percentages
     return [
-      { name: 'Large Cap', value: portfolio.assetAllocation.equityLargeCap },
-      { name: 'Mid Cap', value: portfolio.assetAllocation.equityMidCap },
-      { name: 'Small Cap', value: portfolio.assetAllocation.equitySmallCap },
-      { name: 'Debt Short', value: portfolio.assetAllocation.debtShortTerm },
-      { name: 'Debt Medium', value: portfolio.assetAllocation.debtMediumTerm },
-      { name: 'Hybrid', value: portfolio.assetAllocation.hybrid }
+      { name: 'Large Cap', value: portfolio.assetAllocation.equityLargeCap || 0 },
+      { name: 'Mid Cap', value: portfolio.assetAllocation.equityMidCap || 0 },
+      { name: 'Small Cap', value: portfolio.assetAllocation.equitySmallCap || 0 },
+      { name: 'Debt Short', value: portfolio.assetAllocation.debtShortTerm || 0 },
+      { name: 'Debt Medium', value: portfolio.assetAllocation.debtMediumTerm || 0 },
+      { name: 'Hybrid', value: portfolio.assetAllocation.hybrid || 0 }
     ].filter(item => item.value > 0);
   };
   
