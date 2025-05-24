@@ -89,6 +89,7 @@ export default function DatabaseExplorer() {
   // Update local import progress state when new data is received
   useEffect(() => {
     if (progressData) {
+      console.log('Progress data received:', progressData);
       setImportProgress(progressData);
       
       // If import has completed, refresh NAV counts and reset importing flags
@@ -101,6 +102,20 @@ export default function DatabaseExplorer() {
       }
     }
   }, [progressData]);
+  
+  // Force-poll for progress updates when importing historical data
+  useEffect(() => {
+    let interval: any = null;
+    if (importingHistorical) {
+      interval = setInterval(() => {
+        console.log("Polling for progress updates...");
+        refetchProgress();
+      }, 2000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [importingHistorical]);
   
   // For managing database imports
   const importAMFIData = async (includeHistorical: boolean = false) => {
@@ -676,15 +691,15 @@ export default function DatabaseExplorer() {
             </div>
             
             {/* Historical Import Progress Indicator */}
-            {importProgress.isImporting && importingHistorical && (
+            {(importProgress.isImporting || importingHistorical) && (
               <div className="w-[320px] space-y-2 p-3 border rounded-lg border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-900">
                 <div className="flex items-center justify-between text-sm">
                   <span className="flex items-center">
                     <Calendar className="h-4 w-4 mr-2 text-blue-600" />
-                    Month: {importProgress.currentMonth}/{importProgress.currentYear}
+                    Month: {importProgress.currentMonth || "Initializing"}/{importProgress.currentYear || "..."}
                   </span>
                   <span className="text-blue-700 dark:text-blue-400 font-medium">
-                    {importProgress.completedMonths} of {importProgress.totalMonths}
+                    {importProgress.completedMonths || 0} of {importProgress.totalMonths || 12}
                   </span>
                 </div>
                 
