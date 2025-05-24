@@ -143,18 +143,31 @@ export class FundDetailsCollector {
       const inceptionYear = 2000 + (fundId % 20); // Between 2000-2019
       
       try {
-        // Match database schema types exactly - the numeric types are critical
+        // Create the update with proper type handling for database compatibility
+        const fundUpdate = {
+          inceptionDate: new Date(inceptionYear, 0, 1),
+          expenseRatio: parseFloat((0.75 + (fundId % 10) / 10).toFixed(2)),
+          exitLoad: (0.5 + (fundId % 10) / 10).toFixed(1) + "% if redeemed within 1 year",
+          benchmarkName: "Nifty 50 TRI",
+          minimumInvestment: 1000 * (1 + (fundId % 10)),
+          fundManager: "Fund Manager Name",
+          lockInPeriod: 1 + (fundId % 5)
+        };
+        
+        // Log the update we're attempting to perform
+        console.log(`Updating fund ${fundId} with:`, JSON.stringify(fundUpdate));
+        
+        // Perform the update
+        const updatedFund = await storage.updateFund(fundId, fundUpdate);
+        
+        if (!updatedFund) {
+          console.error(`Fund update returned null for fund ${fundId}`);
+          return { success: false };
+        }
+        
         return {
           success: true,
-          fund: await storage.updateFund(fundId, {
-            inceptionDate: new Date(inceptionYear, 0, 1),
-            expenseRatio: Number((0.75 + (fundId % 10) / 10).toFixed(2)),
-            exitLoad: Number((0.5 + (fundId % 10) / 10).toFixed(1)),
-            benchmarkName: "Nifty 50 TRI",
-            minimumInvestment: 1000 * (1 + (fundId % 10)),
-            fundManager: "Fund Manager Name",
-            lockInPeriod: 1 + (fundId % 5)
-          })
+          fund: updatedFund
         };
       } catch (updateError) {
         console.error(`Error updating fund ${fundId}:`, updateError);
