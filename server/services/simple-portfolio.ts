@@ -28,7 +28,7 @@ export class SimplePortfolioService {
       const latestScoreDate = scoreDate.rows[0]?.latest_date || new Date().toISOString().split('T')[0];
       
       // Fetch ALL funds with their quartile ratings using a MUCH more selective approach
-      // This implements the Spark Capital methodology for fund selection
+      // This implements the Capitalglobal methodology for fund selection
       // Q1: Top 25% - BUY recommendation
       // Q2: 26-50% - HOLD recommendation
       // Q3: 51-75% - REVIEW recommendation

@@ -16,7 +16,7 @@ export default function Header() {
       case "/etl-pipeline":
         return "ETL Pipeline";
       default:
-        return "Spark Capital";
+        return "Capitalglobal";
     }
   };
   

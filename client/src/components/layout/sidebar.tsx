@@ -21,7 +21,7 @@ export default function Sidebar() {
     <div className={`${mobileOpen ? 'block' : 'hidden'} md:flex md:flex-shrink-0`}>
       <div className="flex flex-col w-64 bg-white border-r border-neutral-200">
         <div className="flex items-center justify-center h-16 px-4 border-b border-neutral-200">
-          <h1 className="text-xl font-semibold text-neutral-900">Spark Capital</h1>
+          <h1 className="text-xl font-semibold text-neutral-900">Capitalglobal</h1>
         </div>
         <div className="flex flex-col flex-grow overflow-y-auto">
           <div className="flex flex-col flex-grow px-4 py-4">
