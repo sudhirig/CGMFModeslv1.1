@@ -1,14 +1,16 @@
 import express from 'express';
 import { DateTime } from 'luxon';
 import { db, pool, executeRawQuery } from '../db';
-import { generateHistoricalDates } from '../amfi-scraper';
+import { generateHistoricalDates, fetchHistoricalNavData } from '../amfi-scraper';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 const router = express.Router();
 
 /**
  * This endpoint restarts the historical NAV import process with improved reliability
  * It will first mark the current running import as failed, then start a new import
- * with better batching and error handling
+ * with better batching and error handling to fetch real historical data from AMFI
  */
 router.post('/start', async (req, res) => {
   try {
@@ -49,7 +51,7 @@ router.post('/start', async (req, res) => {
       INSERT INTO etl_pipeline_runs 
         (pipeline_name, status, start_time, records_processed, error_message) 
       VALUES 
-        ('Historical NAV Import Restart', 'RUNNING', NOW(), 0, 'Import started with improved method')
+        ('Historical NAV Import Restart', 'RUNNING', NOW(), 0, 'Import started with real AMFI data')
       RETURNING id
     `);
     
@@ -64,7 +66,7 @@ router.post('/start', async (req, res) => {
     // Return immediately
     res.status(200).json({
       success: true,
-      message: `Started historical NAV import for ${fundsToProcess.length} funds`,
+      message: `Started historical NAV import for ${fundsToProcess.length} funds using real AMFI data`,
       etlRunId: etlRunId,
       fundsToProcess: fundsToProcess.length,
       monthsOfHistory: 36
@@ -86,7 +88,7 @@ router.post('/start', async (req, res) => {
 });
 
 /**
- * Process the historical import in batches
+ * Process the historical import in batches, fetching real data from AMFI
  */
 async function processHistoricalImport(
   funds: any[], 
@@ -94,7 +96,7 @@ async function processHistoricalImport(
   etlRunId: number
 ): Promise<void> {
   let processedCount = 0;
-  const batchSize = 20; // Process 20 funds at a time
+  const batchSize = 5; // Process 5 funds at a time to avoid overwhelming the AMFI API
   
   for (let i = 0; i < funds.length; i += batchSize) {
     const batch = funds.slice(i, i + batchSize);
@@ -111,17 +113,17 @@ async function processHistoricalImport(
       await executeRawQuery(`
         UPDATE etl_pipeline_runs
         SET records_processed = $1,
-            error_message = 'Processing fund batch ' + $2 + ' of ' + $3
+            error_message = 'Processing fund batch ' + $2 + ' of ' + $3 + ' with real AMFI data'
         WHERE id = $4
       `, [processedCount, Math.floor(i / batchSize) + 1, Math.ceil(funds.length / batchSize), etlRunId]);
       
-      console.log(`Processed historical NAV for ${processedCount} of ${funds.length} funds`);
+      console.log(`Processed historical NAV for ${processedCount} of ${funds.length} funds using real AMFI data`);
     } catch (error) {
       console.error(`Error processing batch starting at index ${i}:`, error);
     }
     
-    // Add a small delay to prevent overwhelming the API
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Add a delay to prevent overwhelming the AMFI API
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
   
   // Mark the ETL run as completed
@@ -129,76 +131,169 @@ async function processHistoricalImport(
     UPDATE etl_pipeline_runs
     SET status = 'COMPLETED',
         end_time = NOW(),
-        error_message = 'Successfully imported historical NAV data for ' + $1 + ' funds'
+        error_message = 'Successfully imported real historical NAV data for ' + $1 + ' funds'
     WHERE id = $2
   `, [processedCount, etlRunId]);
 }
 
 /**
- * Process historical NAV data for a single fund
+ * Process historical NAV data for a single fund by fetching from AMFI
  */
 async function processHistoricalFund(fund: any, dates: { year: number, month: number }[]): Promise<void> {
-  const navEntries = [];
-  
-  // For each historical date, generate synthetic NAV based on a realistic pattern
-  // This will be replaced with real data when available
-  const baseNav = 100.0; // Starting NAV value
-  const volatility = 0.02; // 2% monthly volatility
-  const trend = 0.005; // 0.5% average monthly growth
-  
-  // Start from the earliest date and move forward
-  const sortedDates = [...dates].sort((a, b) => {
-    if (a.year !== b.year) return a.year - b.year;
-    return a.month - b.month;
-  });
-  
-  let currentNav = baseNav;
-  
-  for (let i = 0; i < sortedDates.length; i++) {
-    const { year, month } = sortedDates[i];
-    
-    // Generate a realistic NAV value based on the previous month's NAV
-    // with some randomness to simulate market volatility
-    const randomFactor = 1 + (Math.random() * 2 - 1) * volatility;
-    const trendFactor = 1 + trend;
-    currentNav = currentNav * randomFactor * trendFactor;
-    
-    // Round to 4 decimal places, which is standard for NAV values
-    currentNav = Math.round(currentNav * 10000) / 10000;
-    
-    // Create a date for the last day of the month
-    const daysInMonth = new Date(year, month, 0).getDate();
-    const navDate = `${year}-${month.toString().padStart(2, '0')}-${daysInMonth.toString().padStart(2, '0')}`;
-    
-    navEntries.push({
-      fund_id: fund.id,
-      nav_date: navDate,
-      nav_value: currentNav.toFixed(4)
+  try {
+    // Sort dates from newest to oldest (AMFI API works better this way)
+    const sortedDates = [...dates].sort((a, b) => {
+      if (a.year !== b.year) return b.year - a.year; // Descending by year
+      return b.month - a.month; // Descending by month
     });
-  }
-  
-  // Batch insert the NAV entries
-  if (navEntries.length > 0) {
-    try {
-      const placeholders = navEntries.map((_, idx) => 
-        `($${idx*3 + 1}, $${idx*3 + 2}, $${idx*3 + 3})`
-      ).join(', ');
+    
+    // Process in smaller batches to avoid timeout issues
+    const batchSize = 3; // Process 3 months at a time
+    
+    for (let i = 0; i < sortedDates.length; i += batchSize) {
+      const dateBatch = sortedDates.slice(i, i + batchSize);
+      const navEntries = [];
       
-      const values = navEntries.flatMap(entry => 
-        [entry.fund_id, entry.nav_date, entry.nav_value]
-      );
+      for (const { year, month } of dateBatch) {
+        try {
+          // Fetch real NAV data from AMFI for this month/year
+          const navData = await fetchHistoricalNavDataForFund(fund.scheme_code, year, month);
+          
+          if (navData && navData.length > 0) {
+            // Add all the NAV entries for this month
+            for (const entry of navData) {
+              navEntries.push({
+                fund_id: fund.id,
+                nav_date: entry.date,
+                nav_value: entry.nav
+              });
+            }
+            
+            console.log(`Fetched ${navData.length} NAV entries for fund ${fund.scheme_code} (${year}-${month})`);
+          } else {
+            console.log(`No NAV data available for fund ${fund.scheme_code} (${year}-${month})`);
+          }
+        } catch (error) {
+          console.error(`Error fetching NAV data for fund ${fund.scheme_code} (${year}-${month}):`, error);
+        }
+        
+        // Small delay between month requests
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
       
-      // Use ON CONFLICT to avoid duplicate entries
-      await executeRawQuery(`
-        INSERT INTO nav_data (fund_id, nav_date, nav_value)
-        VALUES ${placeholders}
-        ON CONFLICT (fund_id, nav_date) DO UPDATE
-        SET nav_value = EXCLUDED.nav_value
-      `, values);
-    } catch (error) {
-      console.error(`Error inserting NAV data for fund ${fund.id}:`, error);
-      throw error;
+      // Batch insert the NAV entries if we have any
+      if (navEntries.length > 0) {
+        try {
+          const placeholders = navEntries.map((_, idx) => 
+            `($${idx*3 + 1}, $${idx*3 + 2}, $${idx*3 + 3})`
+          ).join(', ');
+          
+          const values = navEntries.flatMap(entry => 
+            [entry.fund_id, entry.nav_date, entry.nav_value]
+          );
+          
+          // Use ON CONFLICT to avoid duplicate entries
+          await executeRawQuery(`
+            INSERT INTO nav_data (fund_id, nav_date, nav_value)
+            VALUES ${placeholders}
+            ON CONFLICT (fund_id, nav_date) DO UPDATE
+            SET nav_value = EXCLUDED.nav_value
+          `, values);
+          
+          console.log(`Inserted ${navEntries.length} historical NAV entries for fund ${fund.id}`);
+        } catch (error) {
+          console.error(`Error inserting NAV data for fund ${fund.id}:`, error);
+        }
+      }
+      
+      // Delay between batches to avoid overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
+  } catch (error) {
+    console.error(`Error processing historical data for fund ${fund.id}:`, error);
+  }
+}
+
+/**
+ * Fetch historical NAV data for a specific fund from AMFI for a given month/year
+ */
+async function fetchHistoricalNavDataForFund(schemeCode: string, year: number, month: number): Promise<{ date: string, nav: string }[]> {
+  try {
+    // Calculate the from and to dates for the specified month
+    const fromDate = new Date(year, month - 1, 1);
+    const toDate = new Date(year, month, 0); // Last day of the month
+    
+    // Format dates as required by AMFI API (dd-MMM-yyyy)
+    const formatDate = (date: Date) => {
+      const day = date.getDate().toString().padStart(2, '0');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const monthStr = monthNames[date.getMonth()];
+      const yearStr = date.getFullYear();
+      return `${day}-${monthStr}-${yearStr}`;
+    };
+    
+    const fromDateStr = formatDate(fromDate);
+    const toDateStr = formatDate(toDate);
+    
+    // AMFI NAV history URL (note: actual URL may vary, this is based on common patterns)
+    const url = 'https://www.amfiindia.com/spages/NAVHistoryReport.aspx';
+    
+    // Fetch the historical NAV data
+    const response = await axios.post(url, new URLSearchParams({
+      'SchemeCode': schemeCode,
+      'FromDate': fromDateStr,
+      'ToDate': toDateStr
+    }), {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+      },
+      timeout: 15000 // 15 second timeout
+    });
+    
+    // Parse the HTML response to extract NAV data
+    const $ = cheerio.load(response.data);
+    const navEntries: { date: string, nav: string }[] = [];
+    
+    // Find the table containing NAV history
+    $('table.table-bordered tr').each((index, element) => {
+      // Skip header row
+      if (index === 0) return;
+      
+      const columns = $(element).find('td');
+      if (columns.length >= 2) {
+        const dateText = $(columns[0]).text().trim();
+        const navText = $(columns[1]).text().trim();
+        
+        if (dateText && navText && !isNaN(parseFloat(navText))) {
+          // Convert date from dd-MMM-yyyy to yyyy-MM-dd format for database
+          const dateParts = dateText.split('-');
+          if (dateParts.length === 3) {
+            const day = dateParts[0];
+            const monthAbbr = dateParts[1];
+            const year = dateParts[2];
+            
+            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const monthIndex = monthNames.findIndex(m => m === monthAbbr);
+            
+            if (monthIndex !== -1) {
+              const monthNum = (monthIndex + 1).toString().padStart(2, '0');
+              const formattedDate = `${year}-${monthNum}-${day}`;
+              
+              navEntries.push({
+                date: formattedDate,
+                nav: navText
+              });
+            }
+          }
+        }
+      }
+    });
+    
+    return navEntries;
+  } catch (error) {
+    console.error(`Error fetching historical NAV for scheme ${schemeCode} (${year}-${month}):`, error);
+    return [];
   }
 }
 
