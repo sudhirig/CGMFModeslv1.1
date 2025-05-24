@@ -414,63 +414,87 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileMetrics(): Promise<any> {
     try {
-      // Sample data for development - in production these would be real database queries
-      // Returns data by quartile
-      const returnsData = [
-        { name: "Q1", return1Y: 18.5, return3Y: 15.2 },
-        { name: "Q2", return1Y: 12.7, return3Y: 10.3 },
-        { name: "Q3", return1Y: 8.4, return3Y: 6.1 },
-        { name: "Q4", return1Y: 3.2, return3Y: 2.5 }
-      ];
-
-      // Risk metrics by quartile
-      const riskData = [
-        { name: "Q1", sharpeRatio: 1.8, maxDrawdown: 12.5 },
-        { name: "Q2", sharpeRatio: 1.3, maxDrawdown: 18.7 },
-        { name: "Q3", sharpeRatio: 0.9, maxDrawdown: 24.3 },
-        { name: "Q4", sharpeRatio: 0.4, maxDrawdown: 35.8 }
-      ];
-
-      // Scoring breakdown by quartile
-      const scoringData = [
-        { 
-          name: "Q1", 
-          label: "Q1 (Top 25%)", 
-          historicalReturns: 32.6, 
-          riskGrade: 24.8, 
-          otherMetrics: 23.7, 
-          totalScore: 81.1 
-        },
-        { 
-          name: "Q2", 
-          label: "Q2 (26-50%)", 
-          historicalReturns: 26.3, 
-          riskGrade: 19.1, 
-          otherMetrics: 20.4, 
-          totalScore: 65.8 
-        },
-        { 
-          name: "Q3", 
-          label: "Q3 (51-75%)", 
-          historicalReturns: 19.7, 
-          riskGrade: 15.6, 
-          otherMetrics: 16.9, 
-          totalScore: 52.2 
-        },
-        { 
-          name: "Q4", 
-          label: "Q4 (Bottom 25%)", 
-          historicalReturns: 12.4, 
-          riskGrade: 10.2, 
-          otherMetrics: 12.1, 
-          totalScore: 34.7 
-        }
-      ];
+      // Query for returns data by quartile
+      const returnsQuery = `
+        SELECT 
+          fs.quartile,
+          AVG(fs.return_1y) as avg_return_1y,
+          AVG(fs.return_3y) as avg_return_3y,
+          AVG(fs.return_5y) as avg_return_5y
+        FROM fund_scores fs
+        WHERE fs.quartile IS NOT NULL
+        GROUP BY fs.quartile
+        ORDER BY fs.quartile
+      `;
+      
+      // Query for risk metrics by quartile
+      const riskQuery = `
+        SELECT 
+          fs.quartile,
+          AVG(fs.sharpe_ratio) as avg_sharpe_ratio,
+          AVG(fs.max_drawdown) as avg_max_drawdown
+        FROM fund_scores fs
+        WHERE fs.quartile IS NOT NULL
+        GROUP BY fs.quartile
+        ORDER BY fs.quartile
+      `;
+      
+      // Query for scoring breakdown by quartile
+      const scoringQuery = `
+        SELECT 
+          fs.quartile,
+          AVG(fs.returns_score) as avg_returns_score,
+          AVG(fs.risk_score) as avg_risk_score,
+          AVG(fs.other_metrics_score) as avg_other_metrics_score,
+          AVG(fs.total_score) as avg_total_score
+        FROM fund_scores fs
+        WHERE fs.quartile IS NOT NULL
+        GROUP BY fs.quartile
+        ORDER BY fs.quartile
+      `;
+      
+      const returnsResult = await executeRawQuery(returnsQuery);
+      const riskResult = await executeRawQuery(riskQuery);
+      const scoringResult = await executeRawQuery(scoringQuery);
+      
+      // Transform returns data
+      const returnsData = returnsResult.rows.map(row => ({
+        name: `Q${row.quartile}`,
+        return1Y: parseFloat(row.avg_return_1y) || 0,
+        return3Y: parseFloat(row.avg_return_3y) || 0,
+        return5Y: parseFloat(row.avg_return_5y) || 0
+      }));
+      
+      // Transform risk data
+      const riskData = riskResult.rows.map(row => ({
+        name: `Q${row.quartile}`,
+        sharpeRatio: parseFloat(row.avg_sharpe_ratio) || 0,
+        maxDrawdown: parseFloat(row.avg_max_drawdown) || 0
+      }));
+      
+      // Transform scoring data
+      const scoringData = scoringResult.rows.map(row => {
+        const quartileLabels = {
+          1: "Q1 (Top 25%)",
+          2: "Q2 (26-50%)",
+          3: "Q3 (51-75%)",
+          4: "Q4 (Bottom 25%)"
+        };
+        
+        return {
+          name: `Q${row.quartile}`,
+          label: quartileLabels[row.quartile as 1|2|3|4] || `Q${row.quartile}`,
+          historicalReturns: parseFloat(row.avg_returns_score) || 0,
+          riskGrade: parseFloat(row.avg_risk_score) || 0,
+          otherMetrics: parseFloat(row.avg_other_metrics_score) || 0,
+          totalScore: parseFloat(row.avg_total_score) || 0
+        };
+      });
 
       return {
-        returnsData,
-        riskData,
-        scoringData
+        returnsData: returnsData.length > 0 ? returnsData : [],
+        riskData: riskData.length > 0 ? riskData : [],
+        scoringData: scoringData.length > 0 ? scoringData : []
       };
     } catch (error) {
       console.error("Error getting quartile metrics:", error);
@@ -480,42 +504,58 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileDistribution(category?: string): Promise<any> {
     try {
-      // Sample data for development - in production this would be a real database query
-      const distribution = {
-        totalCount: 2985,
-        q1Count: 746,
-        q2Count: 747,
-        q3Count: 746,
-        q4Count: 746,
-        q1Percent: 25,
-        q2Percent: 25, 
-        q3Percent: 25,
-        q4Percent: 25
-      };
+      // Build query conditions
+      let whereClause = "";
+      const params: any[] = [];
       
-      // Adjust slightly for categories
       if (category) {
-        // Small adjustments to simulate different distributions by category
-        if (category.startsWith('Equity')) {
-          distribution.q1Count = Math.floor(distribution.q1Count * 0.9);
-          distribution.q2Count = Math.floor(distribution.q2Count * 1.1);
-          distribution.totalCount = distribution.q1Count + distribution.q2Count + 
-                                  distribution.q3Count + distribution.q4Count;
-        } else if (category.startsWith('Debt')) {
-          distribution.q3Count = Math.floor(distribution.q3Count * 0.95);
-          distribution.q4Count = Math.floor(distribution.q4Count * 1.05);
-          distribution.totalCount = distribution.q1Count + distribution.q2Count + 
-                                  distribution.q3Count + distribution.q4Count;
-        }
-        
-        // Recalculate percentages
-        distribution.q1Percent = Math.round((distribution.q1Count / distribution.totalCount) * 100);
-        distribution.q2Percent = Math.round((distribution.q2Count / distribution.totalCount) * 100);
-        distribution.q3Percent = Math.round((distribution.q3Count / distribution.totalCount) * 100);
-        distribution.q4Percent = Math.round((distribution.q4Count / distribution.totalCount) * 100);
+        whereClause = "WHERE f.category = $1";
+        params.push(category);
       }
       
-      return distribution;
+      // Query to count funds by quartile
+      const query = `
+        SELECT 
+          COUNT(*) as total_count,
+          COUNT(CASE WHEN fs.quartile = 1 THEN 1 END) as q1_count,
+          COUNT(CASE WHEN fs.quartile = 2 THEN 1 END) as q2_count,
+          COUNT(CASE WHEN fs.quartile = 3 THEN 1 END) as q3_count,
+          COUNT(CASE WHEN fs.quartile = 4 THEN 1 END) as q4_count
+        FROM fund_scores fs
+        JOIN funds f ON fs.fund_id = f.id
+        ${whereClause}
+      `;
+      
+      const result = await executeRawQuery(query, params);
+      
+      if (result.rows.length === 0) {
+        throw new Error("No quartile data found");
+      }
+      
+      const data = result.rows[0];
+      const totalCount = parseInt(data.total_count);
+      const q1Count = parseInt(data.q1_count);
+      const q2Count = parseInt(data.q2_count);
+      const q3Count = parseInt(data.q3_count);
+      const q4Count = parseInt(data.q4_count);
+      
+      // Calculate percentages
+      const q1Percent = totalCount > 0 ? Math.round((q1Count / totalCount) * 100) : 0;
+      const q2Percent = totalCount > 0 ? Math.round((q2Count / totalCount) * 100) : 0;
+      const q3Percent = totalCount > 0 ? Math.round((q3Count / totalCount) * 100) : 0;
+      const q4Percent = totalCount > 0 ? Math.round((q4Count / totalCount) * 100) : 0;
+      
+      return {
+        totalCount,
+        q1Count,
+        q2Count,
+        q3Count,
+        q4Count,
+        q1Percent,
+        q2Percent,
+        q3Percent,
+        q4Percent
+      };
     } catch (error) {
       console.error("Error getting quartile distribution:", error);
       throw error;
