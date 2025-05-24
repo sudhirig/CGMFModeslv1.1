@@ -239,73 +239,52 @@ export class SimplePortfolioService {
       // This adds an extra layer of deduplication beyond just IDs
       const selectedFundNameAMCPairs = new Set<string>();
       
-      // STEP 3: Create a function to get the best funds from a category, prioritizing quartile
+      // STEP 3: Create a completely redesigned function for selecting the best funds
+      // This version is designed with absolute deduplication as the top priority
       const getBestFundsFromCategory = (funds: any[], count: number) => {
-        const result = [];
+        // Create a local copy to avoid modifying the original array
+        const availableFunds = [...funds].filter(fund => {
+          // Only include funds that haven't been selected before
+          // This is the key change - check the fund name directly
+          if (!fund.fund_name) return false; // Skip if no name
+          return !allSelectedFundNames.has(fund.fund_name);
+        });
         
-        // First try to get Q1 funds
-        for (const fund of funds) {
+        console.log(`Found ${availableFunds.length} unique funds after filtering duplicates`);
+        
+        const result = [];
+        const quartiles = [1, 2, 3, 4, null]; // Process in order of quartile ranking
+        
+        // Try to fill our selection with the best quartile funds first
+        for (const quartile of quartiles) {
           if (result.length >= count) break;
           
-          // Create a unique key for this fund based on name and AMC
-          const fundKey = `${fund.fund_name}|${fund.amc_name}`;
+          // Find funds of the current quartile that haven't been selected yet
+          const quartiledFunds = availableFunds.filter(fund => 
+            fund.quartile === quartile && !allSelectedFundNames.has(fund.fund_name)
+          );
           
-          // Check both ID and name+AMC combination to avoid duplicates
-          if (!selectedFundIds.has(fund.id) && 
-              !selectedFundNameAMCPairs.has(fundKey) && 
-              fund.quartile === 1) {
-            selectedFundIds.add(fund.id);
-            selectedFundNameAMCPairs.add(fundKey);
-            result.push(fund);
-          }
-        }
-        
-        // Then Q2 funds
-        if (result.length < count) {
-          for (const fund of funds) {
+          // Sort by total score (if available) descending
+          quartiledFunds.sort((a, b) => {
+            if (!a.total_score) return 1;
+            if (!b.total_score) return -1;
+            return b.total_score - a.total_score;
+          });
+          
+          // Add funds until we reach the count
+          for (const fund of quartiledFunds) {
             if (result.length >= count) break;
             
-            const fundKey = `${fund.fund_name}|${fund.amc_name}`;
-            
-            if (!selectedFundIds.has(fund.id) && 
-                !selectedFundNameAMCPairs.has(fundKey) && 
-                fund.quartile === 2) {
+            // Double-check to make sure we're not adding a duplicate
+            if (!allSelectedFundNames.has(fund.fund_name)) {
+              // Add to tracking structures
+              allSelectedFundNames.add(fund.fund_name);
               selectedFundIds.add(fund.id);
-              selectedFundNameAMCPairs.add(fundKey);
+              selectedFundNameAMCPairs.add(`${fund.fund_name}|${fund.amc_name}`);
+              
+              // Add to result
               result.push(fund);
-            }
-          }
-        }
-        
-        // Then Q3 funds as a backup
-        if (result.length < count) {
-          for (const fund of funds) {
-            if (result.length >= count) break;
-            
-            const fundKey = `${fund.fund_name}|${fund.amc_name}`;
-            
-            if (!selectedFundIds.has(fund.id) && 
-                !selectedFundNameAMCPairs.has(fundKey) && 
-                fund.quartile === 3) {
-              selectedFundIds.add(fund.id);
-              selectedFundNameAMCPairs.add(fundKey);
-              result.push(fund);
-            }
-          }
-        }
-        
-        // As a last resort, use Q4 or unrated funds
-        if (result.length < count) {
-          for (const fund of funds) {
-            if (result.length >= count) break;
-            
-            const fundKey = `${fund.fund_name}|${fund.amc_name}`;
-            
-            if (!selectedFundIds.has(fund.id) && 
-                !selectedFundNameAMCPairs.has(fundKey)) {
-              selectedFundIds.add(fund.id);
-              selectedFundNameAMCPairs.add(fundKey);
-              result.push(fund);
+              console.log(`Selected fund: ${fund.fund_name}`);
             }
           }
         }
