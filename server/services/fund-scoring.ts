@@ -261,73 +261,74 @@ export class FundScoringEngine {
       const fundSizeFactor = fundAum && categoryMedianAum ? 
         Math.min(1, Math.max(0, 1 - Math.abs(Math.log(fundAum) / Math.log(categoryMedianAum) - 1))) : null;
       
+      // Convert metrics to proper format expected by database
       const fundScore: InsertFundScore = {
         fundId,
         scoreDate: scoreDate.toISOString().split('T')[0],
         
         // Raw return data (actual percentages)
-        return1m: rawReturns.return1m,
-        return3m: rawReturns.return3m,
-        return6m: rawReturns.return6m,
-        return1y: rawReturns.return1y,
-        return3y: rawReturns.return3y,
-        return5y: rawReturns.return5y,
+        return1m: rawReturns.return1m !== null ? String(rawReturns.return1m) : null,
+        return3m: rawReturns.return3m !== null ? String(rawReturns.return3m) : null,
+        return6m: rawReturns.return6m !== null ? String(rawReturns.return6m) : null,
+        return1y: rawReturns.return1y !== null ? String(rawReturns.return1y) : null,
+        return3y: rawReturns.return3y !== null ? String(rawReturns.return3y) : null,
+        return5y: rawReturns.return5y !== null ? String(rawReturns.return5y) : null,
         
         // Risk metrics - raw values
-        volatility1y,
-        volatility3y,
-        sharpeRatio1y,
-        sharpeRatio3y,
-        sortinoRatio1y,
-        sortinoRatio3y,
-        maxDrawdown,
-        upCaptureRatio,
-        downCaptureRatio,
+        volatility1y: volatility1y !== null ? String(volatility1y) : null,
+        volatility3y: volatility3y !== null ? String(volatility3y) : null,
+        sharpeRatio1y: sharpeRatio1y !== null ? String(sharpeRatio1y) : null,
+        sharpeRatio3y: sharpeRatio3y !== null ? String(sharpeRatio3y) : null,
+        sortinoRatio1y: sortinoRatio1y !== null ? String(sortinoRatio1y) : null,
+        sortinoRatio3y: sortinoRatio3y !== null ? String(sortinoRatio3y) : null,
+        maxDrawdown: String(maxDrawdown),
+        upCaptureRatio: upCaptureRatio !== null ? String(upCaptureRatio) : null,
+        downCaptureRatio: downCaptureRatio !== null ? String(downCaptureRatio) : null,
         
         // Quality metrics - raw values
-        consistencyScore,
-        categoryMedianExpenseRatio,
-        categoryStdDevExpenseRatio,
-        expenseRatioRank,
-        fundAum,
-        categoryMedianAum,
-        fundSizeFactor,
+        consistencyScore: consistencyScore !== null ? String(consistencyScore) : null,
+        categoryMedianExpenseRatio: categoryMedianExpenseRatio !== null ? String(categoryMedianExpenseRatio) : null,
+        categoryStdDevExpenseRatio: categoryStdDevExpenseRatio !== null ? String(categoryStdDevExpenseRatio) : null,
+        expenseRatioRank: expenseRatioRank !== null ? String(expenseRatioRank) : null,
+        fundAum: String(fundAum),
+        categoryMedianAum: String(categoryMedianAum),
+        fundSizeFactor: fundSizeFactor !== null ? String(fundSizeFactor) : null,
         
         // Context fields
-        riskFreeRate,
-        categoryBenchmarkReturn1y: categoryMedianReturns1y,
-        categoryBenchmarkReturn3y: categoryMedianReturns3y,
-        medianReturns1y: categoryMedianReturns1y,
-        medianReturns3y: categoryMedianReturns3y,
+        riskFreeRate: String(riskFreeRate),
+        categoryBenchmarkReturn1y: categoryMedianReturns1y !== null ? String(categoryMedianReturns1y) : null,
+        categoryBenchmarkReturn3y: categoryMedianReturns3y !== null ? String(categoryMedianReturns3y) : null,
+        medianReturns1y: categoryMedianReturns1y !== null ? String(categoryMedianReturns1y) : null,
+        medianReturns3y: categoryMedianReturns3y !== null ? String(categoryMedianReturns3y) : null,
         aboveMedianMonthsCount,
         totalMonthsEvaluated,
         
         // Historical returns scores
-        return3mScore: historicalReturnsScore.return3m,
-        return6mScore: historicalReturnsScore.return6m,
-        return1yScore: historicalReturnsScore.return1y,
-        return3yScore: historicalReturnsScore.return3y,
-        return5yScore: historicalReturnsScore.return5y,
-        historicalReturnsTotal: totalHistoricalReturnsScore,
+        return3mScore: String(historicalReturnsScore.return3m),
+        return6mScore: String(historicalReturnsScore.return6m),
+        return1yScore: String(historicalReturnsScore.return1y),
+        return3yScore: String(historicalReturnsScore.return3y),
+        return5yScore: String(historicalReturnsScore.return5y),
+        historicalReturnsTotal: String(totalHistoricalReturnsScore),
         
         // Risk grade scores
-        stdDev1yScore: riskGradeScore.stdDev1y,
-        stdDev3yScore: riskGradeScore.stdDev3y,
-        updownCapture1yScore: riskGradeScore.updownCapture1y,
-        updownCapture3yScore: riskGradeScore.updownCapture3y,
-        maxDrawdownScore: riskGradeScore.maxDrawdown,
-        riskGradeTotal: totalRiskGradeScore,
+        stdDev1yScore: String(riskGradeScore.stdDev1y),
+        stdDev3yScore: String(riskGradeScore.stdDev3y),
+        updownCapture1yScore: String(riskGradeScore.updownCapture1y),
+        updownCapture3yScore: String(riskGradeScore.updownCapture3y),
+        maxDrawdownScore: String(riskGradeScore.maxDrawdown),
+        riskGradeTotal: String(totalRiskGradeScore),
         
         // Other metrics scores
-        sectoralSimilarityScore: otherMetricsScore.sectoralSimilarity,
-        forwardScore: otherMetricsScore.forward,
-        aumSizeScore: otherMetricsScore.aumSize,
-        expenseRatioScore: otherMetricsScore.expenseRatio,
-        otherMetricsTotal: totalOtherMetricsScore,
+        sectoralSimilarityScore: String(otherMetricsScore.sectoralSimilarity),
+        forwardScore: String(otherMetricsScore.forward),
+        aumSizeScore: String(otherMetricsScore.aumSize),
+        expenseRatioScore: String(otherMetricsScore.expenseRatio),
+        otherMetricsTotal: String(totalOtherMetricsScore),
         
         // Final scoring
-        totalScore,
-        quartile,
+        totalScore: String(totalScore),
+        quartile: quartile,
         categoryRank: 0, // Will be updated later after all funds are scored
         categoryTotal: categoryFunds.length,
         recommendation,
@@ -1050,7 +1051,63 @@ export class FundScoringEngine {
   } = { peakDate: new Date(), valleyDate: new Date() };
   
   // Already implemented above - using shared implementation
-  // Helper function to fix remaining type errors
+  /**
+   * Calculate percentile rank of a value within an array
+   * @param value The value to rank
+   * @param values Array of values to compare against
+   * @param higherIsBetter Whether higher values should rank better (true) or worse (false)
+   * @returns Percentile rank from 0 to 1
+   */
+  private calculatePercentile(value: number, values: number[], higherIsBetter: boolean): number {
+    if (values.length === 0) return 0.5; // Default to middle if no peers
+    
+    // Count how many values are better than our value
+    let betterCount = 0;
+    for (const otherValue of values) {
+      if (higherIsBetter) {
+        // For returns, higher is better
+        if (otherValue < value) betterCount++;
+      } else {
+        // For volatility/risk, lower is better
+        if (otherValue > value) betterCount++;
+      }
+    }
+    
+    // Calculate percentile (0 to 1)
+    return betterCount / values.length;
+  }
+  
+  /**
+   * Score returns based on percentile rank (higher is better)
+   */
+  private scoreReturnPercentile(value: number, peerValues: number[], maxPoints: number): number {
+    return this.calculatePercentile(value, peerValues, true) * maxPoints;
+  }
+  
+  /**
+   * Score volatility based on percentile rank (lower is better)
+   */
+  private scoreVolatilityPercentile(value: number, peerValues: number[], maxPoints: number): number {
+    return this.calculatePercentile(value, peerValues, false) * maxPoints;
+  }
+  
+  /**
+   * Score up/down capture ratio based on percentile rank (higher is better)
+   */
+  private scoreUpDownCapturePercentile(value: number, peerValues: number[], maxPoints: number): number {
+    return this.calculatePercentile(value, peerValues, true) * maxPoints;
+  }
+  
+  /**
+   * Score drawdown based on percentile rank (lower is better)
+   */
+  private scoreDrawdownPercentile(value: number, peerValues: number[], maxPoints: number): number {
+    return this.calculatePercentile(value, peerValues, false) * maxPoints;
+  }
+  
+  /**
+   * Helper function to parse string metrics to numbers
+   */
   private parseMetricToNumber(value: string | null | undefined): number | null {
     if (value === null || value === undefined) return null;
     const parsed = parseFloat(value);
