@@ -14,6 +14,7 @@ import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
 import quartileScoringRoutes from "./api/quartile-scoring";
 import historicalNavImportRoutes from "./api/import-historical-nav";
+import fixNavDataRoutes from "./api/fix-nav-data";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
