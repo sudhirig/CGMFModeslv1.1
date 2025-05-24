@@ -541,6 +541,58 @@ export default function EtlPipeline() {
                     </Button>
                   </div>
                 </div>
+                
+                {/* Fund Details Collection Card */}
+                <div className="bg-neutral-50 p-4 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-neutral-900">Enhanced Fund Details</h3>
+                    {scheduledStatus.fundDetails.active && (
+                      <Badge className="bg-green-100 text-green-800">Active</Badge>
+                    )}
+                    {!scheduledStatus.fundDetails.active && (
+                      <Badge variant="outline" className="bg-neutral-200 text-neutral-600">Inactive</Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-neutral-600 mb-1">Source: AMFI Web Scraping</div>
+                  <div className="text-xs text-neutral-600 mb-3">Frequency: Weekly</div>
+                  
+                  {scheduledStatus.fundDetails.lastRun && (
+                    <div className="mb-3 text-xs text-neutral-600">
+                      <div>Last Run: {new Date(scheduledStatus.fundDetails.lastRun.startTime).toLocaleString()}</div>
+                      <div>Status: {scheduledStatus.fundDetails.lastRun.status}</div>
+                      <div>Records: {scheduledStatus.fundDetails.lastRun.recordsProcessed || 0}</div>
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-2 mt-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      disabled={isCollectingDetails}
+                      onClick={() => {
+                        scheduleFundDetailsCollection(168); // Weekly schedule (168 hours)
+                        toast({
+                          title: "Fund Details Collection Scheduled",
+                          description: "Weekly fund details collection has been scheduled",
+                          variant: "default",
+                        });
+                      }}
+                    >
+                      Schedule Weekly
+                    </Button>
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className="flex items-center"
+                      onClick={handleTriggerFundDetailsCollection}
+                      disabled={isCollectingDetails}
+                    >
+                      <span className="material-icons text-sm mr-1">analytics</span>
+                      Run Now
+                    </Button>
+                  </div>
+                </div>
               </div>
               
               <div className="mt-4">
