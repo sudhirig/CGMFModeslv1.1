@@ -4,6 +4,13 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { storage } from '../storage';
 
+// Maximum number of retries for API calls
+const MAX_RETRIES = 3;
+// Use a more aggressive batch size for faster processing
+const FUND_BATCH_SIZE = 5;
+// Amount of historical months to fetch
+const HISTORICAL_MONTHS = 24;
+
 const router = express.Router();
 
 /**
