@@ -14,10 +14,10 @@ router.post('/', async (req, res) => {
   try {
     console.log('Starting fund details import...');
     
-    // Log ETL run start
+    // Log ETL run start - using uppercase status to match how it's stored in DB
     const etlRun = await storage.createETLRun({
       pipelineName: 'Fund Details Collection',
-      status: 'running',
+      status: 'RUNNING',
       startTime: new Date(),
       recordsProcessed: 0
     });
@@ -35,9 +35,9 @@ router.post('/', async (req, res) => {
       .then(async (result) => {
         console.log('Fund details import completed with result:', result);
         
-        // Update ETL run with completion status
+        // Update ETL run with completion status - using uppercase to match DB standards
         await storage.updateETLRun(etlRun.id, {
-          status: result.success ? 'completed' : 'failed',
+          status: result.success ? 'COMPLETED' : 'FAILED',
           endTime: new Date(),
           recordsProcessed: result.count || 0,
           errorMessage: result.success ? undefined : result.message
@@ -46,9 +46,9 @@ router.post('/', async (req, res) => {
       .catch(async (error) => {
         console.error('Fund details collection failed:', error);
         
-        // Update ETL run with error status
+        // Update ETL run with error status - using uppercase to match DB standards
         await storage.updateETLRun(etlRun.id, {
-          status: 'failed',
+          status: 'FAILED',
           endTime: new Date(),
           errorMessage: error.message || 'Unknown error occurred'
         });
@@ -123,7 +123,7 @@ router.get('/status', async (req, res) => {
     
     // Check if collection is in progress
     const isCollectionInProgress = status.length > 0 && 
-      status[0].status === 'RUNNING';
+      status[0].status.toUpperCase() === 'RUNNING';
     
     // Add detailed logging to help with debugging
     console.log('Fund details status response:', {

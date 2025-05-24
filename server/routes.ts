@@ -18,26 +18,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Fund Details routes
   app.use('/api/fund-details', fundDetailsImportRoutes);
   
-  // Endpoints for enhanced fund details collection
-  app.post('/api/fund-details', async (req, res) => {
-    try {
-      // Start a fund details collection job
-      const result = await fundDetailsCollector.collectFundDetails();
-      
-      // Return the result
-      return res.json({
-        success: true,
-        message: result.message,
-        count: result.count
-      });
-    } catch (error: any) {
-      console.error('Error collecting fund details:', error);
-      return res.status(500).json({
-        success: false,
-        message: `Failed to collect fund details: ${error.message}`
-      });
-    }
-  });
+  // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
   // Schedule regular fund details collection
   app.post('/api/fund-details/schedule', async (req, res) => {
