@@ -75,7 +75,8 @@ export class RevisedPortfolioService {
           WHERE 
             f.fund_name IS NOT NULL AND 
             f.amc_name IS NOT NULL AND
-            (fs.quartile IS NULL OR fs.quartile != 4) -- Exclude Q4 (SELL rated) funds entirely
+            fs.quartile IS NOT NULL AND  -- Only include rated funds
+            fs.quartile != 4             -- Exclude Q4 (SELL rated) funds entirely
         )
         SELECT * FROM ranked_funds
         WHERE unique_rank = 1  -- This ensures each fund name appears only once
@@ -175,23 +176,8 @@ export class RevisedPortfolioService {
         }
         
         // NEVER use Q4 funds in recommendations - they're "SELL" rated
-        // Only use Unrated funds as a last resort if we absolutely can't find enough funds
-        if (selected.length < count) {
-          const availableFunds = category['Unrated'].filter(fund => 
-            !selectedFundNames.has(fund.fund_name)
-          );
-          
-          const neededFromUnrated = Math.min(
-            count - selected.length, 
-            availableFunds.length
-          );
-          
-          for (let i = 0; i < neededFromUnrated; i++) {
-            const fund = availableFunds[i];
-            selected.push(fund);
-            selectedFundNames.add(fund.fund_name);
-          }
-        }
+        // NEVER use unrated funds in recommendations - we only want funds with proper ratings
+        // If we don't have enough rated funds, we'll just return fewer funds rather than including unrated ones
         
         // If we still don't have enough funds, we should find similar funds from other categories
         // but never use Q4 rated funds
