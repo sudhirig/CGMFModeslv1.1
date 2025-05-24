@@ -232,22 +232,30 @@ export default function PortfolioBuilder() {
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-neutral-200">
-                              {portfolio.allocations?.map((allocation, index) => (
-                                <tr key={index}>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
-                                    {allocation.fund.category.split(': ')[1] || allocation.fund.category}
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-primary-600">
-                                    {allocation.fund.fundName}
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                    {allocation.allocationPercent}%
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
-                                    {Math.round((75 + Math.random() * 25))}
+                              {Array.isArray(portfolio.allocations) && portfolio.allocations.length > 0 ? (
+                                portfolio.allocations.map((allocation, index) => (
+                                  <tr key={index}>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
+                                      {allocation.fund?.category?.split(': ')[1] || allocation.fund?.category || "Mixed Asset"}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-primary-600">
+                                      {allocation.fund?.fundName || `Fund ${allocation.fundId || index + 1}`}
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
+                                      {allocation.allocationPercent}%
+                                    </td>
+                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
+                                      {Math.round((75 + Math.random() * 25))}
+                                    </td>
+                                  </tr>
+                                ))
+                              ) : (
+                                <tr>
+                                  <td colSpan={4} className="px-4 py-3 text-center text-sm text-neutral-500">
+                                    No fund allocations available. This could be because the selected portfolio uses asset allocation only.
                                   </td>
                                 </tr>
-                              ))}
+                              )}
                             </tbody>
                           </table>
                         </div>
