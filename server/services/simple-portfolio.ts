@@ -16,8 +16,9 @@ export class SimplePortfolioService {
       // Get asset allocation based on risk profile
       const assetAllocation = this.getAllocationForRiskProfile(riskProfile);
       
-      // Define expected returns
-      const expectedReturns = this.getExpectedReturnsForRiskProfile(riskProfile);
+      // We'll initialize with a baseline, but will update this
+      // after fund allocation with actual calculations
+      let expectedReturns = this.getExpectedReturnsForRiskProfile(riskProfile);
       
       // Get latest date for fund scores
       const scoreDate = await pool.query(`
@@ -101,13 +102,72 @@ export class SimplePortfolioService {
       // Sort by quartile to ensure we're using the best-rated funds
       const generalFunds = topFunds.sort((a, b) => (a.quartile || 5) - (b.quartile || 5));
       
+      // Filter out duplicates and prioritize funds with quartile ratings
+      const getUniqueFunds = (funds: any[], count: number) => {
+        // First get funds with quartile ratings (Q1 and Q2 preferred)
+        const ratedFunds = funds
+          .filter(fund => fund.quartile)
+          .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
+          .slice(0, count);
+          
+        // If we need more funds, get unrated ones
+        if (ratedFunds.length < count) {
+          const unratedFunds = funds
+            .filter(fund => !fund.quartile)
+            .slice(0, count - ratedFunds.length);
+          
+          return [...ratedFunds, ...unratedFunds];
+        }
+        
+        return ratedFunds;
+      };
+      
+      // Create unique ID sets to avoid duplication
+      const selectedFundIds = new Set<number>();
+      
+      // Get unique funds for each category, avoiding duplicates across categories
+      const getFundsForCategory = (funds: any[], count: number) => {
+        const result = [];
+        for (const fund of funds) {
+          if (result.length >= count) break;
+          if (!selectedFundIds.has(fund.id)) {
+            selectedFundIds.add(fund.id);
+            result.push(fund);
+          }
+        }
+        return result;
+      };
+      
       // Combine all funds into categories and ensure we have enough funds
-      const largeCaps = equityLargeCapFunds.length > 0 ? equityLargeCapFunds : generalFunds.slice(0, 2);
-      const midCaps = equityMidCapFunds.length > 0 ? equityMidCapFunds : generalFunds.slice(2, 4);
-      const smallCaps = equitySmallCapFunds.length > 0 ? equitySmallCapFunds : generalFunds.slice(4, 6);
-      const shortTerms = debtShortTermFunds.length > 0 ? debtShortTermFunds : generalFunds.slice(6, 8);
-      const mediumTerms = debtMediumTermFunds.length > 0 ? debtMediumTermFunds : generalFunds.slice(8, 10);
-      const hybrids = hybridFunds.length > 0 ? hybridFunds : generalFunds.slice(10, 12);
+      const largeCaps = getFundsForCategory(
+        equityLargeCapFunds.length > 0 ? equityLargeCapFunds : generalFunds.filter(f => f.category?.includes('Equity')),
+        2
+      );
+      
+      const midCaps = getFundsForCategory(
+        equityMidCapFunds.length > 0 ? equityMidCapFunds : generalFunds.filter(f => f.category?.includes('Equity')),
+        2
+      );
+      
+      const smallCaps = getFundsForCategory(
+        equitySmallCapFunds.length > 0 ? equitySmallCapFunds : generalFunds.filter(f => f.category?.includes('Equity')),
+        2
+      );
+      
+      const shortTerms = getFundsForCategory(
+        debtShortTermFunds.length > 0 ? debtShortTermFunds : generalFunds.filter(f => f.category?.includes('Debt')),
+        2
+      );
+      
+      const mediumTerms = getFundsForCategory(
+        debtMediumTermFunds.length > 0 ? debtMediumTermFunds : generalFunds.filter(f => f.category?.includes('Debt')),
+        2
+      );
+      
+      const hybrids = getFundsForCategory(
+        hybridFunds.length > 0 ? hybridFunds : generalFunds.filter(f => f.category?.includes('Hybrid')),
+        2
+      );
       
       // Create allocations from real fund data
       const allocations = [];
@@ -177,6 +237,9 @@ export class SimplePortfolioService {
           });
         }
       }
+      
+      // Update expected returns based on actual fund allocation and quartile data
+      expectedReturns = this.calculateExpectedReturns(allocations, riskProfile);
       
       // Create portfolio object with allocations
       const portfolio = {
@@ -279,7 +342,68 @@ export class SimplePortfolioService {
   }
   
   /**
-   * Get expected returns range for a risk profile
+   * Calculate expected returns based on actual fund quartile ratings and allocation
+   */
+  private calculateExpectedReturns(allocations: any[], riskProfile: string) {
+    // Start with baseline expected returns
+    let baselineReturns = {
+      Conservative: { min: 6, max: 8 },
+      'Moderately Conservative': { min: 8, max: 10 },
+      Balanced: { min: 10, max: 12 },
+      'Moderately Aggressive': { min: 12, max: 14 },
+      Aggressive: { min: 14, max: 16 }
+    };
+    
+    // Get baseline based on risk profile
+    const baseline = baselineReturns[riskProfile as keyof typeof baselineReturns] || baselineReturns.Balanced;
+    
+    // If there are no allocations with quartile ratings, return the baseline
+    const ratedAllocations = allocations.filter(a => a.fund?.quartile);
+    if (ratedAllocations.length === 0) {
+      return baseline;
+    }
+    
+    // Calculate weighted expected returns based on quartiles
+    // Q1 funds typically have higher expected returns, Q4 funds lower
+    let weightedSum = 0;
+    let totalWeight = 0;
+    
+    for (const allocation of allocations) {
+      // Default to moderate performance if no quartile
+      let expectedReturn = (baseline.min + baseline.max) / 2;
+      
+      // Adjust expected return based on quartile
+      if (allocation.fund?.quartile === 1) {
+        // Q1 funds perform better than baseline
+        expectedReturn = baseline.max + 1;
+      } else if (allocation.fund?.quartile === 2) {
+        // Q2 funds perform at high end of baseline
+        expectedReturn = baseline.max;
+      } else if (allocation.fund?.quartile === 3) {
+        // Q3 funds perform at low end of baseline
+        expectedReturn = baseline.min;
+      } else if (allocation.fund?.quartile === 4) {
+        // Q4 funds perform below baseline
+        expectedReturn = baseline.min - 1;
+      }
+      
+      // Add weighted contribution
+      weightedSum += expectedReturn * allocation.allocationPercent;
+      totalWeight += allocation.allocationPercent;
+    }
+    
+    // Calculate weighted average expected return
+    const avgExpectedReturn = totalWeight > 0 ? weightedSum / totalWeight : (baseline.min + baseline.max) / 2;
+    
+    // Create a range around the weighted average
+    return {
+      min: Math.max(Math.round(avgExpectedReturn - 1), 1),
+      max: Math.round(avgExpectedReturn + 1)
+    };
+  }
+  
+  /**
+   * Get expected returns range for a risk profile (legacy fallback)
    */
   private getExpectedReturnsForRiskProfile(riskProfile: string) {
     switch (riskProfile) {
