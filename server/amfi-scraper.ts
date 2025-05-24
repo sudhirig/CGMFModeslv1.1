@@ -6,8 +6,8 @@ import { executeRawQuery } from './db';
 const AMFI_NAV_ALL_URL = 'https://www.amfiindia.com/spages/NAVAll.txt';
 // Historical NAV data URLs - AMFI provides historical data by month
 const AMFI_HISTORICAL_BASE_URL = 'https://www.amfiindia.com/spages/NAVArchive.aspx';
-// Calculate relevant months for historical data (past 12 months)
-const HISTORICAL_MONTHS = 12; // Number of months to fetch historically
+// Calculate relevant months for historical data (past 36 months)
+const HISTORICAL_MONTHS = 36; // Number of months to fetch historically
 
 // Since external API calls might be limited in this environment,
 // we'll generate a comprehensive mutual fund dataset
