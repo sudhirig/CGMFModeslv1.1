@@ -11,7 +11,9 @@ router.get('/status', async (req, res) => {
     const etlRuns = await storage.getETLRuns('Historical NAV Import', 1);
     
     if (etlRuns.length === 0) {
-      return res.json({
+      // Ensure Content-Type is set to application/json
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(200).json({
         success: true,
         status: {
           isImported: false,
@@ -25,7 +27,9 @@ router.get('/status', async (req, res) => {
     const isRunning = latestRun.status === 'RUNNING';
     const isCompleted = latestRun.status === 'COMPLETED';
     
-    res.json({
+    // Ensure Content-Type is set to application/json
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).json({
       success: true,
       status: {
         isImported: isCompleted,
@@ -55,7 +59,7 @@ router.post('/import', async (req, res) => {
     // Check if an import is already running
     const etlRuns = await storage.getETLRuns('Historical NAV Import', 1);
     if (etlRuns.length > 0 && etlRuns[0].status === 'RUNNING') {
-      return res.json({
+      return res.status(200).json({
         success: false,
         message: 'Historical NAV data import is already in progress',
         runId: etlRuns[0].id
@@ -79,7 +83,9 @@ router.post('/import', async (req, res) => {
     // Start import process in background
     importHistoricalNavData(etlRun.id, months);
     
-    res.json({
+    // Ensure Content-Type is set to application/json
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).json({
       success: true,
       message: `Historical NAV data import started for ${months} months of data`,
       runId: etlRun.id
