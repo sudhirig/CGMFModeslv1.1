@@ -232,6 +232,10 @@ export class SimplePortfolioService {
       // STEP 2: Track a master set of selected fund IDs to absolutely ensure no duplicates
       const selectedFundIds = new Set<number>();
       
+      // Use an additional Set to track specific fund name + AMC combinations
+      // This adds an extra layer of deduplication beyond just IDs
+      const selectedFundNameAMCPairs = new Set<string>();
+      
       // STEP 3: Create a function to get the best funds from a category, prioritizing quartile
       const getBestFundsFromCategory = (funds: any[], count: number) => {
         const result = [];
@@ -239,8 +243,16 @@ export class SimplePortfolioService {
         // First try to get Q1 funds
         for (const fund of funds) {
           if (result.length >= count) break;
-          if (!selectedFundIds.has(fund.id) && fund.quartile === 1) {
+          
+          // Create a unique key for this fund based on name and AMC
+          const fundKey = `${fund.fund_name}|${fund.amc_name}`;
+          
+          // Check both ID and name+AMC combination to avoid duplicates
+          if (!selectedFundIds.has(fund.id) && 
+              !selectedFundNameAMCPairs.has(fundKey) && 
+              fund.quartile === 1) {
             selectedFundIds.add(fund.id);
+            selectedFundNameAMCPairs.add(fundKey);
             result.push(fund);
           }
         }
@@ -249,8 +261,14 @@ export class SimplePortfolioService {
         if (result.length < count) {
           for (const fund of funds) {
             if (result.length >= count) break;
-            if (!selectedFundIds.has(fund.id) && fund.quartile === 2) {
+            
+            const fundKey = `${fund.fund_name}|${fund.amc_name}`;
+            
+            if (!selectedFundIds.has(fund.id) && 
+                !selectedFundNameAMCPairs.has(fundKey) && 
+                fund.quartile === 2) {
               selectedFundIds.add(fund.id);
+              selectedFundNameAMCPairs.add(fundKey);
               result.push(fund);
             }
           }
@@ -260,8 +278,14 @@ export class SimplePortfolioService {
         if (result.length < count) {
           for (const fund of funds) {
             if (result.length >= count) break;
-            if (!selectedFundIds.has(fund.id) && fund.quartile === 3) {
+            
+            const fundKey = `${fund.fund_name}|${fund.amc_name}`;
+            
+            if (!selectedFundIds.has(fund.id) && 
+                !selectedFundNameAMCPairs.has(fundKey) && 
+                fund.quartile === 3) {
               selectedFundIds.add(fund.id);
+              selectedFundNameAMCPairs.add(fundKey);
               result.push(fund);
             }
           }
@@ -271,8 +295,13 @@ export class SimplePortfolioService {
         if (result.length < count) {
           for (const fund of funds) {
             if (result.length >= count) break;
-            if (!selectedFundIds.has(fund.id)) {
+            
+            const fundKey = `${fund.fund_name}|${fund.amc_name}`;
+            
+            if (!selectedFundIds.has(fund.id) && 
+                !selectedFundNameAMCPairs.has(fundKey)) {
               selectedFundIds.add(fund.id);
+              selectedFundNameAMCPairs.add(fundKey);
               result.push(fund);
             }
           }
