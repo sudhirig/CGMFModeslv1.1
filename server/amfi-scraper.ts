@@ -30,14 +30,18 @@ interface ParsedFund {
 /**
  * Generate historical dates for fetching NAV data (last 12 months)
  */
-function generateHistoricalDates(): { year: number, month: number }[] {
+/**
+ * Generate historical dates for fetching NAV data based on specified number of months
+ * @param months Number of months to go back (default: 12)
+ */
+export function generateHistoricalDates(months: number = 12): { year: number, month: number }[] {
   const dates = [];
   const today = new Date();
   let currentMonth = today.getMonth(); // 0-11
   let currentYear = today.getFullYear();
   
-  // Generate the past 12 months of dates
-  for (let i = 0; i < HISTORICAL_MONTHS; i++) {
+  // Generate dates for the specified number of months
+  for (let i = 0; i < months; i++) {
     dates.push({ year: currentYear, month: currentMonth + 1 }); // Month is 1-12 for AMFI
     
     // Move to previous month
@@ -48,6 +52,7 @@ function generateHistoricalDates(): { year: number, month: number }[] {
     }
   }
   
+  console.log(`Generated ${dates.length} historical dates for NAV data import`);
   return dates;
 }
 
@@ -149,7 +154,7 @@ async function fetchHistoricalNavData(year: number, month: number): Promise<Pars
   }
 }
 
-export async function fetchAMFIMutualFundData(includeHistorical: boolean = false) {
+export async function fetchAMFIMutualFundData(includeHistorical: boolean = false, months: number = 12) {
   try {
     console.log('Starting real AMFI mutual fund data import...');
     
@@ -250,9 +255,9 @@ export async function fetchAMFIMutualFundData(includeHistorical: boolean = false
     if (includeHistorical) {
       console.log('Starting historical NAV data import...');
       
-      // Get dates for historical data
-      const historicalDates = generateHistoricalDates();
-      console.log(`Will fetch historical data for ${historicalDates.length} months.`);
+      // Get dates for historical data based on specified number of months
+      const historicalDates = generateHistoricalDates(months);
+      console.log(`Will fetch historical data for ${historicalDates.length} months (${months} requested).`);
       
       // Fetch and import historical data for each month
       for (const date of historicalDates) {
