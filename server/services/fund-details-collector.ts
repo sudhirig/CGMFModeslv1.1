@@ -133,40 +133,30 @@ export class FundDetailsCollector {
     try {
       console.log(`Collecting details for ${fund.fundName} (${fund.schemeCode})`);
       
-      // Generate unique but realistic data based on fund ID
-      // This ensures we get different values for different funds
+      // Generate consistent test data based on fund ID
       const fundId = fund.id || 1;
       const inceptionYear = 2000 + (fundId % 20); // Between 2000-2019
-      const expenseRatioBase = 0.75 + (fundId % 10) / 10; // Between 0.75-1.65
-      const minInvestment = 1000 * (1 + (fundId % 10)); // Between 1000-10000
       
-      // Match database schema types exactly
-      const enhancedDetails = {
-        inceptionDate: new Date(inceptionYear, 0, 1),
-        expenseRatio: Number(expenseRatioBase.toFixed(2)),
-        exitLoad: Number((0.5 + (fundId % 10) / 10).toFixed(1)),
-        benchmarkName: "Nifty 50 TRI",
-        minimumInvestment: minInvestment,
-        fundManager: "Fund Manager Name",
-        lockInPeriod: 1 + (fundId % 5)
-      };
-      
-      // Remove undefined fields
-      Object.keys(enhancedDetails).forEach(key => {
-        if (enhancedDetails[key] === undefined) {
-          delete enhancedDetails[key];
-        }
-      });
-      
-      // If we have any details, update the fund
-      if (Object.keys(enhancedDetails).length > 0) {
-        const updatedFund = await storage.updateFund(fund.id, enhancedDetails);
-        console.log(`Updated fund ${fund.id} with enhanced details`);
-        return { success: true, fund: updatedFund };
-      } else {
-        console.log(`No additional details found for fund ${fund.id}`);
+      try {
+        // Match database schema types exactly - the numeric types are critical
+        return {
+          success: true,
+          fund: await storage.updateFund(fundId, {
+            inceptionDate: new Date(inceptionYear, 0, 1),
+            expenseRatio: Number((0.75 + (fundId % 10) / 10).toFixed(2)),
+            exitLoad: Number((0.5 + (fundId % 10) / 10).toFixed(1)),
+            benchmarkName: "Nifty 50 TRI",
+            minimumInvestment: 1000 * (1 + (fundId % 10)),
+            fundManager: "Fund Manager Name",
+            lockInPeriod: 1 + (fundId % 5)
+          })
+        };
+      } catch (updateError) {
+        console.error(`Error updating fund ${fundId}:`, updateError);
         return { success: false };
       }
+      
+      // This section is now handled in the try block above
     } catch (error) {
       console.error(`Error processing fund ${fund.id}:`, error);
       return { success: false };
