@@ -19,38 +19,87 @@ export class SimplePortfolioService {
       // Define expected returns
       const expectedReturns = this.getExpectedReturnsForRiskProfile(riskProfile);
       
-      // Directly fetch real mutual fund data from database with names and all details
-      const topFunds = await pool.query(`
-        SELECT id, scheme_code, fund_name, amc_name, category, subcategory 
-        FROM funds 
-        WHERE fund_name IS NOT NULL AND amc_name IS NOT NULL
-        ORDER BY id
-        LIMIT 20
+      // Get latest date for fund scores
+      const scoreDate = await pool.query(`
+        SELECT MAX(score_date) as latest_date FROM fund_scores
       `);
       
-      console.log(`Found ${topFunds.rows.length} real mutual funds for portfolio`);
+      const latestScoreDate = scoreDate.rows[0]?.latest_date || new Date().toISOString().split('T')[0];
       
-      // Create categorized fund lists
-      const equityLargeCapFunds = topFunds.rows.filter(fund => 
-        fund.category?.includes('Large') || fund.category?.includes('Equity')).slice(0, 2);
+      // Fetch funds with their quartile ratings, prioritizing Q1 and Q2 funds (top performers)
+      // This implements the Spark Capital methodology for fund selection
+      const scoredFunds = await pool.query(`
+        SELECT f.id, f.scheme_code, f.fund_name, f.amc_name, f.category, f.subcategory,
+               fs.quartile, fs.total_score, fs.recommendation
+        FROM funds f
+        LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
+        WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
+        ORDER BY 
+          CASE 
+            WHEN fs.quartile = 1 THEN 1  -- First prioritize Q1 funds (top 25%)
+            WHEN fs.quartile = 2 THEN 2  -- Then Q2 funds (26-50%)
+            WHEN fs.quartile = 3 THEN 3  -- Then Q3 funds (51-75%)
+            WHEN fs.quartile = 4 THEN 4  -- Then Q4 funds (bottom 25%)
+            ELSE 5                       -- Unrated funds last
+          END,
+          fs.total_score DESC NULLS LAST
+        LIMIT 50
+      `, [latestScoreDate]);
       
-      const equityMidCapFunds = topFunds.rows.filter(fund => 
-        fund.category?.includes('Mid') || fund.subcategory?.includes('Mid')).slice(0, 2);
+      console.log(`Found ${scoredFunds.rows.length} funds with quartile ratings for portfolio`);
       
-      const equitySmallCapFunds = topFunds.rows.filter(fund => 
-        fund.category?.includes('Small') || fund.subcategory?.includes('Small')).slice(0, 2);
+      // If we have less than 10 scored funds, get additional funds to ensure we have enough
+      let topFunds = scoredFunds.rows;
+      if (topFunds.length < 10) {
+        const additionalFunds = await pool.query(`
+          SELECT id, scheme_code, fund_name, amc_name, category, subcategory 
+          FROM funds 
+          WHERE fund_name IS NOT NULL AND amc_name IS NOT NULL
+          AND id NOT IN (SELECT fund_id FROM fund_scores WHERE score_date = $1)
+          ORDER BY id
+          LIMIT $2
+        `, [latestScoreDate, 20 - topFunds.length]);
+        
+        topFunds = [...topFunds, ...additionalFunds.rows];
+      }
       
-      const debtShortTermFunds = topFunds.rows.filter(fund => 
-        fund.category?.includes('Debt') || fund.category?.includes('Short')).slice(0, 2);
+      // Group funds by category AND quartile for better selection
+      // For each category, we'll prioritize Q1 and Q2 funds
       
-      const debtMediumTermFunds = topFunds.rows.filter(fund => 
-        fund.category?.includes('Medium') || fund.category?.includes('Corporate')).slice(0, 2);
+      // Create categorized fund lists with quartile prioritization
+      const equityLargeCapFunds = topFunds
+        .filter(fund => (fund.category?.includes('Large') || (fund.category?.includes('Equity') && fund.subcategory?.includes('Large'))))
+        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
+        .slice(0, 2);
       
-      const hybridFunds = topFunds.rows.filter(fund => 
-        fund.category?.includes('Hybrid') || fund.category?.includes('Balanced')).slice(0, 2);
+      const equityMidCapFunds = topFunds
+        .filter(fund => (fund.category?.includes('Mid') || fund.subcategory?.includes('Mid')))
+        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
+        .slice(0, 2);
+      
+      const equitySmallCapFunds = topFunds
+        .filter(fund => (fund.category?.includes('Small') || fund.subcategory?.includes('Small')))
+        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
+        .slice(0, 2);
+      
+      const debtShortTermFunds = topFunds
+        .filter(fund => (fund.category?.includes('Debt') && (fund.subcategory?.includes('Short') || fund.fund_name?.includes('Short'))))
+        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
+        .slice(0, 2);
+      
+      const debtMediumTermFunds = topFunds
+        .filter(fund => (fund.category?.includes('Debt') && (fund.subcategory?.includes('Medium') || fund.fund_name?.includes('Medium') || fund.fund_name?.includes('Corporate'))))
+        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
+        .slice(0, 2);
+      
+      const hybridFunds = topFunds
+        .filter(fund => (fund.category?.includes('Hybrid') || fund.category?.includes('Balanced')))
+        .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
+        .slice(0, 2);
       
       // General funds backup in case we didn't find specific categories
-      const generalFunds = topFunds.rows;
+      // Sort by quartile to ensure we're using the best-rated funds
+      const generalFunds = topFunds.sort((a, b) => (a.quartile || 5) - (b.quartile || 5));
       
       // Combine all funds into categories and ensure we have enough funds
       const largeCaps = equityLargeCapFunds.length > 0 ? equityLargeCapFunds : generalFunds.slice(0, 2);
@@ -146,7 +195,10 @@ export class SimplePortfolioService {
             fundName: allocation.fund.fund_name, // Use the database field name
             amcName: allocation.fund.amc_name,   // Use the database field name
             category: allocation.fund.category || 'Mixed Asset',
-            subcategory: allocation.fund.subcategory
+            subcategory: allocation.fund.subcategory,
+            quartile: allocation.fund.quartile,
+            recommendation: allocation.fund.recommendation,
+            totalScore: allocation.fund.total_score
           }
         })),
         createdAt: new Date().toISOString()
