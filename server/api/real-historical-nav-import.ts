@@ -92,32 +92,60 @@ router.post('/start', async (req, res) => {
  */
 async function processAuthenticHistoricalImport(funds: any[], etlRunId: number): Promise<void> {
   let processedCount = 0;
-  const batchSize = 5; // Process 5 funds at a time to avoid overwhelming the AMFI API
+  const batchSize = 2; // Process just 2 funds at a time to avoid overwhelming the AMFI API
   
+  await storage.updateETLRun(etlRunId, {
+    recordsProcessed: processedCount,
+    errorMessage: `Starting improved historical NAV import for ${funds.length} funds...`
+  });
+  
+  // Process each fund individually to prevent Promise.all from getting stuck
   for (let i = 0; i < funds.length; i += batchSize) {
     const batch = funds.slice(i, i + batchSize);
     
     try {
-      // Process this batch
-      await Promise.all(batch.map(fund => 
-        processAuthenticHistoricalFund(fund)
-      ));
-      
-      processedCount += batch.length;
-      
-      // Update the ETL run record
-      await storage.updateETLRun(etlRunId, {
-        recordsProcessed: processedCount,
-        errorMessage: `Imported batch ${Math.floor(i / batchSize) + 1}, progress: ${processedCount}/${funds.length}`
-      });
-      
-      console.log(`Imported batch ${Math.floor(i / batchSize) + 1}, progress: ${processedCount}/${funds.length}`);
-    } catch (error) {
-      console.error(`Error processing batch starting at index ${i}:`, error);
+      // Process each fund in the batch sequentially
+      for (const fund of batch) {
+        try {
+          await storage.updateETLRun(etlRunId, {
+            errorMessage: `Processing fund ${processedCount + 1}/${funds.length}: ${fund.fund_name} (ID: ${fund.id})`
+          });
+          
+          // Process this fund with timeout protection
+          await Promise.race([
+            processAuthenticHistoricalFund(fund),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error(`Timeout processing fund ${fund.id}`)), 60000)
+            )
+          ]);
+          
+          // Only increment count if processing completes successfully
+          processedCount++;
+          
+          // Update the ETL run record after each fund
+          await storage.updateETLRun(etlRunId, {
+            recordsProcessed: processedCount,
+            errorMessage: `Imported fund ${processedCount}/${funds.length}: ${fund.fund_name}`
+          });
+          
+          console.log(`Imported fund ${processedCount}/${funds.length}: ${fund.fund_name} (ID: ${fund.id})`);
+        } catch (fundError) {
+          console.error(`Error processing fund ${fund.id} (${fund.fund_name}):`, fundError);
+          await storage.updateETLRun(etlRunId, {
+            errorMessage: `Error with fund ${fund.id}, continuing to next fund... (${processedCount}/${funds.length})`
+          });
+          // We don't increment processedCount for failed funds
+        }
+        
+        // Add a delay between individual funds
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+    } catch (batchError) {
+      console.error(`Error processing batch starting at index ${i}:`, batchError);
     }
     
-    // Add a delay to prevent overwhelming the AMFI API
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // Add a delay between batches
+    await new Promise(resolve => setTimeout(resolve, 3000));
   }
   
   // Mark the ETL run as completed
@@ -133,35 +161,49 @@ async function processAuthenticHistoricalImport(funds: any[], etlRunId: number):
  */
 async function processAuthenticHistoricalFund(fund: any): Promise<void> {
   try {
-    // We'll process 36 months of data (3 years)
-    const months = 36;
+    // We'll process 24 months of data (2 years) to speed up the import and focus on more recent data
+    const months = 24;
     
     // Generate dates for the last X months
     const dates = generateMonthsBack(months);
     
-    // Process in smaller batches
-    const batchSize = 3; // 3 months at a time
+    // Process in smaller batches with better error handling
+    const batchSize = 2; // 2 months at a time to be more resilient
+    let totalNavEntriesInserted = 0;
     
     for (let i = 0; i < dates.length; i += batchSize) {
       const dateBatch = dates.slice(i, i + batchSize);
-      const navEntries = [];
+      const allNavEntries = [];
       
       for (const { year, month } of dateBatch) {
         try {
-          // Fetch real NAV data from AMFI for this month/year
-          const navData = await fetchAuthenticHistoricalNav(fund.scheme_code, year, month);
+          console.log(`Processing fund ${fund.id} (${fund.fund_name}): ${year}-${month}`);
+          
+          // Fetch real NAV data from AMFI for this month/year with timeout protection
+          let navData;
+          try {
+            navData = await Promise.race([
+              fetchAuthenticHistoricalNav(fund.scheme_code, year, month),
+              new Promise<never>((_, reject) => 
+                setTimeout(() => reject(new Error(`Timeout fetching NAV for ${year}-${month}`)), 20000)
+              )
+            ]);
+          } catch (timeoutError) {
+            console.error(`Timeout fetching NAV data for scheme ${fund.scheme_code} (${year}-${month})`);
+            continue; // Skip this month and move to the next
+          }
           
           if (navData && navData.length > 0) {
+            console.log(`Found ${navData.length} NAV entries for ${fund.fund_name} (${year}-${month})`);
+            
             // Add all the NAV entries for this month
             for (const entry of navData) {
-              navEntries.push({
+              allNavEntries.push({
                 fundId: fund.id,
                 navDate: entry.date,
-                navValue: entry.nav // Keep as string to match the expected type
+                navValue: parseFloat(entry.nav)
               });
             }
-            
-            console.log(`Fetched ${navData.length} authentic NAV entries for fund ${fund.scheme_code} (${year}-${month})`);
           } else {
             console.log(`No authentic NAV data available for fund ${fund.scheme_code} (${year}-${month})`);
           }
@@ -169,33 +211,69 @@ async function processAuthenticHistoricalFund(fund: any): Promise<void> {
           console.error(`Error fetching authentic NAV data for fund ${fund.scheme_code} (${year}-${month}):`, error);
         }
         
-        // Small delay between requests
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Small delay between months to avoid overwhelming the AMFI API
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      // Batch insert the NAV entries
-      if (navEntries.length > 0) {
+      // Process this batch of NAV entries if we found any
+      if (allNavEntries.length > 0) {
         try {
-          // Convert entries to match the expected schema type
-          const formattedEntries = navEntries.map(entry => ({
-            fundId: entry.fundId,
-            navDate: entry.navDate,
-            navValue: entry.navValue
-          }));
+          // Batch insert using direct SQL for better performance with conflict handling
+          const placeholders = [];
+          const values = [];
+          let paramIndex = 1;
           
-          // Use the storage interface to insert NAV data
-          await storage.bulkInsertNavData(formattedEntries);
-          console.log(`Inserted ${navEntries.length} authentic historical NAV entries for fund ${fund.id}`);
-        } catch (error) {
-          console.error(`Error inserting authentic NAV data for fund ${fund.id}:`, error);
+          for (const entry of allNavEntries) {
+            placeholders.push(`($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2})`);
+            values.push(entry.fundId, entry.navDate, entry.navValue);
+            paramIndex += 3;
+          }
+          
+          // Use an UPSERT operation for better reliability
+          const query = `
+            INSERT INTO nav_data (fund_id, nav_date, nav_value)
+            VALUES ${placeholders.join(', ')}
+            ON CONFLICT (fund_id, nav_date) 
+            DO UPDATE SET nav_value = EXCLUDED.nav_value
+          `;
+          
+          await executeRawQuery(query, values);
+          totalNavEntriesInserted += allNavEntries.length;
+          
+          console.log(`Successfully inserted/updated ${allNavEntries.length} NAV entries for fund ${fund.id} (${fund.fund_name})`);
+        } catch (insertError) {
+          console.error(`Error inserting NAV data batch for fund ${fund.id}:`, insertError);
+          
+          // If batch insert fails, try individual inserts as fallback
+          try {
+            console.log(`Attempting individual inserts for ${allNavEntries.length} entries...`);
+            for (const entry of allNavEntries) {
+              try {
+                await executeRawQuery(`
+                  INSERT INTO nav_data (fund_id, nav_date, nav_value)
+                  VALUES ($1, $2, $3)
+                  ON CONFLICT (fund_id, nav_date) DO UPDATE SET nav_value = EXCLUDED.nav_value
+                `, [entry.fundId, entry.navDate, entry.navValue]);
+                
+                totalNavEntriesInserted++;
+              } catch (singleInsertError) {
+                console.error(`Error inserting individual NAV entry:`, singleInsertError);
+              }
+            }
+          } catch (fallbackError) {
+            console.error(`Fallback insert strategy also failed:`, fallbackError);
+          }
         }
       }
       
-      // Delay between batches
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Add a delay between batches to prevent overwhelming the database
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
+    
+    console.log(`Completed processing for fund ${fund.id} (${fund.fund_name}). Total NAV entries inserted: ${totalNavEntriesInserted}`);
   } catch (error) {
     console.error(`Error processing authentic historical data for fund ${fund.id}:`, error);
+    throw error; // Re-throw to let the caller handle it
   }
 }
 
@@ -246,18 +324,46 @@ async function fetchAuthenticHistoricalNav(schemeCode: string, year: number, mon
     // AMFI NAV history URL 
     const url = 'https://www.amfiindia.com/spages/NAVHistoryReport.aspx';
     
-    // Fetch the historical NAV data
-    const response = await axios.post(url, new URLSearchParams({
-      'SchemeCode': schemeCode,
-      'FromDate': fromDateStr,
-      'ToDate': toDateStr
-    }), {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-      },
-      timeout: 15000 // 15 second timeout
-    });
+    // Implement retry mechanism for greater reliability
+    let response;
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        // Fetch the historical NAV data with increased timeout
+        response = await axios.post(url, new URLSearchParams({
+          'SchemeCode': schemeCode,
+          'FromDate': fromDateStr,
+          'ToDate': toDateStr
+        }), {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9'
+          },
+          timeout: 30000 // 30 second timeout
+        });
+        
+        // If we got data, break out of retry loop
+        if (response && response.data) {
+          break;
+        }
+      } catch (error) {
+        console.error(`AMFI fetch attempt ${retryCount + 1} failed for scheme ${schemeCode} (${year}-${month}):`, error);
+        retryCount++;
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, retryCount)));
+      }
+    }
+    
+    // If all retries failed, return empty array
+    if (!response || !response.data) {
+      console.error(`Failed to fetch NAV data for scheme ${schemeCode} after ${maxRetries} attempts`);
+      return [];
+    }
     
     // Parse the HTML response to extract NAV data
     const $ = cheerio.load(response.data);
