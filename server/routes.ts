@@ -691,7 +691,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { simplePortfolioService } = await import('./services/simple-portfolio');
       
       // Generate a portfolio with real fund allocations
-      const portfolio = await simplePortfolioService.generatePortfolio(riskProfile);
+      let portfolio = await simplePortfolioService.generatePortfolio(riskProfile);
+      
+      // Additional deduplication at the API level to ensure no duplicate funds
+      if (portfolio && portfolio.allocations) {
+        // Create a map to track which funds we've already seen by name
+        const seenFundNames = new Set();
+        const uniqueAllocations = [];
+        
+        for (const allocation of portfolio.allocations) {
+          if (!allocation.fund || !allocation.fund.fundName) {
+            uniqueAllocations.push(allocation);
+            continue;
+          }
+          
+          // If we haven't seen this fund name before, keep it
+          if (!seenFundNames.has(allocation.fund.fundName)) {
+            seenFundNames.add(allocation.fund.fundName);
+            uniqueAllocations.push(allocation);
+          } else {
+            console.log(`Removing duplicate fund: ${allocation.fund.fundName}`);
+          }
+        }
+        
+        // Replace with deduplicated allocations
+        portfolio.allocations = uniqueAllocations;
+        console.log(`After deduplication: ${uniqueAllocations.length} unique funds in portfolio`);
+      }
       
       res.json(portfolio);
     } catch (error) {
