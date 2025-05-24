@@ -121,7 +121,17 @@ export default function DatabaseExplorer() {
   const importAMFIData = async (includeHistorical: boolean = false) => {
     try {
       if (includeHistorical) {
+        // Set state immediately for UI feedback
         setImportingHistorical(true);
+        setImportProgress({
+          ...importProgress,
+          isImporting: true,
+          currentMonth: 'Initializing',
+          currentYear: new Date().getFullYear().toString(),
+          totalMonths: 12,
+          completedMonths: 0,
+          totalImported: 0
+        });
       } else {
         setImporting(true);
       }
@@ -137,13 +147,22 @@ export default function DatabaseExplorer() {
         // Show success toast
         // @ts-ignore
         window.toast?.({
-          title: includeHistorical ? 'Historical NAV Data Imported' : 'AMFI Data Imported',
-          description: data.message,
+          title: includeHistorical ? 'Historical NAV Data Import Started' : 'AMFI Data Imported',
+          description: includeHistorical 
+            ? 'Historical data import is running in the background. You can track the progress here.' 
+            : data.message,
           variant: 'success'
         });
         
-        // Refresh data counts
-        refetchNavCounts();
+        // For historical imports, keep state active since process continues in background
+        if (includeHistorical) {
+          // Keep importingHistorical true until process completes
+          // The progress endpoint will be polled to show real-time updates
+        } else {
+          // For regular imports, we can reset state and refresh counts
+          setImporting(false);
+          refetchNavCounts();
+        }
       } else {
         // Show error toast
         // @ts-ignore
@@ -152,6 +171,13 @@ export default function DatabaseExplorer() {
           description: data.message,
           variant: 'destructive'
         });
+        
+        // Reset states on error
+        if (includeHistorical) {
+          setImportingHistorical(false);
+        } else {
+          setImporting(false);
+        }
       }
     } catch (error) {
       console.error('Import error:', error);
@@ -161,7 +187,8 @@ export default function DatabaseExplorer() {
         description: 'Failed to import AMFI data. See console for details.',
         variant: 'destructive'
       });
-    } finally {
+      
+      // Reset states on error
       if (includeHistorical) {
         setImportingHistorical(false);
       } else {
