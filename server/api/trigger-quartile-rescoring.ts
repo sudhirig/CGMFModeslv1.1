@@ -48,6 +48,7 @@ router.post('/start', async (req, res) => {
     console.log(`Starting batch scoring for ${fundIds.length} funds with historical NAV data`);
     
     // Start the quartile scoring process in the background - will process in batches
+    // This will score funds that have sufficient NAV data
     const scoringPromise = scoringEngine.batchScoreFunds(500);
     
     // Return immediately so the client doesn't have to wait
