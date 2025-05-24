@@ -263,7 +263,7 @@ export default function PortfolioBuilder() {
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-900">
                                       {allocation.fund?.category?.split(': ')[1] || allocation.fund?.category || "Mixed Asset"}
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-primary-600">
+                                    <td className="px-4 py-3 text-sm font-medium text-primary-600 break-words max-w-xs">
                                       {allocation.fund?.fundName || `Fund ${allocation.fundId || index + 1}`}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">

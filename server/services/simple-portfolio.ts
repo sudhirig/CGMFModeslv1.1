@@ -106,20 +106,43 @@ export class SimplePortfolioService {
       const getUniqueFunds = (funds: any[], count: number) => {
         // First get funds with quartile ratings (Q1 and Q2 preferred)
         const ratedFunds = funds
-          .filter(fund => fund.quartile)
+          .filter(fund => fund.quartile && fund.quartile <= 2) // Only Q1 and Q2 funds
           .sort((a, b) => (a.quartile || 5) - (b.quartile || 5))
           .slice(0, count);
           
-        // If we need more funds, get unrated ones
-        if (ratedFunds.length < count) {
-          const unratedFunds = funds
-            .filter(fund => !fund.quartile)
-            .slice(0, count - ratedFunds.length);
+        // If we still need more funds, try Q3 funds
+        let remainingCount = count - ratedFunds.length;
+        let result = [...ratedFunds];
+        
+        if (remainingCount > 0) {
+          const q3Funds = funds
+            .filter(fund => fund.quartile === 3)
+            .slice(0, remainingCount);
           
-          return [...ratedFunds, ...unratedFunds];
+          result = [...result, ...q3Funds];
+          remainingCount -= q3Funds.length;
         }
         
-        return ratedFunds;
+        // Only if we absolutely need more, include Q4 funds
+        if (remainingCount > 0) {
+          const q4Funds = funds
+            .filter(fund => fund.quartile === 4)
+            .slice(0, remainingCount);
+          
+          result = [...result, ...q4Funds];
+          remainingCount -= q4Funds.length;
+        }
+        
+        // As a last resort, get unrated funds
+        if (remainingCount > 0) {
+          const unratedFunds = funds
+            .filter(fund => !fund.quartile)
+            .slice(0, remainingCount);
+          
+          result = [...result, ...unratedFunds];
+        }
+        
+        return result;
       };
       
       // Create unique ID sets to avoid duplication
@@ -369,20 +392,23 @@ export class SimplePortfolioService {
     let totalWeight = 0;
     
     for (const allocation of allocations) {
+      // Skip allocations without a fund
+      if (!allocation.fund) continue;
+      
       // Default to moderate performance if no quartile
       let expectedReturn = (baseline.min + baseline.max) / 2;
       
       // Adjust expected return based on quartile
-      if (allocation.fund?.quartile === 1) {
+      if (allocation.fund.quartile === 1) {
         // Q1 funds perform better than baseline
-        expectedReturn = baseline.max + 1;
-      } else if (allocation.fund?.quartile === 2) {
+        expectedReturn = baseline.max + 2;
+      } else if (allocation.fund.quartile === 2) {
         // Q2 funds perform at high end of baseline
-        expectedReturn = baseline.max;
-      } else if (allocation.fund?.quartile === 3) {
+        expectedReturn = baseline.max + 1;
+      } else if (allocation.fund.quartile === 3) {
         // Q3 funds perform at low end of baseline
         expectedReturn = baseline.min;
-      } else if (allocation.fund?.quartile === 4) {
+      } else if (allocation.fund.quartile === 4) {
         // Q4 funds perform below baseline
         expectedReturn = baseline.min - 1;
       }
