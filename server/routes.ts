@@ -7,11 +7,16 @@ import { elivateFramework } from "./services/elivate-framework";
 import { fundScoringEngine } from "./services/fund-scoring";
 import { portfolioBuilder } from "./services/portfolio-builder";
 import { backtestingEngine } from "./services/backtesting-engine";
+import { fundDetailsCollector } from "./services/fund-details-collector";
 import amfiImportRoutes from "./api/amfi-import";
+import fundDetailsImportRoutes from "./api/fund-details-import";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
   app.use('/api/amfi', amfiImportRoutes);
+  
+  // Register Fund Details routes
+  app.use('/api/fund-details', fundDetailsImportRoutes);
   
   // Endpoints for scheduled NAV data imports
   app.post('/api/schedule-import', async (req, res) => {

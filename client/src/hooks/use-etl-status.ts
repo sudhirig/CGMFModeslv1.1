@@ -33,6 +33,30 @@ export function useEtlStatus() {
     },
   });
   
+  // Trigger fund details collection
+  const { mutate: triggerFundDetailsCollection, isPending: isCollectingDetails } = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("GET", "/api/fund-details", {});
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate ETL status query
+      queryClient.invalidateQueries({ queryKey: ["/api/etl/status"] });
+    },
+  });
+  
+  // Schedule regular fund details collection
+  const { mutate: scheduleFundDetailsCollection } = useMutation({
+    mutationFn: async (hours: number = 168) => { // Default: weekly
+      const response = await apiRequest("GET", `/api/fund-details/schedule?hours=${hours}`, {});
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate ETL status query
+      queryClient.invalidateQueries({ queryKey: ["/api/etl/status"] });
+    },
+  });
+  
   return {
     etlRuns,
     isLoading,
@@ -40,5 +64,8 @@ export function useEtlStatus() {
     refreshEtlStatus,
     triggerDataCollection,
     isCollecting,
+    triggerFundDetailsCollection,
+    isCollectingDetails,
+    scheduleFundDetailsCollection
   };
 }

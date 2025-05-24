@@ -98,9 +98,7 @@ export class FundDetailsCollector {
         startTime: new Date(),
         endTime: new Date(),
         recordsProcessed: validFunds.length,
-        recordsSucceeded: successCount,
-        recordsFailed: validFunds.length - successCount,
-        details: `Successfully collected enhanced details for ${successCount} out of ${validFunds.length} funds`
+        errorMessage: `Successfully collected enhanced details for ${successCount} out of ${validFunds.length} funds`
       });
       
       return {
@@ -117,7 +115,7 @@ export class FundDetailsCollector {
         status: 'FAILED',
         startTime: new Date(),
         endTime: new Date(),
-        details: `Error: ${error.message || 'Unknown error'}`
+        errorMessage: `Error: ${error.message || 'Unknown error'}`
       });
       
       return {

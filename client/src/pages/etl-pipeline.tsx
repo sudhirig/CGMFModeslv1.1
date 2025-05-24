@@ -11,7 +11,16 @@ import axios from "axios";
 import { Progress } from "@/components/ui/progress";
 
 export default function EtlPipeline() {
-  const { etlRuns, refreshEtlStatus, triggerDataCollection, isLoading, isCollecting, error } = useEtlStatus();
+  const { 
+    etlRuns, 
+    refreshEtlStatus, 
+    triggerDataCollection, 
+    triggerFundDetailsCollection,
+    isLoading, 
+    isCollecting, 
+    isCollectingDetails, 
+    error 
+  } = useEtlStatus();
   const [scheduledStatus, setScheduledStatus] = useState<{
     daily: { active: boolean; lastRun: any };
     historical: { active: boolean; lastRun: any };
