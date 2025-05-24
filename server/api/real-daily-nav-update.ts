@@ -307,17 +307,38 @@ async function processRealDailyUpdate(etlRunId: number): Promise<void> {
       const batch = navDataToInsert.slice(i, i + batchSize);
       
       try {
-        await storage.bulkInsertNavData(batch);
+        // Use UPSERT instead of INSERT to handle existing records
+        // We'll create a custom query to update if the record exists, or insert if it doesn't
+        const placeholders = [];
+        const values = [];
+        let valueIndex = 1;
+        
+        for (const entry of batch) {
+          placeholders.push(`($${valueIndex}, $${valueIndex + 1}, $${valueIndex + 2})`);
+          values.push(entry.fundId, entry.navDate, entry.navValue);
+          valueIndex += 3;
+        }
+        
+        // Build and execute the UPSERT query
+        const query = `
+          INSERT INTO nav_data (fund_id, nav_date, nav_value)
+          VALUES ${placeholders.join(', ')}
+          ON CONFLICT (fund_id, nav_date) 
+          DO UPDATE SET nav_value = EXCLUDED.nav_value
+        `;
+        
+        await executeRawQuery(query, values);
+        
         insertedCount += batch.length;
         
         // Update progress
         await storage.updateETLRun(etlRunId, {
           recordsProcessed: insertedCount,
-          errorMessage: `Inserted ${insertedCount} of ${navDataToInsert.length} NAV entries`
+          errorMessage: `Processed ${insertedCount} of ${navDataToInsert.length} NAV entries (using upsert)`
         });
-        console.log(`Inserted batch ${Math.floor(i / batchSize) + 1}, progress: ${insertedCount}/${navDataToInsert.length}`);
+        console.log(`Processed batch ${Math.floor(i / batchSize) + 1}, progress: ${insertedCount}/${navDataToInsert.length}`);
       } catch (error) {
-        console.error(`Error inserting NAV batch ${Math.floor(i / batchSize) + 1}:`, error);
+        console.error(`Error processing NAV batch ${Math.floor(i / batchSize) + 1}:`, error);
       }
     }
     
