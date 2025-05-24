@@ -1045,12 +1045,178 @@ export class FundScoringEngine {
   }
   
   // Note: drawdown info tracking for reporting
+  /**
+   * Calculate maximum drawdown from NAV data
+   * Maximum drawdown measures the largest peak-to-valley decline in fund value
+   * @param navData Array of NAV data points sorted by date
+   * @param days Number of days to look back (default: all available data)
+   * @returns Maximum drawdown as a percentage (0-100)
+   */
+  private calculateMaxDrawdown(navData: NavData[], days: number = 0): number {
+    // Sort data by date ascending
+    const sortedData = [...navData].sort((a, b) => 
+      new Date(a.navDate).getTime() - new Date(b.navDate).getTime()
+    );
+    
+    // If days parameter is provided, limit the data
+    const relevantData = days > 0 && days < sortedData.length 
+      ? sortedData.slice(-days) 
+      : sortedData;
+    
+    if (relevantData.length < 2) return 0;
+    
+    let maxDrawdown = 0;
+    let peak = parseFloat(relevantData[0].navValue);
+    let peakIndex = 0;
+    
+    // Find maximum drawdown
+    for (let i = 1; i < relevantData.length; i++) {
+      const currentValue = parseFloat(relevantData[i].navValue);
+      
+      // New peak
+      if (currentValue > peak) {
+        peak = currentValue;
+        peakIndex = i;
+        continue;
+      }
+      
+      // Calculate drawdown from peak
+      const drawdown = (peak - currentValue) / peak * 100;
+      if (drawdown > maxDrawdown) {
+        maxDrawdown = drawdown;
+        this.drawdownInfo = {
+          peakDate: new Date(relevantData[peakIndex].navDate),
+          valleyDate: new Date(relevantData[i].navDate)
+        };
+      }
+    }
+    
+    return maxDrawdown;
+  }
+  
   private drawdownInfo: {
     peakDate: Date;
     valleyDate: Date;
   } = { peakDate: new Date(), valleyDate: new Date() };
   
   // Already implemented above - using shared implementation
+  /**
+   * Get model sector allocation based on current market conditions
+   * @returns Object mapping sectors to allocation percentages
+   */
+  private getModelSectorAllocation(): Record<string, number> {
+    // Based on current ELIVATE score and market stance
+    const marketStance = this.marketStance || 'NEUTRAL';
+    
+    if (marketStance === 'BULLISH') {
+      return {
+        'Banking & Finance': 0.35,
+        'Technology': 0.25,
+        'Consumer Discretionary': 0.15,
+        'Healthcare': 0.10,
+        'Industrials': 0.10,
+        'Others': 0.05
+      };
+    } else if (marketStance === 'NEUTRAL') {
+      return {
+        'Banking & Finance': 0.30,
+        'Technology': 0.20,
+        'Healthcare': 0.15,
+        'Consumer Staples': 0.15,
+        'Industrials': 0.10,
+        'Others': 0.10
+      };
+    } else { // BEARISH
+      return {
+        'Healthcare': 0.25,
+        'Consumer Staples': 0.25,
+        'Banking & Finance': 0.20,
+        'Technology': 0.15,
+        'Utilities': 0.10,
+        'Others': 0.05
+      };
+    }
+  }
+  
+  /**
+   * Get current sector allocation for a fund
+   * @param fundId Fund ID
+   * @returns Object mapping sectors to allocation percentages
+   */
+  private async getCurrentSectorAllocation(fundId: number): Promise<Record<string, number>> {
+    // Get portfolio holdings data
+    const holdings = await storage.getPortfolioHoldings(fundId);
+    
+    if (holdings.length === 0) {
+      return { 'Others': 1.0 }; // No data available
+    }
+    
+    // Aggregate by sector
+    const sectorMap: Record<string, number> = {};
+    let totalAllocated = 0;
+    
+    for (const holding of holdings) {
+      const sector = holding.sector || 'Others';
+      const allocation = parseFloat(holding.holdingPercent || '0');
+      
+      if (!isNaN(allocation)) {
+        sectorMap[sector] = (sectorMap[sector] || 0) + allocation;
+        totalAllocated += allocation;
+      }
+    }
+    
+    // Normalize if total is not 100%
+    if (totalAllocated > 0 && Math.abs(totalAllocated - 100) > 1) {
+      for (const sector in sectorMap) {
+        sectorMap[sector] = sectorMap[sector] / totalAllocated * 100;
+      }
+    }
+    
+    return sectorMap;
+  }
+  
+  /**
+   * Calculate similarity score between fund allocation and model allocation
+   * @param currentAllocation Current fund sector allocation
+   * @param modelAllocation Model sector allocation based on market conditions
+   * @param maxPoints Maximum points to award
+   * @returns Similarity score (0 to maxPoints)
+   */
+  private calculateSectoralSimilarityScore(
+    currentAllocation: Record<string, number>,
+    modelAllocation: Record<string, number>,
+    maxPoints: number
+  ): number {
+    // Calculate similarity score using cosine similarity
+    const allSectors = new Set([
+      ...Object.keys(currentAllocation),
+      ...Object.keys(modelAllocation)
+    ]);
+    
+    let dotProduct = 0;
+    let magnitude1 = 0;
+    let magnitude2 = 0;
+    
+    for (const sector of allSectors) {
+      const value1 = currentAllocation[sector] || 0;
+      const value2 = modelAllocation[sector] || 0;
+      
+      dotProduct += value1 * value2;
+      magnitude1 += value1 * value1;
+      magnitude2 += value2 * value2;
+    }
+    
+    magnitude1 = Math.sqrt(magnitude1);
+    magnitude2 = Math.sqrt(magnitude2);
+    
+    if (magnitude1 === 0 || magnitude2 === 0) {
+      return maxPoints * 0.5; // Default to middle if no data
+    }
+    
+    const similarity = dotProduct / (magnitude1 * magnitude2);
+    return similarity * maxPoints;
+  }
+
   /**
    * Calculate percentile rank of a value within an array
    * @param value The value to rank
