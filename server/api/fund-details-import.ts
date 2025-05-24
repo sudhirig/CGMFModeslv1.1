@@ -170,6 +170,57 @@ router.post('/schedule', async (req, res) => {
   }
 });
 
+// Schedule bulk processing of fund details
+router.post('/schedule-bulk', async (req, res) => {
+  try {
+    // Parse parameters with defaults
+    const batchSize = req.body.batchSize ? parseInt(req.body.batchSize as string) : 100;
+    const batchCount = req.body.batchCount ? parseInt(req.body.batchCount as string) : 5;
+    const intervalHours = req.body.intervalHours ? parseInt(req.body.intervalHours as string) : 24;
+    
+    // Start the scheduled bulk processing
+    fundDetailsCollector.startScheduledBulkProcessing(batchSize, batchCount, intervalHours);
+    
+    res.json({
+      success: true,
+      message: `Scheduled bulk fund details processing every ${intervalHours} hours`,
+      details: {
+        batchSize,
+        batchCount,
+        fundsPerRun: batchSize * batchCount,
+        nextRun: new Date(Date.now() + intervalHours * 60 * 60 * 1000).toISOString()
+      }
+    });
+  } catch (error: any) {
+    console.error('Error scheduling bulk fund details processing:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to schedule bulk fund details processing: ' + (error.message || 'Unknown error')
+    });
+  }
+});
+
+// Stop scheduled bulk processing
+router.post('/stop-bulk', async (req, res) => {
+  try {
+    // Stop the scheduled bulk processing
+    fundDetailsCollector.stopScheduledBulkProcessing();
+    
+    res.json({
+      success: true,
+      message: 'Stopped scheduled bulk fund details processing'
+    });
+  } catch (error: any) {
+    console.error('Error stopping bulk fund details processing:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to stop bulk fund details processing: ' + (error.message || 'Unknown error')
+    });
+  }
+});
+
 // Get detailed status of fund details collection
 router.get('/status', async (req, res) => {
   try {

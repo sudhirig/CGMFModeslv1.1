@@ -80,6 +80,32 @@ export function useEtlStatus() {
     },
   });
   
+  // Schedule bulk processing of fund details
+  const { mutate: scheduleBulkProcessing, isPending: isSchedulingBulk } = useMutation({
+    mutationFn: async (config: { batchSize?: number; batchCount?: number; intervalHours?: number }) => {
+      const response = await apiRequest("POST", "/api/fund-details/schedule-bulk", config);
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/etl/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fund-details/status"] });
+    },
+  });
+  
+  // Stop scheduled bulk processing
+  const { mutate: stopBulkProcessing } = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/fund-details/stop-bulk", {});
+      return response.json();
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["/api/etl/status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/fund-details/status"] });
+    },
+  });
+  
   // Extract fund details stats from the response or provide defaults
   const fundDetailsStats: FundDetailsStats = fundDetailsData?.detailsStats || {
     totalFunds: 0,
@@ -99,6 +125,9 @@ export function useEtlStatus() {
     triggerFundDetailsCollection,
     isCollectingDetails,
     scheduleFundDetailsCollection,
+    scheduleBulkProcessing,
+    isSchedulingBulk,
+    stopBulkProcessing,
     fundDetailsStats,
     isLoadingFundDetails
   };

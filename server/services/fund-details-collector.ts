@@ -376,18 +376,28 @@ export class FundDetailsCollector {
     };
   }
   
+  // Variables to track scheduled jobs
+  private detailsCollectionInterval: NodeJS.Timeout | null = null;
+  private bulkProcessingInterval: NodeJS.Timeout | null = null;
+
   /**
    * Start a scheduled fund details collection job
    * @param intervalHours How often to run the collection (in hours)
    */
   public startScheduledDetailsFetch(intervalHours: number = 168): void { // Default weekly
+    // Clear existing interval if any
+    if (this.detailsCollectionInterval) {
+      clearInterval(this.detailsCollectionInterval);
+      this.detailsCollectionInterval = null;
+    }
+    
     console.log(`Starting scheduled fund details collection every ${intervalHours} hours`);
     
     // Convert hours to milliseconds
     const intervalMs = intervalHours * 60 * 60 * 1000;
     
     // Set up the interval
-    setInterval(async () => {
+    this.detailsCollectionInterval = setInterval(async () => {
       console.log('Running scheduled fund details collection...');
       try {
         const result = await this.collectFundDetails();
@@ -396,6 +406,123 @@ export class FundDetailsCollector {
         console.error('Error in scheduled fund details collection:', error);
       }
     }, intervalMs);
+  }
+  
+  /**
+   * Start a scheduled bulk processing job to enhance fund details
+   * @param batchSize Number of funds to process in each batch
+   * @param batchCount Number of batches to process in each run
+   * @param intervalHours How often to run the bulk processing (in hours)
+   */
+  public startScheduledBulkProcessing(
+    batchSize: number = 100, 
+    batchCount: number = 5, 
+    intervalHours: number = 24
+  ): void {
+    // Clear existing interval if any
+    if (this.bulkProcessingInterval) {
+      clearInterval(this.bulkProcessingInterval);
+      this.bulkProcessingInterval = null;
+    }
+    
+    console.log(`Starting scheduled bulk fund details processing every ${intervalHours} hours`);
+    console.log(`Each run will process ${batchCount} batches of ${batchSize} funds each`);
+    
+    // Run initial bulk processing immediately
+    this.runBulkProcessingJob(batchSize, batchCount);
+    
+    // Set up the interval for regular bulk processing
+    const intervalMs = intervalHours * 60 * 60 * 1000;
+    this.bulkProcessingInterval = setInterval(() => {
+      this.runBulkProcessingJob(batchSize, batchCount);
+    }, intervalMs);
+  }
+  
+  /**
+   * Run a single bulk processing job
+   * @param batchSize Number of funds to process in each batch
+   * @param batchCount Number of batches to process in this job
+   */
+  private async runBulkProcessingJob(batchSize: number, batchCount: number): Promise<void> {
+    console.log(`Starting bulk processing job: ${batchCount} batches of ${batchSize} funds each`);
+    
+    // Import necessary modules here to avoid circular dependencies
+    const { db } = await import('../db');
+    const { funds } = await import('../../shared/schema');
+    const { sql } = await import('drizzle-orm');
+    
+    // Process each batch sequentially
+    for (let batchNum = 0; batchNum < batchCount; batchNum++) {
+      try {
+        console.log(`Processing batch ${batchNum + 1} of ${batchCount}...`);
+        
+        // Find funds that need enhancement (missing inception date or expense ratio)
+        const fundsNeedingDetails = await db
+          .select({ id: funds.id })
+          .from(funds)
+          .where(sql`inception_date IS NULL OR expense_ratio IS NULL`)
+          .limit(batchSize);
+        
+        // Extract fund IDs
+        const fundIds = fundsNeedingDetails.map(fund => fund.id);
+        
+        if (fundIds.length === 0) {
+          console.log('No more funds require enhancement, skipping remaining batches');
+          break;
+        }
+        
+        // Log ETL run start
+        const etlRun = await storage.createETLRun({
+          pipelineName: 'Scheduled Bulk Fund Details',
+          status: 'RUNNING',
+          startTime: new Date()
+        });
+        
+        // Process the batch
+        const result = await this.collectFundDetails(fundIds);
+        
+        // Update ETL run with completion status
+        await storage.updateETLRun(etlRun.id, {
+          status: result.success ? 'COMPLETED' : 'FAILED',
+          endTime: new Date(),
+          recordsProcessed: result.count || 0,
+          errorMessage: result.message
+        });
+        
+        console.log(`Batch ${batchNum + 1} completed: ${result.message}`);
+        
+        // Add a delay between batches to avoid overwhelming the system
+        if (batchNum < batchCount - 1) {
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }
+      } catch (error) {
+        console.error(`Error in batch ${batchNum + 1}:`, error);
+      }
+    }
+    
+    console.log('Bulk processing job completed');
+  }
+  
+  /**
+   * Stop the scheduled fund details collection
+   */
+  public stopScheduledDetailsFetch(): void {
+    if (this.detailsCollectionInterval) {
+      clearInterval(this.detailsCollectionInterval);
+      this.detailsCollectionInterval = null;
+      console.log('Stopped scheduled fund details collection');
+    }
+  }
+  
+  /**
+   * Stop the scheduled bulk processing
+   */
+  public stopScheduledBulkProcessing(): void {
+    if (this.bulkProcessingInterval) {
+      clearInterval(this.bulkProcessingInterval);
+      this.bulkProcessingInterval = null;
+      console.log('Stopped scheduled bulk fund details processing');
+    }
   }
 }
 
