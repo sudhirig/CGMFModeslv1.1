@@ -6,13 +6,28 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+// Define interfaces for our API responses
+interface NavStatus {
+  success: boolean;
+  fundCount: number;
+  navCount: number;
+  earliestNavDate: string;
+  latestNavDate: string;
+}
+
 export default function HistoricalDataImport() {
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: navStatus, isLoading: isLoadingStatus } = useQuery({
+  const { data: navStatus, isLoading: isLoadingStatus } = useQuery<NavStatus>({
     queryKey: ['/api/amfi/status'],
+    refetchInterval: 5000, // Refresh every 5 seconds
+  });
+  
+  // Also fetch the ETL status to show current import progress
+  const { data: etlStatus } = useQuery({
+    queryKey: ['/api/etl/status'],
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
@@ -23,6 +38,7 @@ export default function HistoricalDataImport() {
     try {
       const response = await apiRequest('/api/historical-restart/start', {
         method: 'POST',
+        body: {} // Empty body for POST request
       });
       
       setImportStatus(response);
@@ -37,9 +53,7 @@ export default function HistoricalDataImport() {
 
   const checkImportStatus = async () => {
     try {
-      const response = await apiRequest('/api/historical-restart/status', {
-        method: 'GET',
-      });
+      const response = await apiRequest('/api/historical-restart/status');
       
       setImportStatus(response);
       console.log('Import status:', response);
