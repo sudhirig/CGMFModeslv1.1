@@ -8,8 +8,10 @@ import { fundScoringEngine } from "./services/fund-scoring";
 import { portfolioBuilder } from "./services/portfolio-builder";
 import { backtestingEngine } from "./services/backtesting-engine";
 import { fundDetailsCollector } from "./services/fund-details-collector";
+import { quartileScheduler } from "./services/quartile-scoring-scheduler";
 import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
+import quartileScoringRoutes from "./api/quartile-scoring";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
@@ -18,6 +20,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Fund Details routes
   app.use('/api/fund-details', fundDetailsImportRoutes);
   
+  // Register Quartile Scoring routes
+  app.use('/api/quartile', quartileScoringRoutes);
+  
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
   // Fund details scheduling moved to dedicated router in api/fund-details-import.ts
@@ -25,6 +30,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auto-start the scheduled bulk processing on server startup
   console.log("🚀 Auto-starting fund details bulk processing scheduler...");
   fundDetailsCollector.startScheduledBulkProcessing(100, 5, 24);
+  
+  // Auto-start the quartile scoring scheduler (weekly)
+  console.log("🚀 Auto-starting quartile scoring scheduler...");
+  quartileScheduler.startScheduler(7);
   
   // Endpoints for scheduled NAV data imports
   app.post('/api/schedule-import', async (req, res) => {
