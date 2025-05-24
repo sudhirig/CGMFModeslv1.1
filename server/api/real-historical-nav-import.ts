@@ -402,92 +402,160 @@ async function fetchAuthenticHistoricalNav(schemeCode: string, year: number, mon
     const fromDateStr = formatDate(fromDate);
     const toDateStr = formatDate(toDate);
     
-    // AMFI NAV history URL 
-    const url = 'https://www.amfiindia.com/spages/NAVHistoryReport.aspx';
+    // We'll try multiple AMFI endpoints - they sometimes change their API structure
+    const urls = [
+      'https://www.amfiindia.com/spages/NAVHistoryReport.aspx',
+      'https://www.amfiindia.com/nav-history-download'
+    ];
+    
+    const navEntries: { date: string, nav: string }[] = [];
+    let success = false;
     
     // Implement retry mechanism for greater reliability
-    let response;
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    while (retryCount < maxRetries) {
-      try {
-        // Fetch the historical NAV data with increased timeout
-        response = await axios.post(url, new URLSearchParams({
-          'SchemeCode': schemeCode,
-          'FromDate': fromDateStr,
-          'ToDate': toDateStr
-        }), {
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.9'
-          },
-          timeout: 30000 // 30 second timeout
-        });
-        
-        // If we got data, break out of retry loop
-        if (response && response.data) {
-          break;
-        }
-      } catch (error) {
-        console.error(`AMFI fetch attempt ${retryCount + 1} failed for scheme ${schemeCode} (${year}-${month}):`, error);
-        retryCount++;
-        
-        // Wait before retrying (exponential backoff)
-        await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, retryCount)));
-      }
-    }
-    
-    // If all retries failed, return empty array
-    if (!response || !response.data) {
-      console.error(`Failed to fetch NAV data for scheme ${schemeCode} after ${maxRetries} attempts`);
-      return [];
-    }
-    
-    // Parse the HTML response to extract NAV data
-    const $ = cheerio.load(response.data);
-    const navEntries: { date: string, nav: string }[] = [];
-    
-    // Find the table containing NAV history
-    $('table.table-bordered tr').each((index, element) => {
-      // Skip header row
-      if (index === 0) return;
+    for (const url of urls) {
+      if (success) break; // If we already got data from one endpoint, don't try others
       
-      const columns = $(element).find('td');
-      if (columns.length >= 2) {
-        const dateText = $(columns[0]).text().trim();
-        const navText = $(columns[1]).text().trim();
-        
-        if (dateText && navText && !isNaN(parseFloat(navText))) {
-          // Convert date from dd-MMM-yyyy to yyyy-MM-dd format for database
-          const dateParts = dateText.split('-');
-          if (dateParts.length === 3) {
-            const day = dateParts[0];
-            const monthAbbr = dateParts[1];
-            const year = dateParts[2];
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries && !success) {
+        try {
+          console.log(`Attempting to fetch historical NAV for scheme ${schemeCode} (${year}-${month}) from ${url}, attempt ${retryCount + 1}`);
+          
+          // Different request format based on endpoint
+          let response;
+          if (url.includes('NAVHistoryReport')) {
+            // First endpoint method
+            response = await axios.post(url, new URLSearchParams({
+              'SchemeCode': schemeCode,
+              'FromDate': fromDateStr,
+              'ToDate': toDateStr
+            }), {
+              headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9'
+              },
+              timeout: 20000 // 20 second timeout (shorter to fail faster)
+            });
+          } else {
+            // Second endpoint method
+            response = await axios.get(`${url}?schemecode=${schemeCode}&fromdate=${fromDateStr}&todate=${toDateStr}`, {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9'
+              },
+              timeout: 20000
+            });
+          }
+          
+          // If we got data, try to parse it
+          if (response && response.data) {
+            console.log(`Got response for scheme ${schemeCode} (${year}-${month}), parsing...`);
             
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            const monthIndex = monthNames.findIndex(m => m === monthAbbr);
+            // Parse the HTML response to extract NAV data
+            const $ = cheerio.load(response.data);
             
-            if (monthIndex !== -1) {
-              const monthNum = (monthIndex + 1).toString().padStart(2, '0');
-              const formattedDate = `${year}-${monthNum}-${day.padStart(2, '0')}`;
+            // Try multiple table selectors as AMFI sometimes changes their HTML structure
+            const tableSelectors = [
+              'table.table-bordered',
+              'table.table',
+              'table#tblHistoricNAV',
+              'table'
+            ];
+            
+            let foundData = false;
+            
+            // Try each selector until we find data
+            for (const selector of tableSelectors) {
+              if (foundData) break;
               
-              navEntries.push({
-                date: formattedDate,
-                nav: navText
+              // Check if we found a table with this selector
+              const table = $(selector);
+              if (table.length === 0) continue;
+              
+              // Now try to parse the table rows
+              table.find('tr').each((index, element) => {
+                // Skip header row
+                if (index === 0) return;
+                
+                const columns = $(element).find('td');
+                // Check if we have at least date and NAV columns
+                if (columns.length >= 2) {
+                  const dateText = $(columns[0]).text().trim();
+                  const navText = $(columns[1]).text().trim();
+                  
+                  if (dateText && navText && !isNaN(parseFloat(navText))) {
+                    foundData = true;
+                    
+                    // Convert date from dd-MMM-yyyy to yyyy-MM-dd format for database
+                    try {
+                      const dateParts = dateText.split('-');
+                      if (dateParts.length === 3) {
+                        const day = dateParts[0];
+                        const monthAbbr = dateParts[1];
+                        const year = dateParts[2];
+                        
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        const monthIndex = monthNames.findIndex(m => m.toLowerCase() === monthAbbr.toLowerCase());
+                        
+                        if (monthIndex !== -1) {
+                          const monthNum = (monthIndex + 1).toString().padStart(2, '0');
+                          const paddedDay = day.padStart(2, '0');
+                          const formattedDate = `${year}-${monthNum}-${paddedDay}`;
+                          
+                          navEntries.push({
+                            date: formattedDate,
+                            nav: navText
+                          });
+                        }
+                      }
+                    } catch (dateParseError) {
+                      console.error(`Error parsing date ${dateText}:`, dateParseError);
+                    }
+                  }
+                }
               });
+              
+              if (foundData) {
+                success = true;
+                console.log(`Found ${navEntries.length} NAV entries for scheme ${schemeCode} (${year}-${month})`);
+                break; // Break out of the tableSelectors loop
+              }
             }
+            
+            if (success) break; // Break out of the retry loop
+          }
+          
+          retryCount++;
+          
+          // Wait before retrying (exponential backoff)
+          if (!success && retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, retryCount)));
+          }
+        } catch (error) {
+          console.error(`AMFI fetch attempt ${retryCount + 1} failed for scheme ${schemeCode} (${year}-${month}):`, error);
+          retryCount++;
+          
+          // Wait before retrying
+          if (retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, retryCount)));
           }
         }
       }
-    });
+    }
+    
+    // If we couldn't get any data after all attempts, return empty array
+    if (navEntries.length === 0) {
+      console.error(`Could not fetch any real NAV data for scheme ${schemeCode} (${year}-${month}) after all attempts`);
+      return [];
+    }
     
     return navEntries;
   } catch (error) {
-    console.error(`Error fetching authentic historical NAV for scheme ${schemeCode} (${year}-${month}):`, error);
+    console.error(`Error fetching historical NAV for scheme ${schemeCode} (${year}-${month}):`, error);
     return [];
   }
 }
