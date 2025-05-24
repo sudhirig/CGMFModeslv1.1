@@ -1,13 +1,99 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEtlStatus } from "@/hooks/use-etl-status";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
+import axios from "axios";
 
 export default function EtlPipeline() {
   const { etlRuns, refreshEtlStatus, triggerDataCollection, isLoading, isCollecting, error } = useEtlStatus();
+  const [scheduledStatus, setScheduledStatus] = useState<{
+    daily: { active: boolean; lastRun: any };
+    historical: { active: boolean; lastRun: any };
+  }>({
+    daily: { active: false, lastRun: null },
+    historical: { active: false, lastRun: null }
+  });
+  const [isScheduling, setIsScheduling] = useState(false);
+  
+  // Fetch the scheduled import status
+  const fetchScheduledStatus = async () => {
+    try {
+      const response = await axios.get('/api/amfi/scheduled-status');
+      if (response.data.success) {
+        setScheduledStatus(response.data.scheduledImports);
+      }
+    } catch (error) {
+      console.error('Error fetching scheduled status:', error);
+    }
+  };
+  
+  // Schedule a new import
+  const scheduleImport = async (type: 'daily' | 'historical', interval: 'daily' | 'weekly') => {
+    try {
+      setIsScheduling(true);
+      const response = await axios.get(`/api/amfi/schedule-import?type=${type}&interval=${interval}`);
+      
+      if (response.data.success) {
+        toast({
+          title: "Import Scheduled",
+          description: `${type === 'daily' ? 'Daily' : 'Historical'} import scheduled with ${interval} frequency`,
+          variant: "default",
+        });
+        
+        // Refresh status after scheduling
+        await fetchScheduledStatus();
+        await refreshEtlStatus();
+      }
+    } catch (error) {
+      console.error(`Error scheduling ${type} import:`, error);
+      toast({
+        title: "Scheduling Failed",
+        description: `Failed to schedule ${type} import. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+  
+  // Stop a scheduled import
+  const stopScheduledImport = async (type: 'daily' | 'historical' | 'all') => {
+    try {
+      setIsScheduling(true);
+      const response = await axios.get(`/api/amfi/stop-scheduled-import?type=${type}`);
+      
+      if (response.data.success) {
+        toast({
+          title: "Import Stopped",
+          description: `Stopped scheduled ${type} import`,
+          variant: "default",
+        });
+        
+        // Refresh status after stopping
+        await fetchScheduledStatus();
+        await refreshEtlStatus();
+      }
+    } catch (error) {
+      console.error(`Error stopping ${type} import:`, error);
+      toast({
+        title: "Operation Failed",
+        description: `Failed to stop ${type} import. Please try again.`,
+        variant: "destructive",
+      });
+    } finally {
+      setIsScheduling(false);
+    }
+  };
+  
+  // Initialize data on component mount
+  useEffect(() => {
+    fetchScheduledStatus();
+  }, []);
   
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -221,43 +307,175 @@ export default function EtlPipeline() {
         <div className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Schedule Configuration</CardTitle>
+              <CardTitle>Automated Import Schedule</CardTitle>
+              <CardDescription>Configure scheduled AMFI data imports to keep mutual fund data fresh</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-neutral-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-neutral-900 mb-2">AMFI Data Collection</h3>
-                  <div className="text-xs text-neutral-500">Schedule: Daily at 9:00 AM</div>
-                  <div className="mt-2 text-xs text-neutral-500">Source: AMFI Website</div>
-                  <div className="mt-3">
-                    <Button variant="outline" size="sm" className="w-full">
-                      Edit Schedule
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-neutral-50 p-4 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-neutral-900">Daily NAV Updates</h3>
+                    {scheduledStatus.daily.active && (
+                      <Badge variant="success" className="bg-green-100 text-green-800">Active</Badge>
+                    )}
+                    {!scheduledStatus.daily.active && (
+                      <Badge variant="outline" className="bg-neutral-200 text-neutral-600">Inactive</Badge>
+                    )}
+                  </div>
+                  <div className="text-xs text-neutral-600 mb-1">Source: AMFI Website</div>
+                  <div className="text-xs text-neutral-600 mb-3">Frequency: Daily</div>
+                  
+                  {scheduledStatus.daily.lastRun && (
+                    <div className="mb-3 text-xs text-neutral-600">
+                      <div>Last Run: {new Date(scheduledStatus.daily.lastRun.startTime).toLocaleString()}</div>
+                      <div>Status: {scheduledStatus.daily.lastRun.status}</div>
+                      <div>Records: {scheduledStatus.daily.lastRun.recordsProcessed || 0}</div>
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-2 mt-3">
+                    {!scheduledStatus.daily.active ? (
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="flex-1"
+                        disabled={isScheduling}
+                        onClick={() => scheduleImport('daily', 'daily')}
+                      >
+                        {isScheduling ? 'Starting...' : 'Start Schedule'}
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="flex-1"
+                        disabled={isScheduling}
+                        onClick={() => stopScheduledImport('daily')}
+                      >
+                        {isScheduling ? 'Stopping...' : 'Stop Schedule'}
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center"
+                      onClick={async () => {
+                        try {
+                          await triggerDataCollection();
+                          toast({
+                            title: "Import Started",
+                            description: "Manual daily NAV import has been initiated",
+                            variant: "default",
+                          });
+                        } catch (error) {
+                          console.error('Error triggering import:', error);
+                        }
+                      }}
+                      disabled={isCollecting}
+                    >
+                      <span className="material-icons text-sm mr-1">sync</span>
+                      Run Now
                     </Button>
                   </div>
                 </div>
                 
-                <div className="bg-neutral-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-neutral-900 mb-2">NSE Data Collection</h3>
-                  <div className="text-xs text-neutral-500">Schedule: Daily at 5:30 PM</div>
-                  <div className="mt-2 text-xs text-neutral-500">Source: NSE APIs</div>
-                  <div className="mt-3">
-                    <Button variant="outline" size="sm" className="w-full">
-                      Edit Schedule
-                    </Button>
+                <div className="bg-neutral-50 p-4 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-sm font-medium text-neutral-900">36-Month Historical Import</h3>
+                    {scheduledStatus.historical.active && (
+                      <Badge variant="success" className="bg-green-100 text-green-800">Active</Badge>
+                    )}
+                    {!scheduledStatus.historical.active && (
+                      <Badge variant="outline" className="bg-neutral-200 text-neutral-600">Inactive</Badge>
+                    )}
                   </div>
-                </div>
-                
-                <div className="bg-neutral-50 p-4 rounded-lg">
-                  <h3 className="text-sm font-medium text-neutral-900 mb-2">RBI Data Collection</h3>
-                  <div className="text-xs text-neutral-500">Schedule: Weekly on Fridays</div>
-                  <div className="mt-2 text-xs text-neutral-500">Source: RBI Data Portal</div>
-                  <div className="mt-3">
-                    <Button variant="outline" size="sm" className="w-full">
-                      Edit Schedule
+                  <div className="text-xs text-neutral-600 mb-1">Source: AMFI Historical Archive</div>
+                  <div className="text-xs text-neutral-600 mb-3">Frequency: Weekly</div>
+                  
+                  {scheduledStatus.historical.lastRun && (
+                    <div className="mb-3 text-xs text-neutral-600">
+                      <div>Last Run: {new Date(scheduledStatus.historical.lastRun.startTime).toLocaleString()}</div>
+                      <div>Status: {scheduledStatus.historical.lastRun.status}</div>
+                      <div>Records: {scheduledStatus.historical.lastRun.recordsProcessed || 0}</div>
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-2 mt-3">
+                    {!scheduledStatus.historical.active ? (
+                      <Button 
+                        variant="default" 
+                        size="sm" 
+                        className="flex-1"
+                        disabled={isScheduling}
+                        onClick={() => scheduleImport('historical', 'weekly')}
+                      >
+                        {isScheduling ? 'Starting...' : 'Start Schedule'}
+                      </Button>
+                    ) : (
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="flex-1"
+                        disabled={isScheduling}
+                        onClick={() => stopScheduledImport('historical')}
+                      >
+                        {isScheduling ? 'Stopping...' : 'Stop Schedule'}
+                      </Button>
+                    )}
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex items-center"
+                      onClick={async () => {
+                        try {
+                          // Start a manual historical import
+                          const response = await axios.get('/api/amfi?historical=true');
+                          if (response.data.success) {
+                            toast({
+                              title: "Import Started",
+                              description: "Manual historical import has been initiated",
+                              variant: "default",
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Error triggering historical import:', error);
+                          toast({
+                            title: "Import Failed",
+                            description: "Failed to start historical import",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      disabled={isCollecting}
+                    >
+                      <span className="material-icons text-sm mr-1">sync</span>
+                      Run Now
                     </Button>
                   </div>
                 </div>
               </div>
+              
+              <div className="mt-4">
+                <Card className="bg-gray-50 border-dashed border-gray-300">
+                  <CardContent className="p-4">
+                    <div className="flex items-start">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-md bg-blue-100 flex items-center justify-center text-blue-600 mr-3">
+                        <span className="material-icons">info</span>
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-neutral-900 mb-1">Scheduled Import Information</h3>
+                        <ul className="text-xs text-neutral-600 space-y-1 list-disc pl-4">
+                          <li>Daily NAV updates: Get the latest NAV values for all funds (runs once per day)</li>
+                          <li>Historical Import: Updates 36 months of historical NAV data (runs weekly)</li>
+                          <li>Both tasks will be tracked in the Pipeline Health table above</li>
+                          <li>The database currently contains 16,766 funds with 15,216 NAV records</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+              
             </CardContent>
           </Card>
         </div>
