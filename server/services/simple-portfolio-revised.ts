@@ -33,6 +33,7 @@ export class RevisedPortfolioService {
       console.log("Using new fund selection approach to prevent duplicates");
       
       // Single query to get ALL funds with quartile ratings, ensuring uniqueness by fund name
+      // IMPORTANT: Exclude Q4 funds entirely as they are SELL rated
       const allFundsQuery = await pool.query(`
         WITH ranked_funds AS (
           SELECT 
@@ -65,14 +66,16 @@ export class RevisedPortfolioService {
                 WHEN fs.quartile = 1 THEN 1  -- Prioritize Q1 funds
                 WHEN fs.quartile = 2 THEN 2  -- Then Q2 funds
                 WHEN fs.quartile = 3 THEN 3  -- Then Q3 funds
-                WHEN fs.quartile = 4 THEN 4  -- Then Q4 funds
-                ELSE 5                      -- Unrated funds last
+                ELSE 4                      -- Unrated funds last
               END,
               fs.total_score DESC NULLS LAST  -- Higher scores first within quartile
             ) as unique_rank
           FROM funds f
           LEFT JOIN fund_scores fs ON f.id = fs.fund_id AND fs.score_date = $1
-          WHERE f.fund_name IS NOT NULL AND f.amc_name IS NOT NULL
+          WHERE 
+            f.fund_name IS NOT NULL AND 
+            f.amc_name IS NOT NULL AND
+            (fs.quartile IS NULL OR fs.quartile != 4) -- Exclude Q4 (SELL rated) funds entirely
         )
         SELECT * FROM ranked_funds
         WHERE unique_rank = 1  -- This ensures each fund name appears only once
@@ -171,27 +174,27 @@ export class RevisedPortfolioService {
           }
         }
         
-        // Only use Q4 and Unrated as a last resort if we absolutely can't find enough funds
+        // NEVER use Q4 funds in recommendations - they're "SELL" rated
+        // Only use Unrated funds as a last resort if we absolutely can't find enough funds
         if (selected.length < count) {
-          for (const quartile of ['Q4', 'Unrated']) {
-            if (selected.length >= count) break;
-            
-            const availableFunds = category[quartile].filter(fund => 
-              !selectedFundNames.has(fund.fund_name)
-            );
-            
-            const neededFromQuartile = Math.min(
-              count - selected.length, 
-              availableFunds.length
-            );
-            
-            for (let i = 0; i < neededFromQuartile; i++) {
-              const fund = availableFunds[i];
-              selected.push(fund);
-              selectedFundNames.add(fund.fund_name);
-            }
+          const availableFunds = category['Unrated'].filter(fund => 
+            !selectedFundNames.has(fund.fund_name)
+          );
+          
+          const neededFromUnrated = Math.min(
+            count - selected.length, 
+            availableFunds.length
+          );
+          
+          for (let i = 0; i < neededFromUnrated; i++) {
+            const fund = availableFunds[i];
+            selected.push(fund);
+            selectedFundNames.add(fund.fund_name);
           }
         }
+        
+        // If we still don't have enough funds, we should find similar funds from other categories
+        // but never use Q4 rated funds
         
         // Convert to allocation objects - using formatted allocation percentages
         return selected.map(fund => ({
