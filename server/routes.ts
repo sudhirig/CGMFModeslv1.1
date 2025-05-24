@@ -20,26 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
-  // Schedule regular fund details collection
-  app.post('/api/fund-details/schedule', async (req, res) => {
-    try {
-      const { hours } = req.body;
-      // Start a scheduled collection (defaults to weekly if no hours provided)
-      fundDetailsCollector.startScheduledDetailsFetch(hours || 168);
-      
-      return res.json({
-        success: true,
-        message: `Scheduled fund details collection every ${hours || 168} hours`,
-        nextRun: new Date(Date.now() + (hours || 168) * 3600000)
-      });
-    } catch (error: any) {
-      console.error('Error scheduling fund details collection:', error);
-      return res.status(500).json({
-        success: false,
-        message: `Failed to schedule fund details collection: ${error.message}`
-      });
-    }
-  });
+  // Fund details scheduling moved to dedicated router in api/fund-details-import.ts
   
   // Endpoints for scheduled NAV data imports
   app.post('/api/schedule-import', async (req, res) => {

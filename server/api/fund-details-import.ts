@@ -70,6 +70,82 @@ router.post('/', async (req, res) => {
   }
 });
 
+// Bulk processing for fund details collection
+router.post('/bulk', async (req, res) => {
+  try {
+    console.log('Starting bulk fund details import...');
+    
+    // Get batch size from request, default to 100
+    const batchSize = req.body.batchSize ? parseInt(req.body.batchSize) : 100;
+    
+    // Get limit from request, default to 500
+    const limit = req.body.limit ? parseInt(req.body.limit) : 500;
+    
+    // Get funds that need enhancement (missing inception date or expense ratio)
+    const fundsNeedingDetails = await db
+      .select({ id: funds.id })
+      .from(funds)
+      .where(sql`inception_date IS NULL OR expense_ratio IS NULL`)
+      .limit(limit);
+    
+    // Extract fund IDs
+    const fundIds = fundsNeedingDetails.map(fund => fund.id);
+    
+    if (fundIds.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No funds require enhanced details',
+        count: 0
+      });
+    }
+    
+    // Log ETL run start - using uppercase status to match how it's stored in DB
+    const etlRun = await storage.createETLRun({
+      pipelineName: 'Fund Details Bulk Collection',
+      status: 'RUNNING',
+      startTime: new Date(),
+      recordsProcessed: 0
+    });
+    
+    // Start bulk processing with specified batch size
+    fundDetailsCollector.collectFundDetails(fundIds)
+      .then(async (result) => {
+        console.log('Bulk fund details import completed with result:', result);
+        
+        // Update ETL run with completion status - using uppercase to match DB standards
+        await storage.updateETLRun(etlRun.id, {
+          status: result.success ? 'COMPLETED' : 'FAILED',
+          endTime: new Date(),
+          recordsProcessed: result.count || 0,
+          errorMessage: result.message
+        });
+      })
+      .catch(async (error) => {
+        console.error('Bulk fund details collection failed:', error);
+        
+        // Update ETL run with error status - using uppercase to match DB standards
+        await storage.updateETLRun(etlRun.id, {
+          status: 'FAILED',
+          endTime: new Date(),
+          errorMessage: error.message || 'Unknown error occurred'
+        });
+      });
+    
+    res.json({
+      success: true,
+      message: `Bulk fund details collection started for ${fundIds.length} funds with batch size ${batchSize}`,
+      etlRunId: etlRun.id
+    });
+  } catch (error: any) {
+    console.error('Error starting bulk fund details import:', error);
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to start bulk fund details import: ' + (error.message || 'Unknown error')
+    });
+  }
+});
+
 // Schedule regular fund details collection
 router.post('/schedule', async (req, res) => {
   try {

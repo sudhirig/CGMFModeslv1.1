@@ -44,8 +44,12 @@ export class FundDetailsCollector {
   /**
    * Collect additional details for all funds or a specific set of funds
    * @param fundIds Optional specific fund IDs to collect details for
+   * @param customBatchSize Optional custom batch size (default: 50)
    */
-  public async collectFundDetails(fundIds?: number[]): Promise<{ success: boolean, message: string, count: number }> {
+  public async collectFundDetails(
+    fundIds?: number[], 
+    customBatchSize?: number
+  ): Promise<{ success: boolean, message: string, count: number }> {
     // Store ETL run reference for access in catch block
     let etlRun: any = null;
     
@@ -69,8 +73,9 @@ export class FundDetailsCollector {
       
       console.log(`Found ${validFunds.length} funds to collect enhanced details for`);
       
-      // Process in larger batches to improve processing speed
-      const batchSize = 50; // Increased from 10 to 50 for faster processing
+      // Use custom batch size if provided, otherwise default to 50
+      const batchSize = customBatchSize || 50;
+      console.log(`Using batch size: ${batchSize}`);
       let successCount = 0;
       
       for (let i = 0; i < validFunds.length; i += batchSize) {
@@ -164,6 +169,114 @@ export class FundDetailsCollector {
   }
   
   /**
+   * Perform data quality checks on the enhanced fund details
+   * @param details The fund details to validate
+   * @returns Object containing validation results and any errors found
+   */
+  private validateFundDetails(details: EnhancedFundDetails): { 
+    isValid: boolean; 
+    qualityScore: number;
+    errors: string[];
+    warnings: string[];
+  } {
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    let qualityScore = 100; // Start with perfect score and reduce based on issues
+    
+    // Check required fields
+    if (!details.schemeCode) {
+      errors.push("Missing scheme code");
+      qualityScore -= 25;
+    }
+    
+    if (!details.fundName) {
+      errors.push("Missing fund name");
+      qualityScore -= 25;
+    }
+    
+    // Check date fields
+    if (details.inceptionDate) {
+      const now = new Date();
+      // Check if date is in the future
+      if (details.inceptionDate > now) {
+        errors.push("Inception date cannot be in the future");
+        qualityScore -= 20;
+      }
+      
+      // Check if date is too far in the past (before mutual funds existed in India)
+      if (details.inceptionDate < new Date(1960, 0, 1)) {
+        errors.push("Inception date appears to be invalid (before 1960)");
+        qualityScore -= 15;
+      }
+    } else {
+      warnings.push("Missing inception date");
+      qualityScore -= 10;
+    }
+    
+    // Check numeric fields
+    if (details.expenseRatio !== undefined && details.expenseRatio !== null) {
+      // Check if expense ratio is within reasonable range (0.1% to 3%)
+      if (details.expenseRatio < 0.1 || details.expenseRatio > 3) {
+        warnings.push(`Expense ratio (${details.expenseRatio}%) is outside normal range (0.1% - 3%)`);
+        qualityScore -= 10;
+      }
+    } else {
+      warnings.push("Missing expense ratio");
+      qualityScore -= 5;
+    }
+    
+    if (details.minimumInvestment !== undefined && details.minimumInvestment !== null) {
+      // Check if minimum investment is within reasonable range (100 to 50000 rupees)
+      if (details.minimumInvestment < 100 || details.minimumInvestment > 50000) {
+        warnings.push(`Minimum investment (₹${details.minimumInvestment}) is outside normal range (₹100 - ₹50,000)`);
+        qualityScore -= 5;
+      }
+    } else {
+      warnings.push("Missing minimum investment");
+      qualityScore -= 5;
+    }
+    
+    // Check text fields
+    if (!details.benchmarkName) {
+      warnings.push("Missing benchmark name");
+      qualityScore -= 5;
+    }
+    
+    if (!details.fundManager) {
+      warnings.push("Missing fund manager");
+      qualityScore -= 5;
+    }
+    
+    // Check for completeness - reduce score based on how many fields are missing
+    const totalFields = 7; // inceptionDate, expenseRatio, exitLoad, benchmarkName, minimumInvestment, fundManager, lockInPeriod
+    const presentFields = [
+      details.inceptionDate, 
+      details.expenseRatio,
+      details.exitLoad,
+      details.benchmarkName,
+      details.minimumInvestment,
+      details.fundManager,
+      details.lockInPeriod
+    ].filter(field => field !== undefined && field !== null).length;
+    
+    const completenessScore = (presentFields / totalFields) * 100;
+    if (completenessScore < 60) {
+      warnings.push(`Low data completeness: ${completenessScore.toFixed(0)}%`);
+      qualityScore -= (60 - completenessScore) / 3; // Reduce score proportionally
+    }
+    
+    // Ensure quality score stays within 0-100 range
+    qualityScore = Math.max(0, Math.min(100, Math.round(qualityScore)));
+    
+    return {
+      isValid: errors.length === 0,
+      qualityScore,
+      errors,
+      warnings
+    };
+  }
+
+  /**
    * Fetch fund details from AMFI website
    * This uses web scraping to extract data from the fund details page
    */
@@ -218,6 +331,25 @@ export class FundDetailsCollector {
       const inceptionDateText = $('.fund-details .inception-date').text().trim();
       // ... and other fields
       */
+      
+      // Perform data quality validation
+      const validation = this.validateFundDetails(result);
+      
+      // Log any issues found during validation
+      if (validation.errors.length > 0 || validation.warnings.length > 0) {
+        console.log(`Data quality issues for fund ${fundName} (${schemeCode}):`);
+        if (validation.errors.length > 0) {
+          console.error(`- Errors: ${validation.errors.join(', ')}`);
+        }
+        if (validation.warnings.length > 0) {
+          console.warn(`- Warnings: ${validation.warnings.join(', ')}`);
+        }
+        console.log(`- Quality Score: ${validation.qualityScore}/100`);
+      }
+      
+      // Add quality metadata to the result
+      (result as any).qualityScore = validation.qualityScore;
+      (result as any).qualityIssues = [...validation.errors, ...validation.warnings];
       
       return result;
     } catch (error) {

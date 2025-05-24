@@ -322,6 +322,97 @@ export default function EtlPipeline() {
               </div>
             </CardContent>
           </Card>
+          
+          {/* Fund Details Collection Status Card */}
+          <Card className="bg-white">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className={`flex-shrink-0 h-10 w-10 rounded-md ${isCollectingDetails 
+                    ? "bg-blue-100 text-blue-600" 
+                    : fundDetailsStats?.percentComplete === 100 
+                      ? "bg-success bg-opacity-20 text-success" 
+                      : "bg-amber-100 text-amber-600"
+                    } flex items-center justify-center`}>
+                    <span className="material-icons">
+                      {isCollectingDetails 
+                        ? "sync" 
+                        : fundDetailsStats?.percentComplete === 100 
+                          ? "check_circle" 
+                          : "info"}
+                    </span>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-neutral-900">Fund Details Collection</h3>
+                    <p className="text-xs text-neutral-500">
+                      Last Run: {fundDetailsStats?.etlStatus?.endTime 
+                        ? format(new Date(fundDetailsStats.etlStatus.endTime), "MMM d, h:mm a")
+                        : "Never"}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isCollectingDetails}
+                  onClick={() => triggerFundDetailsCollection()}
+                >
+                  {isCollectingDetails ? "Running..." : "Collect"}
+                </Button>
+              </div>
+              
+              <div className="mt-4">
+                <div className="flex justify-between text-xs text-neutral-500 mb-1">
+                  <span>Enhanced Details Collection</span>
+                  <span className={
+                    fundDetailsStats?.percentComplete < 30 
+                      ? "text-red-500" 
+                      : fundDetailsStats?.percentComplete < 70 
+                        ? "text-amber-500" 
+                        : "text-green-500"
+                  }>
+                    {fundDetailsStats?.percentComplete || 0}%
+                  </span>
+                </div>
+                <Progress 
+                  value={fundDetailsStats?.percentComplete || 0}
+                  className="h-2"
+                />
+                
+                <div className="grid grid-cols-3 gap-2 mt-3">
+                  <div className="bg-neutral-50 p-2 rounded-md">
+                    <div className="text-xs text-neutral-500">Total Funds</div>
+                    <div className="text-base font-medium text-neutral-900">
+                      {fundDetailsStats?.totalFunds?.toLocaleString() || 0}
+                    </div>
+                  </div>
+                  <div className="bg-green-50 p-2 rounded-md">
+                    <div className="text-xs text-green-600">Enhanced</div>
+                    <div className="text-base font-medium text-green-800">
+                      {fundDetailsStats?.enhancedFunds?.toLocaleString() || 0}
+                    </div>
+                  </div>
+                  <div className="bg-amber-50 p-2 rounded-md">
+                    <div className="text-xs text-amber-600">Pending</div>
+                    <div className="text-base font-medium text-amber-800">
+                      {fundDetailsStats?.pendingFunds?.toLocaleString() || 0}
+                    </div>
+                  </div>
+                </div>
+                
+                {isCollectingDetails && (
+                  <div className="mt-3 bg-blue-50 p-3 rounded-md">
+                    <div className="flex items-center">
+                      <span className="material-icons animate-spin text-blue-500 mr-2">sync</span>
+                      <span className="text-sm text-blue-700">
+                        Processing in batches of 50 funds... Please wait.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
         
         {/* Pipeline Health Table */}
