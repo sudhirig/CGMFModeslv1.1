@@ -18,6 +18,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Fund Details routes
   app.use('/api/fund-details', fundDetailsImportRoutes);
   
+  // Endpoints for enhanced fund details collection
+  app.post('/api/fund-details', async (req, res) => {
+    try {
+      // Start a fund details collection job
+      const result = await fundDetailsCollector.collectFundDetails();
+      
+      // Return the result
+      return res.json({
+        success: true,
+        message: result.message,
+        count: result.count
+      });
+    } catch (error: any) {
+      console.error('Error collecting fund details:', error);
+      return res.status(500).json({
+        success: false,
+        message: `Failed to collect fund details: ${error.message}`
+      });
+    }
+  });
+
+  // Schedule regular fund details collection
+  app.post('/api/fund-details/schedule', async (req, res) => {
+    try {
+      const { hours } = req.body;
+      // Start a scheduled collection (defaults to weekly if no hours provided)
+      fundDetailsCollector.startScheduledDetailsFetch(hours || 168);
+      
+      return res.json({
+        success: true,
+        message: `Scheduled fund details collection every ${hours || 168} hours`,
+        nextRun: new Date(Date.now() + (hours || 168) * 3600000)
+      });
+    } catch (error: any) {
+      console.error('Error scheduling fund details collection:', error);
+      return res.status(500).json({
+        success: false,
+        message: `Failed to schedule fund details collection: ${error.message}`
+      });
+    }
+  });
+  
   // Endpoints for scheduled NAV data imports
   app.post('/api/schedule-import', async (req, res) => {
     try {

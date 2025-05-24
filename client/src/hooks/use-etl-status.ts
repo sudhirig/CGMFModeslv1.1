@@ -36,7 +36,7 @@ export function useEtlStatus() {
   // Trigger fund details collection
   const { mutate: triggerFundDetailsCollection, isPending: isCollectingDetails } = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("GET", "/api/fund-details", {});
+      const response = await apiRequest("POST", "/api/fund-details", {});
       return response.json();
     },
     onSuccess: () => {
@@ -48,7 +48,7 @@ export function useEtlStatus() {
   // Schedule regular fund details collection
   const { mutate: scheduleFundDetailsCollection } = useMutation({
     mutationFn: async (hours: number = 168) => { // Default: weekly
-      const response = await apiRequest("GET", `/api/fund-details/schedule?hours=${hours}`, {});
+      const response = await apiRequest("POST", "/api/fund-details/schedule", { hours });
       return response.json();
     },
     onSuccess: () => {
