@@ -15,17 +15,13 @@ export class QuartileSeeder {
     try {
       console.log(`Starting to seed quartile ratings for up to ${limit} funds...`);
       
-      // Get funds that don't have quartile ratings yet but have sufficient data for scoring
+      // Get funds that don't have quartile ratings yet
       const query = `
         SELECT f.id 
         FROM funds f
-        LEFT JOIN fund_scores fs ON f.id = fs.fund_id
-        WHERE fs.quartile IS NULL OR fs.quartile = 0
-        AND EXISTS (
-          SELECT 1 FROM nav_data nd 
-          WHERE nd.fund_id = f.id
-          GROUP BY nd.fund_id
-          HAVING COUNT(*) > 10
+        WHERE NOT EXISTS (
+          SELECT 1 FROM fund_scores fs 
+          WHERE fs.fund_id = f.id AND fs.quartile IS NOT NULL
         )
         LIMIT $1
       `;
