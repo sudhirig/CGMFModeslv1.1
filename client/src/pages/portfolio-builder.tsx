@@ -246,11 +246,11 @@ export default function PortfolioBuilder() {
                           <table className="min-w-full divide-y divide-neutral-200">
                             <thead>
                               <tr>
-                                <th className="px-4 py-3 bg-neutral-100 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Category</th>
-                                <th className="px-4 py-3 bg-neutral-100 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Fund Name</th>
-                                <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Allocation %</th>
-                                <th className="px-4 py-3 bg-neutral-100 text-center text-xs font-medium text-neutral-500 uppercase tracking-wider">Quartile</th>
-                                <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Score</th>
+                                <th className="px-4 py-3 bg-neutral-100 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider w-[15%]">Category</th>
+                                <th className="px-4 py-3 bg-neutral-100 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider w-[40%]">Fund Name</th>
+                                <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider w-[15%]">Allocation %</th>
+                                <th className="px-4 py-3 bg-neutral-100 text-center text-xs font-medium text-neutral-500 uppercase tracking-wider w-[15%]">Quartile</th>
+                                <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider w-[15%]">Score</th>
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-neutral-200">
@@ -266,9 +266,9 @@ export default function PortfolioBuilder() {
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                                       {allocation.allocationPercent}%
                                     </td>
-                                    <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                                    <td className="px-4 py-3 whitespace-nowrap text-center">
                                       {allocation.fund?.quartile ? (
-                                        <span className={`inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none rounded-full ${
+                                        <span className={`inline-flex items-center justify-center w-8 h-8 text-sm font-bold rounded-full ${
                                           allocation.fund.quartile === 1 ? 'bg-green-100 text-green-800' :
                                           allocation.fund.quartile === 2 ? 'bg-blue-100 text-blue-800' :
                                           allocation.fund.quartile === 3 ? 'bg-yellow-100 text-yellow-800' :
@@ -277,7 +277,7 @@ export default function PortfolioBuilder() {
                                           Q{allocation.fund.quartile}
                                         </span>
                                       ) : (
-                                        <span className="inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none rounded-full bg-gray-100 text-gray-800">
+                                        <span className="inline-flex items-center justify-center w-8 h-8 text-sm font-bold rounded-full bg-gray-100 text-gray-800">
                                           N/A
                                         </span>
                                       )}
