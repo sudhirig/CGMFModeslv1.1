@@ -1085,31 +1085,19 @@ export class FundScoringEngine {
       if (drawdown > maxDrawdown) {
         maxDrawdown = drawdown;
         this.drawdownInfo = {
-          maxDrawdown: drawdown / 100, // Convert back from percentage
-          peakDate: relevantData[peakIndex].navDate,
-          valleyDate: relevantData[i].navDate,
-          recoveryDate: null,
-          recoveryPeriod: null
+          peakDate: new Date(relevantData[peakIndex].navDate),
+          valleyDate: new Date(relevantData[i].navDate)
         };
       }
     }
     
-    return maxDrawdown / 100; // Return as decimal, not percentage
+    return maxDrawdown;
   }
   
   private drawdownInfo: {
-    maxDrawdown: number;
-    peakDate: string;
-    valleyDate: string;
-    recoveryDate: string | null;
-    recoveryPeriod: number | null;
-  } = { 
-    maxDrawdown: 0,
-    peakDate: new Date().toISOString().split('T')[0],
-    valleyDate: new Date().toISOString().split('T')[0],
-    recoveryDate: null,
-    recoveryPeriod: null 
-  };
+    peakDate: Date;
+    valleyDate: Date;
+  } = { peakDate: new Date(), valleyDate: new Date() };
   
   // Already implemented above - using shared implementation
   /**
@@ -1291,74 +1279,58 @@ export class FundScoringEngine {
     const parsed = parseFloat(value);
     return isNaN(parsed) ? null : parsed;
   }
-
-  /**
-   * Calculate forward score based on ELIVATE framework and current market conditions
-   * This predicts potential fund performance in the next 3-6 months
-   */
-  private calculateForwardScore(fund: Fund, elivateScore: any | null): number {
-    // Default score if no ELIVATE data is available
-    if (!elivateScore) return 5;
     
-    // Get overall market sentiment from ELIVATE
-    const marketSentiment = elivateScore.overallScore || 50;
+    let maxDrawdown = 0;
+    let peak = sortedNavData[0].navValue;
+    let peakIndex = 0;
+    let valleyIndex = 0;
     
-    // Basic implementation - can be enhanced with more sophisticated prediction models
-    let forwardScore = 5; // Default neutral score
-    
-    // Fund category alignment with market sentiment
-    if (marketSentiment > 65) {
-      // Bullish market - favor equity and growth funds
-      if (fund.category === 'Equity') {
-        forwardScore += 3;
-      } else if (fund.category === 'Hybrid') {
-        forwardScore += 1.5;
-      }
-    } else if (marketSentiment < 35) {
-      // Bearish market - favor debt and defensive funds
-      if (fund.category === 'Debt') {
-        forwardScore += 3;
-      } else if (fund.category === 'Hybrid') {
-        forwardScore += 1.5;
-      }
-    } else {
-      // Neutral market - balanced approach
-      if (fund.category === 'Hybrid') {
-        forwardScore += 2;
+    for (let i = 0; i < sortedNavData.length; i++) {
+      const nav = sortedNavData[i];
+      
+      if (nav.navValue > peak) {
+        peak = nav.navValue;
+        peakIndex = i;
       } else {
-        forwardScore += 1;
+        const drawdown = (peak - nav.navValue) / peak;
+        if (drawdown > maxDrawdown) {
+          maxDrawdown = drawdown;
+          valleyIndex = i;
+        }
       }
     }
     
-    return Math.min(10, forwardScore);
+    // Find recovery date (when NAV returns to the peak level)
+    let recoveryIndex = -1;
+    for (let i = valleyIndex + 1; i < sortedNavData.length; i++) {
+      if (sortedNavData[i].navValue >= peak) {
+        recoveryIndex = i;
+        break;
+      }
+    }
+    
+    // Store drawdown details for reporting
+    this.drawdownInfo = {
+      maxDrawdown,
+      peakDate: sortedNavData[peakIndex].navDate,
+      valleyDate: sortedNavData[valleyIndex].navDate,
+      recoveryDate: recoveryIndex !== -1 ? sortedNavData[recoveryIndex].navDate : null,
+      recoveryPeriod: recoveryIndex !== -1 ? 
+        (new Date(sortedNavData[recoveryIndex].navDate).getTime() - 
+         new Date(sortedNavData[valleyIndex].navDate).getTime()) / (1000 * 60 * 60 * 24) : null
+    };
+    
+    return maxDrawdown;
   }
   
-  /**
-   * Calculate AUM size score based on fund size
-   * Optimal size gets highest score (neither too small nor too large)
-   */
-  private calculateAumSizeScore(fund: Fund, fundSizeFactor: number | null): number {
-    // If fund size factor is not available, give neutral score
-    if (fundSizeFactor === null) return 5;
-    
-    // fundSizeFactor is already normalized to 0-1 range where 1 is optimal size
-    return fundSizeFactor * 10;
-  }
-  
-  /**
-   * Calculate expense ratio score
-   * Lower expense ratio is better (gets higher score)
-   */
-  private calculateExpenseRatioScore(fund: Fund, expenseRatioRank: number | null): number {
-    // If expense ratio ranking is not available, give neutral score
-    if (expenseRatioRank === null) return 5;
-    
-    // expenseRatioRank is standard deviations from median
-    // Positive means lower than median (better)
-    // Scale to 0-10 range
-    const score = 5 + expenseRatioRank * 2;
-    return Math.max(0, Math.min(10, score));
-  }
+  // Store information about the latest drawdown analysis
+  private drawdownInfo: {
+    maxDrawdown: number;
+    peakDate: Date;
+    valleyDate: Date;
+    recoveryDate: Date | null;
+    recoveryPeriod: number | null;
+  } | null = null;
   
   /**
    * Calculate Beta - measure of systematic risk relative to the market

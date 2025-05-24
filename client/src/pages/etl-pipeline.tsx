@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useEtlStatus } from "@/hooks/use-etl-status";
-import { useNavImportStatus } from "@/hooks/use-nav-import-status";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from "date-fns";
@@ -10,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import axios from "axios";
 import { Progress } from "@/components/ui/progress";
-import { NavImportStatus } from "@/components/nav-import-status";
 import { 
   Dialog,
   DialogContent,
@@ -58,8 +56,6 @@ export default function EtlPipeline() {
     intervalHours: 24
   });
   const [isScheduling, setIsScheduling] = useState(false);
-  
-
   
   // Fetch the scheduled import status
   const fetchScheduledStatus = async () => {
@@ -135,22 +131,30 @@ export default function EtlPipeline() {
     }
   };
   
-  // Use the NAV import status hook to track progress
-  const { 
-    amfiStatus, 
-    scheduledImports, 
-    isLoading: isLoadingNavStatus,
-    refetchNavStatus,
-    refetchScheduledStatus
-  } = useNavImportStatus();
+  // Fetch AMFI status data
+  const [amfiStatus, setAmfiStatus] = useState<any>(null);
+  const [isLoadingAmfiStatus, setIsLoadingAmfiStatus] = useState(false);
+  
+  const fetchAmfiStatus = async () => {
+    try {
+      setIsLoadingAmfiStatus(true);
+      const response = await axios.get('/api/amfi/status');
+      if (response.data.success) {
+        setAmfiStatus(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching AMFI status:', error);
+    } finally {
+      setIsLoadingAmfiStatus(false);
+    }
+  };
   
   // Initialize data on component mount and set up refresh intervals
   useEffect(() => {
     // Initial data fetch
     fetchScheduledStatus();
     refreshEtlStatus();
-    refetchNavStatus();
-    refetchScheduledStatus();
+    fetchAmfiStatus();
     
     // Set up more frequent refresh intervals
     const statusInterval = setInterval(() => {
@@ -158,16 +162,15 @@ export default function EtlPipeline() {
       refreshEtlStatus();
     }, 5000); // Check every 5 seconds
     
-    const navStatusInterval = setInterval(() => {
-      refetchNavStatus();
-      refetchScheduledStatus();
+    const amfiStatusInterval = setInterval(() => {
+      fetchAmfiStatus();
     }, 10000); // Check every 10 seconds
     
     return () => {
       clearInterval(statusInterval);
-      clearInterval(navStatusInterval);
+      clearInterval(amfiStatusInterval);
     };
-  }, [refreshEtlStatus, refetchNavStatus, refetchScheduledStatus]);
+  }, []);
   
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -266,15 +269,6 @@ export default function EtlPipeline() {
             </div>
           </div>
         </div>
-        
-        {/* NAV Import Status */}
-        <NavImportStatus amfiStatus={{
-          fundCount: amfiStatus.fundCount,
-          navCount: amfiStatus.navCount,
-          navWithHistoryCount: amfiStatus.navWithHistoryCount,
-          isLoading: isLoadingNavStatus,
-          error: null
-        }} />
         
         {/* Data Source Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
