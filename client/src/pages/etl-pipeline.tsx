@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import axios from "axios";
+import { Progress } from "@/components/ui/progress";
 
 export default function EtlPipeline() {
   const { etlRuns, refreshEtlStatus, triggerDataCollection, isLoading, isCollecting, error } = useEtlStatus();
@@ -90,9 +91,45 @@ export default function EtlPipeline() {
     }
   };
   
-  // Initialize data on component mount
+  // Fetch AMFI status data
+  const [amfiStatus, setAmfiStatus] = useState<any>(null);
+  const [isLoadingAmfiStatus, setIsLoadingAmfiStatus] = useState(false);
+  
+  const fetchAmfiStatus = async () => {
+    try {
+      setIsLoadingAmfiStatus(true);
+      const response = await axios.get('/api/amfi/status');
+      if (response.data.success) {
+        setAmfiStatus(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching AMFI status:', error);
+    } finally {
+      setIsLoadingAmfiStatus(false);
+    }
+  };
+  
+  // Initialize data on component mount and set up refresh intervals
   useEffect(() => {
+    // Initial data fetch
     fetchScheduledStatus();
+    refreshEtlStatus();
+    fetchAmfiStatus();
+    
+    // Set up more frequent refresh intervals
+    const statusInterval = setInterval(() => {
+      fetchScheduledStatus();
+      refreshEtlStatus();
+    }, 5000); // Check every 5 seconds
+    
+    const amfiStatusInterval = setInterval(() => {
+      fetchAmfiStatus();
+    }, 10000); // Check every 10 seconds
+    
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(amfiStatusInterval);
+    };
   }, []);
   
   const getStatusBadgeClass = (status: string) => {
