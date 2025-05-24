@@ -156,19 +156,49 @@ export class SimplePortfolioService {
         return result;
       };
       
-      // Create unique ID sets to avoid duplication
+      // Create unique ID sets to track all selected funds and avoid duplication
       const selectedFundIds = new Set<number>();
       
       // Get unique funds for each category, avoiding duplicates across categories
+      // And strictly enforcing quartile-based recommendations
       const getFundsForCategory = (funds: any[], count: number) => {
         const result = [];
+        
+        // First pass: Get only Q1 and Q2 funds (BUY/HOLD recommendations)
         for (const fund of funds) {
           if (result.length >= count) break;
-          if (!selectedFundIds.has(fund.id)) {
+          
+          // Only use a fund if it hasn't been selected before
+          if (!selectedFundIds.has(fund.id) && (fund.quartile === 1 || fund.quartile === 2)) {
             selectedFundIds.add(fund.id);
             result.push(fund);
           }
         }
+        
+        // If we still need more funds and can't find enough Q1/Q2, only then use Q3 (REVIEW)
+        if (result.length < count) {
+          for (const fund of funds) {
+            if (result.length >= count) break;
+            
+            if (!selectedFundIds.has(fund.id) && fund.quartile === 3) {
+              selectedFundIds.add(fund.id);
+              result.push(fund);
+            }
+          }
+        }
+        
+        // As a last resort, include Q4 (SELL) or unrated funds if we absolutely must
+        if (result.length < count) {
+          for (const fund of funds) {
+            if (result.length >= count) break;
+            
+            if (!selectedFundIds.has(fund.id) && (fund.quartile === 4 || !fund.quartile)) {
+              selectedFundIds.add(fund.id);
+              result.push(fund);
+            }
+          }
+        }
+        
         return result;
       };
       
@@ -391,19 +421,36 @@ export class SimplePortfolioService {
     // Get baseline based on risk profile
     const baseline = baselineReturns[riskProfile as keyof typeof baselineReturns] || baselineReturns.Balanced;
     
-    // If there are no allocations with quartile ratings, return the baseline
-    const ratedAllocations = allocations.filter(a => a.fund?.quartile);
-    if (ratedAllocations.length === 0) {
-      return baseline;
-    }
-    
     // Calculate weighted expected returns based on quartiles
-    // Q1 funds typically have higher expected returns, Q4 funds lower
+    // Q1 (BUY) funds typically have higher expected returns, Q4 (SELL) funds lower
     let weightedSum = 0;
     let totalWeight = 0;
     
+    // Count funds by quartile to adjust expected returns appropriately
+    let q1Count = 0, q2Count = 0, q3Count = 0, q4Count = 0, unratedCount = 0;
+    let totalAllocationPercentage = 0;
+    
+    // First, count the number of funds in each quartile category
     for (const allocation of allocations) {
-      // Skip allocations without a fund
+      if (!allocation.fund) continue;
+      
+      totalAllocationPercentage += allocation.allocationPercent;
+      
+      if (allocation.fund.quartile === 1) {
+        q1Count++;
+      } else if (allocation.fund.quartile === 2) {
+        q2Count++;
+      } else if (allocation.fund.quartile === 3) {
+        q3Count++;
+      } else if (allocation.fund.quartile === 4) {
+        q4Count++;
+      } else {
+        unratedCount++;
+      }
+    }
+    
+    // Calculate weighted contributions from each allocation
+    for (const allocation of allocations) {
       if (!allocation.fund) continue;
       
       // Default to moderate performance if no quartile
@@ -411,17 +458,17 @@ export class SimplePortfolioService {
       
       // Adjust expected return based on quartile
       if (allocation.fund.quartile === 1) {
-        // Q1 funds perform better than baseline
-        expectedReturn = baseline.max + 2;
+        // Q1 funds perform significantly above baseline (BUY recommendation)
+        expectedReturn = baseline.max + 3;
       } else if (allocation.fund.quartile === 2) {
-        // Q2 funds perform at high end of baseline
+        // Q2 funds perform at high end of baseline (HOLD recommendation)
         expectedReturn = baseline.max + 1;
       } else if (allocation.fund.quartile === 3) {
-        // Q3 funds perform at low end of baseline
+        // Q3 funds perform at low end of baseline (REVIEW recommendation)
         expectedReturn = baseline.min;
       } else if (allocation.fund.quartile === 4) {
-        // Q4 funds perform below baseline
-        expectedReturn = baseline.min - 1;
+        // Q4 funds perform below baseline (SELL recommendation)
+        expectedReturn = baseline.min - 2;
       }
       
       // Add weighted contribution
@@ -432,10 +479,40 @@ export class SimplePortfolioService {
     // Calculate weighted average expected return
     const avgExpectedReturn = totalWeight > 0 ? weightedSum / totalWeight : (baseline.min + baseline.max) / 2;
     
-    // Create a range around the weighted average
+    // Calculate the quality of the portfolio based on quartile distribution
+    const totalRatedFunds = q1Count + q2Count + q3Count + q4Count;
+    const highQualityRatio = totalRatedFunds > 0 ? (q1Count + q2Count) / totalRatedFunds : 0.5;
+    
+    // Adjust the range based on portfolio quality
+    let minAdjustment = 0;
+    let maxAdjustment = 0;
+    
+    if (highQualityRatio >= 0.8) {
+      // Excellent portfolio (mostly Q1 and Q2 funds)
+      minAdjustment = 1;
+      maxAdjustment = 2;
+    } else if (highQualityRatio >= 0.6) {
+      // Good portfolio
+      minAdjustment = 0.5;
+      maxAdjustment = 1.5;
+    } else if (highQualityRatio >= 0.4) {
+      // Average portfolio
+      minAdjustment = 0;
+      maxAdjustment = 1;
+    } else if (highQualityRatio >= 0.2) {
+      // Below average portfolio
+      minAdjustment = -0.5;
+      maxAdjustment = 0.5;
+    } else {
+      // Poor quality portfolio (mostly Q3 and Q4 funds)
+      minAdjustment = -1;
+      maxAdjustment = 0;
+    }
+    
+    // Create a range around the weighted average with quality adjustments
     return {
-      min: Math.max(Math.round(avgExpectedReturn - 1), 1),
-      max: Math.round(avgExpectedReturn + 1)
+      min: Math.max(Math.round(avgExpectedReturn + minAdjustment), 1),
+      max: Math.round(avgExpectedReturn + maxAdjustment)
     };
   }
   
