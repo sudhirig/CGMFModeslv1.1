@@ -8,6 +8,7 @@ import { fundScoringEngine } from "./services/fund-scoring";
 import { portfolioBuilder } from "./services/portfolio-builder";
 import { backtestingEngine } from "./services/backtesting-engine";
 import { fundDetailsCollector } from "./services/fund-details-collector";
+import { quartileScheduler as automatedScheduler } from "./services/automated-quartile-scheduler";
 import { quartileScheduler } from "./services/quartile-scoring-scheduler";
 import { quartileSeeder } from "./services/seed-quartile-ratings";
 import amfiImportRoutes from "./api/amfi-import";
@@ -1257,7 +1258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Automated quartile scheduler endpoints
   app.get('/api/scheduler/status', (req, res) => {
     try {
-      const status = quartileScheduler.getStatus();
+      const status = automatedScheduler.getStatus();
       res.json(status);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1266,7 +1267,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/scheduler/trigger-daily', async (req, res) => {
     try {
-      await quartileScheduler.triggerDailyCheck();
+      await automatedScheduler.triggerDailyCheck();
       res.json({ success: true, message: 'Daily eligibility check triggered' });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1275,7 +1276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/scheduler/trigger-weekly', async (req, res) => {
     try {
-      await quartileScheduler.triggerWeeklyRecalculation();
+      await automatedScheduler.triggerWeeklyRecalculation();
       res.json({ success: true, message: 'Weekly quartile recalculation triggered' });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -1284,7 +1285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/scheduler/trigger-migration', async (req, res) => {
     try {
-      await quartileScheduler.triggerMigrationTracking();
+      await automatedScheduler.triggerMigrationTracking();
       res.json({ success: true, message: 'Migration tracking triggered' });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
