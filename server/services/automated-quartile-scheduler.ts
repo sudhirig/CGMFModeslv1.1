@@ -64,7 +64,7 @@ export class AutomatedQuartileScheduler {
           COUNT(n.nav_date) as nav_count,
           MIN(n.nav_date) as earliest_nav,
           MAX(n.nav_date) as latest_nav,
-          EXTRACT(DAYS FROM (MAX(n.nav_date) - MIN(n.nav_date))) as days_span
+          (MAX(n.nav_date) - MIN(n.nav_date)) as days_span
         FROM funds f
         LEFT JOIN nav_data n ON f.id = n.fund_id
         WHERE n.created_at > '2025-05-30 06:45:00'  -- Only authentic imported data
