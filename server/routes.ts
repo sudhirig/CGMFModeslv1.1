@@ -435,6 +435,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/funds/search", async (req, res) => {
+    try {
+      const query = req.query.q || req.query.query;
+      if (!query) {
+        return res.status(400).json({ message: "Search query required" });
+      }
+      
+      const limit = parseInt(req.query.limit as string) || 10;
+      const funds = await storage.searchFunds(query as string, limit);
+      res.json(funds);
+    } catch (error) {
+      console.error("Error searching funds:", error);
+      res.status(500).json({ message: "Failed to search funds" });
+    }
+  });
+
   app.get("/api/funds/:id", async (req, res) => {
     try {
       // Validate that the ID is actually a number
