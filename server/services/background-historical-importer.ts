@@ -1,0 +1,265 @@
+/**
+ * Background Historical NAV Data Importer
+ * Runs continuously to import authentic historical data from free APIs
+ * Designed to work 24/7 in the background without user intervention
+ */
+
+import { db } from '../db.js';
+import { funds, navData } from '../../shared/schema.js';
+import { eq, lt, sql, and, isNull } from 'drizzle-orm';
+import axios from 'axios';
+
+interface HistoricalNavEntry {
+  date: string;
+  nav: string;
+}
+
+interface ImportProgress {
+  totalFundsProcessed: number;
+  totalRecordsImported: number;
+  currentBatch: number;
+  lastProcessedFund: string;
+  isRunning: boolean;
+}
+
+class BackgroundHistoricalImporter {
+  private isRunning = false;
+  private currentProgress: ImportProgress = {
+    totalFundsProcessed: 0,
+    totalRecordsImported: 0,
+    currentBatch: 0,
+    lastProcessedFund: '',
+    isRunning: false
+  };
+  
+  private readonly BATCH_SIZE = 5; // Process 5 funds at a time
+  private readonly DELAY_BETWEEN_BATCHES = 30000; // 30 seconds between batches
+  private readonly DELAY_BETWEEN_REQUESTS = 2000; // 2 seconds between API calls
+  private readonly MAX_MONTHS_BACK = 36; // Import up to 3 years of data
+
+  async start() {
+    if (this.isRunning) {
+      console.log('📊 Background historical importer already running');
+      return;
+    }
+
+    this.isRunning = true;
+    this.currentProgress.isRunning = true;
+    
+    console.log('🚀 Starting background historical NAV data importer...');
+    console.log(`  Batch size: ${this.BATCH_SIZE} funds`);
+    console.log(`  Delay between batches: ${this.DELAY_BETWEEN_BATCHES / 1000}s`);
+    console.log(`  Max import range: ${this.MAX_MONTHS_BACK} months`);
+
+    try {
+      await this.runContinuousImport();
+    } catch (error) {
+      console.error('Background importer error:', error);
+      this.isRunning = false;
+      this.currentProgress.isRunning = false;
+    }
+  }
+
+  stop() {
+    console.log('⏹️ Stopping background historical importer...');
+    this.isRunning = false;
+    this.currentProgress.isRunning = false;
+  }
+
+  getProgress(): ImportProgress {
+    return { ...this.currentProgress };
+  }
+
+  private async runContinuousImport() {
+    while (this.isRunning) {
+      try {
+        // Get next batch of funds needing historical data
+        const fundsToProcess = await this.getFundsNeedingHistoricalData();
+        
+        if (fundsToProcess.length === 0) {
+          console.log('📈 All funds processed! Restarting from beginning...');
+          // Reset and start over to catch any new funds or missed data
+          await new Promise(resolve => setTimeout(resolve, 300000)); // Wait 5 minutes
+          continue;
+        }
+
+        this.currentProgress.currentBatch++;
+        console.log(`\n📦 Processing batch ${this.currentProgress.currentBatch} - ${fundsToProcess.length} funds`);
+
+        for (const fund of fundsToProcess) {
+          if (!this.isRunning) break;
+
+          this.currentProgress.lastProcessedFund = fund.fundName;
+          const importedCount = await this.importHistoricalDataForFund(fund);
+          
+          if (importedCount > 0) {
+            this.currentProgress.totalRecordsImported += importedCount;
+            console.log(`  ✅ ${fund.fundName}: +${importedCount} records`);
+          }
+
+          this.currentProgress.totalFundsProcessed++;
+          
+          // Delay between funds to respect API rate limits
+          await new Promise(resolve => setTimeout(resolve, this.DELAY_BETWEEN_REQUESTS));
+        }
+
+        // Log progress
+        console.log(`📊 Batch ${this.currentProgress.currentBatch} completed:`);
+        console.log(`  Total funds processed: ${this.currentProgress.totalFundsProcessed}`);
+        console.log(`  Total records imported: ${this.currentProgress.totalRecordsImported}`);
+
+        // Delay between batches
+        if (this.isRunning) {
+          console.log(`⏱️ Waiting ${this.DELAY_BETWEEN_BATCHES / 1000}s before next batch...`);
+          await new Promise(resolve => setTimeout(resolve, this.DELAY_BETWEEN_BATCHES));
+        }
+
+      } catch (error) {
+        console.error('Error in continuous import loop:', error);
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 60000)); // Wait 1 minute on error
+      }
+    }
+  }
+
+  private async getFundsNeedingHistoricalData() {
+    try {
+      const result = await db
+        .select({
+          id: funds.id,
+          schemeCode: funds.schemeCode,
+          fundName: funds.fundName,
+          category: funds.category,
+          status: funds.status
+        })
+        .from(funds)
+        .leftJoin(
+          sql`(SELECT fund_id, COUNT(*) as record_count FROM nav_data GROUP BY fund_id) nav_counts`,
+          sql`nav_counts.fund_id = ${funds.id}`
+        )
+        .where(
+          and(
+            eq(funds.status, 'ACTIVE'),
+            sql`COALESCE(nav_counts.record_count, 0) < 50`,
+            sql`${funds.schemeCode} IS NOT NULL`
+          )
+        )
+        .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`)
+        .limit(this.BATCH_SIZE);
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching funds needing data:', error);
+      return [];
+    }
+  }
+
+  private async importHistoricalDataForFund(fund: any): Promise<number> {
+    let totalImported = 0;
+    const monthRanges = this.generateMonthRanges(this.MAX_MONTHS_BACK);
+
+    for (const range of monthRanges) {
+      if (!this.isRunning) break;
+
+      try {
+        const historicalData = await this.fetchHistoricalNavFromAPI(
+          fund.schemeCode, 
+          range.year, 
+          range.month
+        );
+
+        if (historicalData && historicalData.length > 0) {
+          const imported = await this.bulkInsertNavData(fund.id, historicalData);
+          totalImported += imported;
+        }
+
+        // Small delay between API calls
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+      } catch (error) {
+        // Continue with next month if this one fails
+        continue;
+      }
+    }
+
+    return totalImported;
+  }
+
+  private generateMonthRanges(monthsBack: number) {
+    const ranges = [];
+    const now = new Date();
+
+    for (let i = 1; i <= monthsBack; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      ranges.push({
+        year: date.getFullYear(),
+        month: date.getMonth() + 1
+      });
+    }
+
+    return ranges;
+  }
+
+  private async fetchHistoricalNavFromAPI(schemeCode: string, year: number, month: number): Promise<any[]> {
+    const paddedMonth = month.toString().padStart(2, '0');
+    const url = `https://api.mfapi.in/mf/${schemeCode}/${year}-${paddedMonth}-01`;
+
+    try {
+      const response = await axios.get(url, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; MutualFundAnalyzer/1.0)',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        return response.data.data
+          .map((entry: HistoricalNavEntry) => ({
+            nav_date: entry.date,
+            nav_value: parseFloat(entry.nav)
+          }))
+          .filter((entry: { nav_date: string; nav_value: number }) => !isNaN(entry.nav_value) && entry.nav_value > 0);
+      }
+
+      return [];
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return []; // No data available for this period
+      }
+      throw error;
+    }
+  }
+
+  private async bulkInsertNavData(fundId: number, navDataArray: any[]): Promise<number> {
+    if (!navDataArray || navDataArray.length === 0) {
+      return 0;
+    }
+
+    try {
+      const navRecords = navDataArray.map(nav => ({
+        fundId: fundId,
+        navDate: nav.nav_date,
+        navValue: nav.nav_value.toString()
+      }));
+
+      await db.insert(navData)
+        .values(navRecords)
+        .onConflictDoNothing({
+          target: [navData.fundId, navData.navDate]
+        });
+
+      return navRecords.length;
+    } catch (error) {
+      console.error('Error in bulk insert:', error);
+      return 0;
+    }
+  }
+}
+
+export const backgroundHistoricalImporter = new BackgroundHistoricalImporter();
+
+// Auto-start the background importer
+setTimeout(() => {
+  backgroundHistoricalImporter.start();
+}, 5000); // Start after 5 seconds to allow system initialization

@@ -775,6 +775,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Background historical data import monitoring
+  app.get("/api/historical-import/status", async (req, res) => {
+    try {
+      const { backgroundHistoricalImporter } = await import('./services/background-historical-importer');
+      const progress = backgroundHistoricalImporter.getProgress();
+      res.json({
+        success: true,
+        progress
+      });
+    } catch (error) {
+      console.error("Error fetching historical import status:", error);
+      res.status(500).json({ message: "Failed to fetch historical import status" });
+    }
+  });
+
+  app.post("/api/historical-import/start", async (req, res) => {
+    try {
+      const { backgroundHistoricalImporter } = await import('./services/background-historical-importer');
+      await backgroundHistoricalImporter.start();
+      res.json({ 
+        success: true, 
+        message: "Background historical import started" 
+      });
+    } catch (error) {
+      console.error("Error starting historical import:", error);
+      res.status(500).json({ message: "Failed to start historical import" });
+    }
+  });
+
+  app.post("/api/historical-import/stop", async (req, res) => {
+    try {
+      const { backgroundHistoricalImporter } = await import('./services/background-historical-importer');
+      backgroundHistoricalImporter.stop();
+      res.json({ 
+        success: true, 
+        message: "Background historical import stopped" 
+      });
+    } catch (error) {
+      console.error("Error stopping historical import:", error);
+      res.status(500).json({ message: "Failed to stop historical import" });
+    }
+  });
+
   app.post("/api/etl/collect", async (req, res) => {
     try {
       const result = await dataCollector.collectAllData();

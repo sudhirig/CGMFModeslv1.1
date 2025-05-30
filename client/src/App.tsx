@@ -15,6 +15,7 @@ import QuartileAnalysis from "@/pages/quartile-analysis";
 import HistoricalDataImport from "@/pages/historical-data-import";
 import DataImportStatus from "@/pages/data-import-status";
 import AutomationDashboard from "@/pages/automation-dashboard";
+import HistoricalImportDashboard from "@/pages/historical-import-dashboard";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -37,6 +38,7 @@ function Router() {
             <Route path="/historical-data-import" component={HistoricalDataImport} />
             <Route path="/data-import-status" component={DataImportStatus} />
             <Route path="/automation-dashboard" component={AutomationDashboard} />
+            <Route path="/historical-import-dashboard" component={HistoricalImportDashboard} />
             <Route component={NotFound} />
           </Switch>
         </main>

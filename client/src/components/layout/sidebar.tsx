@@ -66,6 +66,10 @@ export default function Sidebar() {
                 <span className="material-icons text-xl mr-3">update</span>
                 <span>Historical NAV Import</span>
               </Link>
+              <Link href="/historical-import-dashboard" className={linkClass("/historical-import-dashboard")}>
+                <span className="material-icons text-xl mr-3">cloud_sync</span>
+                <span>Background Import</span>
+              </Link>
               <Link href="/mfapi-test" className={linkClass("/mfapi-test")}>
                 <span className="material-icons text-xl mr-3">api</span>
                 <span>MFAPI.in Test</span>
