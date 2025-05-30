@@ -47,6 +47,10 @@ class BackgroundHistoricalImporter {
       return;
     }
 
+    // Reset state to start fresh and access different funds
+    this.processedFundIds.clear();
+    this.consecutiveEmptyBatches = 0;
+
     this.isRunning = true;
     this.currentProgress.isRunning = true;
     
@@ -223,7 +227,7 @@ class BackgroundHistoricalImporter {
           )
           .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`, funds.id)
           .limit(this.BATCH_SIZE)
-          .offset(Math.max(0, offset - 3396)); // Adjust offset for broader range
+          .offset(Math.max(0, batchOffset - 3396)); // Adjust offset for broader range
         
         return fallbackResult;
       }
