@@ -32,12 +32,14 @@ class BackgroundHistoricalImporter {
     isRunning: false
   };
   private processedFundIds = new Set<number>();
+  private consecutiveEmptyBatches = 0;
   
   private readonly BATCH_SIZE = 10; // Process 10 funds at a time
   private readonly DELAY_BETWEEN_BATCHES = 15000; // 15 seconds between batches
   private readonly DELAY_BETWEEN_REQUESTS = 500; // 0.5 seconds between API calls
   private readonly MAX_MONTHS_BACK = 120; // Import up to 10 years of data
   private readonly PARALLEL_REQUESTS = 3; // Run 3 parallel requests per fund
+  private readonly MAX_EMPTY_BATCHES = 5; // Stop after 5 consecutive empty batches
 
   async start() {
     if (this.isRunning) {
@@ -66,7 +68,14 @@ class BackgroundHistoricalImporter {
     console.log('⏹️ Stopping background historical importer...');
     this.isRunning = false;
     this.currentProgress.isRunning = false;
+    // Force stop by clearing any running timeouts
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+      this.batchTimeout = null;
+    }
   }
+
+  private batchTimeout: NodeJS.Timeout | null = null;
 
   getProgress(): ImportProgress {
     return { ...this.currentProgress };
@@ -124,6 +133,20 @@ class BackgroundHistoricalImporter {
         console.log(`📊 Batch ${this.currentProgress.currentBatch} completed:`);
         console.log(`  Total funds processed: ${this.currentProgress.totalFundsProcessed}`);
         console.log(`  Total records imported: ${this.currentProgress.totalRecordsImported}`);
+
+        // Check if this batch imported any records
+        if (batchRecordsImported === 0) {
+          this.consecutiveEmptyBatches++;
+          console.log(`⚠️ Empty batch ${this.consecutiveEmptyBatches}/${this.MAX_EMPTY_BATCHES}`);
+          
+          if (this.consecutiveEmptyBatches >= this.MAX_EMPTY_BATCHES) {
+            console.log('🛑 Too many consecutive empty batches. Stopping import to prevent endless cycling.');
+            this.stop();
+            break;
+          }
+        } else {
+          this.consecutiveEmptyBatches = 0; // Reset counter on successful import
+        }
 
         // Delay between batches
         if (this.isRunning) {
