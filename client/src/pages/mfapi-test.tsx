@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search, Download, Calendar, TrendingUp } from 'lucide-react';
+import { Loader2, Search, Download, Calendar, TrendingUp, Database, Play } from 'lucide-react';
 
 interface SchemeData {
   schemeCode: string;
@@ -34,6 +34,8 @@ export default function MFAPITest() {
   const [historicalData, setHistoricalData] = useState<HistoricalData | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [importLoading, setImportLoading] = useState(false);
+  const [importStatus, setImportStatus] = useState<any>(null);
   const [error, setError] = useState<string>('');
 
   const searchSchemes = async () => {
@@ -85,6 +87,53 @@ export default function MFAPITest() {
       setError(`Failed to fetch data: ${err.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const startHistoricalImport = async () => {
+    setImportLoading(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/mfapi-historical/start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: Failed to start import`);
+      }
+      
+      const data = await response.json();
+      setImportStatus(data);
+      
+      // Start polling for status updates
+      pollImportStatus();
+      
+    } catch (err: any) {
+      setError(`Failed to start import: ${err.message}`);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const pollImportStatus = async () => {
+    try {
+      const response = await fetch('/api/mfapi-historical/status');
+      const data = await response.json();
+      
+      if (data.success && data.etlRun) {
+        setImportStatus(data);
+        
+        // Continue polling if still running
+        if (data.etlRun.status === 'RUNNING') {
+          setTimeout(pollImportStatus, 5000); // Poll every 5 seconds
+        }
+      }
+    } catch (err) {
+      console.error('Error polling import status:', err);
     }
   };
 
@@ -183,6 +232,71 @@ export default function MFAPITest() {
                   )}
                   Fetch Historical Data
                 </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Historical Import Section */}
+      <Card className="border-green-200 bg-green-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-green-800">
+            <Database className="h-5 w-5" />
+            Historical NAV Data Import
+          </CardTitle>
+          <CardDescription className="text-green-700">
+            Import historical NAV data for all mutual funds in the database using MFAPI.in
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-4">
+            <Button 
+              onClick={startHistoricalImport}
+              disabled={importLoading}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {importLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Play className="h-4 w-4 mr-2" />
+              )}
+              Start Historical Import
+            </Button>
+            
+            {importStatus && (
+              <Badge variant={importStatus.etlRun?.status === 'RUNNING' ? 'default' : 'secondary'}>
+                {importStatus.etlRun?.status || 'Unknown'}
+              </Badge>
+            )}
+          </div>
+
+          {importStatus && importStatus.etlRun && (
+            <div className="bg-white p-4 rounded border">
+              <h4 className="font-medium mb-2">Import Status</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label>ETL Run ID</Label>
+                  <p>{importStatus.etlRun.id}</p>
+                </div>
+                <div>
+                  <Label>Status</Label>
+                  <p>{importStatus.etlRun.status}</p>
+                </div>
+                <div>
+                  <Label>Records Processed</Label>
+                  <p>{importStatus.etlRun.records_processed || 0}</p>
+                </div>
+                <div>
+                  <Label>Start Time</Label>
+                  <p>{new Date(importStatus.etlRun.start_time).toLocaleTimeString()}</p>
+                </div>
+              </div>
+              {importStatus.etlRun.error_message && (
+                <div className="mt-2">
+                  <Label>Progress</Label>
+                  <p className="text-sm text-gray-600">{importStatus.etlRun.error_message}</p>
+                </div>
               )}
             </div>
           )}

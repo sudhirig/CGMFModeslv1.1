@@ -21,6 +21,7 @@ import realHistoricalNavImportRoutes from "./api/real-historical-nav-import";
 import realDailyNavUpdateRoutes from "./api/real-daily-nav-update";
 import fundCountRoutes from "./api/fund-count";
 import mftoolTestRoutes from "./api/mftool-test";
+import mfapiHistoricalImportRoutes from "./api/mfapi-historical-import";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
@@ -55,6 +56,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register MFTool Test route
   app.use('/api/mftool', mftoolTestRoutes);
+  
+  // Register MFAPI Historical Import route
+  app.use('/api/mfapi-historical', mfapiHistoricalImportRoutes);
   
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
