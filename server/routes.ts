@@ -15,7 +15,7 @@ import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
 import quartileScoringRoutes from "./api/quartile-scoring";
 import historicalNavImportRoutes from "./api/import-historical-nav";
-import fixNavDataRoutes from "./api/fix-nav-data";
+
 import triggerRescoringRoutes from "./api/trigger-quartile-rescoring";
 import restartHistoricalImportRoutes from "./api/restart-historical-import";
 import realHistoricalNavImportRoutes from "./api/real-historical-nav-import";
@@ -38,8 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Historical NAV import route
   app.use('/api/historical-nav', historicalNavImportRoutes);
   
-  // Register Fix NAV Data route
-  app.use('/api/fix-nav', fixNavDataRoutes);
+  // Fix NAV Data route removed - synthetic data generation eliminated
   
   // Register Quartile Rescoring route
   app.use('/api/rescoring', triggerRescoringRoutes);
@@ -1071,7 +1070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const data = dateMap.get(dateKey);
             // Add fund's contribution based on allocation
             const fundContribution = (parsedAmount * (fund.allocation / 100)) * 
-                                     (nav.navValue / fund.navData[0].navValue);
+                                     (parseFloat(nav.navValue.toString()) / parseFloat(fund.navData[0].navValue.toString()));
             data.portfolioValue += fundContribution;
             data.hasRealData = true;
             dateMap.set(dateKey, data);
@@ -1086,7 +1085,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (dateMap.has(dateKey)) {
           const data = dateMap.get(dateKey);
-          data.benchmarkValue = parsedAmount * (benchmark.indexValue / benchmarkIndex[0].indexValue);
+          // Fix: Use closeValue instead of non-existent indexValue
+          const benchmarkValue = benchmark.closeValue ? parseFloat(benchmark.closeValue) : 0;
+          const initialValue = benchmarkIndex[0].closeValue ? parseFloat(benchmarkIndex[0].closeValue) : 1;
+          data.benchmarkValue = parsedAmount * (benchmarkValue / initialValue);
           dateMap.set(dateKey, data);
         }
       }
