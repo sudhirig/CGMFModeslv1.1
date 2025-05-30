@@ -35,9 +35,9 @@ export default function AutomationDashboard() {
     refetchInterval: 60000, // Refresh every minute
   });
 
-  // Fetch quartile distribution
+  // Fetch authentic quartile distribution (not synthetic data)
   const { data: quartileDistribution } = useQuery({
-    queryKey: ['/api/quartile/distribution'],
+    queryKey: ['/api/authentic-quartile/distribution'],
     refetchInterval: 60000,
   });
 
