@@ -53,6 +53,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Fund Count route
   app.use('/api/funds/count', fundCountRoutes);
   
+  // Register MFTool Test route
+  app.use('/api/mftool', mftoolTestRoutes);
+  
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
   // Fund details scheduling moved to dedicated router in api/fund-details-import.ts
