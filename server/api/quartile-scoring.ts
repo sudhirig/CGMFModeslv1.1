@@ -52,9 +52,9 @@ router.get('/distribution', async (req, res) => {
         SUM(CASE WHEN quartile = 2 THEN 1 ELSE 0 END) as q2_count,
         SUM(CASE WHEN quartile = 3 THEN 1 ELSE 0 END) as q3_count,
         SUM(CASE WHEN quartile = 4 THEN 1 ELSE 0 END) as q4_count
-      FROM fund_scores fs
-      JOIN funds f ON fs.fund_id = f.id
-      WHERE fs.quartile IS NOT NULL
+      FROM quartile_rankings qr
+      JOIN funds f ON qr.fund_id = f.id
+      WHERE qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
     `;
     
     const params: any[] = [];
@@ -64,21 +64,21 @@ router.get('/distribution', async (req, res) => {
       params.push(category);
     }
     
-    // Let's first check how many fund scores have quartile values
-    const checkQuery = `SELECT COUNT(*) as count FROM fund_scores WHERE quartile IS NOT NULL`;
+    // Check authentic quartile rankings data
+    const checkQuery = `SELECT COUNT(*) as count FROM quartile_rankings WHERE calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)`;
     const checkResult = await pool.query(checkQuery);
-    console.log("Total funds with quartile scores:", checkResult.rows[0].count);
+    console.log("Total authentic quartile rankings:", checkResult.rows[0].count);
     
-    // Now check how many funds have each quartile value
+    // Check authentic quartile distribution
     const quartileCheckQuery = `
-      SELECT quartile, COUNT(*) as count
-      FROM fund_scores
-      WHERE quartile IS NOT NULL
-      GROUP BY quartile
+      SELECT quartile_label, quartile, COUNT(*) as count
+      FROM quartile_rankings
+      WHERE calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
+      GROUP BY quartile_label, quartile
       ORDER BY quartile
     `;
     const quartileCheckResult = await pool.query(quartileCheckQuery);
-    console.log("Quartile distribution in database:", quartileCheckResult.rows);
+    console.log("Authentic quartile distribution:", quartileCheckResult.rows);
     
     const result = await pool.query(query, params);
     console.log("Query result:", result.rows[0]);
