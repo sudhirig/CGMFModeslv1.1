@@ -14,6 +14,8 @@ import ElivateFramework from "@/pages/elivate-framework";
 import QuartileAnalysis from "@/pages/quartile-analysis";
 import HistoricalDataImport from "@/pages/historical-data-import";
 import DataImportStatus from "@/pages/data-import-status";
+import MFAPITest from "@/pages/mfapi-test";
+import MFToolTest from "@/pages/mftool-test";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -35,6 +37,8 @@ function Router() {
             <Route path="/quartile-analysis" component={QuartileAnalysis} />
             <Route path="/historical-data-import" component={HistoricalDataImport} />
             <Route path="/data-import-status" component={DataImportStatus} />
+            <Route path="/mfapi-test" component={MFAPITest} />
+            <Route path="/mftool-test" component={MFToolTest} />
             <Route component={NotFound} />
           </Switch>
         </main>

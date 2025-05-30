@@ -20,6 +20,7 @@ import restartHistoricalImportRoutes from "./api/restart-historical-import";
 import realHistoricalNavImportRoutes from "./api/real-historical-nav-import";
 import realDailyNavUpdateRoutes from "./api/real-daily-nav-update";
 import fundCountRoutes from "./api/fund-count";
+import mftoolTestRoutes from "./api/mftool-test";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes

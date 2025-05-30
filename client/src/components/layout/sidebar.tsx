@@ -66,6 +66,14 @@ export default function Sidebar() {
                 <span className="material-icons text-xl mr-3">update</span>
                 <span>Historical NAV Import</span>
               </Link>
+              <Link href="/mfapi-test" className={linkClass("/mfapi-test")}>
+                <span className="material-icons text-xl mr-3">api</span>
+                <span>MFAPI.in Test</span>
+              </Link>
+              <Link href="/mftool-test" className={linkClass("/mftool-test")}>
+                <span className="material-icons text-xl mr-3">build</span>
+                <span>MFTool Test</span>
+              </Link>
               <Link href="/database-explorer" className={linkClass("/database-explorer")}>
                 <span className="material-icons text-xl mr-3">storage</span>
                 <span>Database Explorer</span>
