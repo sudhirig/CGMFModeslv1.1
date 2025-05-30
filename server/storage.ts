@@ -422,66 +422,41 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileMetrics(): Promise<any> {
     try {
-      // Query for returns data by quartile
-      const returnsQuery = `
+      // Query for authentic quartile performance data from fund_performance_metrics
+      const performanceQuery = `
         SELECT 
-          fs.quartile,
-          AVG(fs.return_1y_score) as avg_return_1y,
-          AVG(fs.return_3y_score) as avg_return_3y,
-          AVG(fs.return_5y_score) as avg_return_5y
-        FROM fund_scores fs
-        WHERE fs.quartile IS NOT NULL
-        GROUP BY fs.quartile
-        ORDER BY fs.quartile
+          qr.quartile,
+          ROUND(AVG(fpm.returns_1y), 2) as avg_return_1y,
+          ROUND(AVG(fpm.returns_3y), 2) as avg_return_3y,
+          ROUND(AVG(fpm.sharpe_ratio), 2) as avg_sharpe_ratio,
+          ROUND(AVG(fpm.max_drawdown), 2) as avg_max_drawdown,
+          ROUND(AVG(qr.composite_score), 2) as avg_score
+        FROM quartile_rankings qr
+        JOIN fund_performance_metrics fpm ON qr.fund_id = fpm.fund_id
+        WHERE qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
+        GROUP BY qr.quartile
+        ORDER BY qr.quartile
       `;
       
-      // Query for risk metrics by quartile
-      const riskQuery = `
-        SELECT 
-          fs.quartile,
-          AVG(fs.risk_grade_total) as avg_risk_grade,
-          AVG(fs.std_dev_1y_score) as avg_std_dev
-        FROM fund_scores fs
-        WHERE fs.quartile IS NOT NULL
-        GROUP BY fs.quartile
-        ORDER BY fs.quartile
-      `;
+      const performanceResult = await executeRawQuery(performanceQuery);
       
-      // Query for scoring breakdown by quartile
-      const scoringQuery = `
-        SELECT 
-          fs.quartile,
-          AVG(fs.historical_returns_total) as avg_returns_score,
-          AVG(fs.risk_grade_total) as avg_risk_score,
-          AVG(fs.other_metrics_total) as avg_other_metrics_score,
-          AVG(fs.total_score) as avg_total_score
-        FROM fund_scores fs
-        WHERE fs.quartile IS NOT NULL
-        GROUP BY fs.quartile
-        ORDER BY fs.quartile
-      `;
-      
-      const returnsResult = await executeRawQuery(returnsQuery);
-      const riskResult = await executeRawQuery(riskQuery);
-      const scoringResult = await executeRawQuery(scoringQuery);
-      
-      // Transform returns data
-      const returnsData = returnsResult.rows.map(row => ({
+      // Transform authentic performance data from quartile_rankings
+      const returnsData = performanceResult.rows.map(row => ({
         name: `Q${row.quartile}`,
         return1Y: parseFloat(row.avg_return_1y) || 0,
         return3Y: parseFloat(row.avg_return_3y) || 0,
-        return5Y: parseFloat(row.avg_return_5y) || 0
+        sharpeRatio: parseFloat(row.avg_sharpe_ratio) || 0
       }));
       
-      // Transform risk data
-      const riskData = riskResult.rows.map(row => ({
+      // Transform risk data using same authentic data
+      const riskData = performanceResult.rows.map(row => ({
         name: `Q${row.quartile}`,
-        riskGrade: parseFloat(row.avg_risk_grade) || 0,
-        stdDev: parseFloat(row.avg_std_dev) || 0
+        maxDrawdown: parseFloat(row.avg_max_drawdown) || 0,
+        sharpeRatio: parseFloat(row.avg_sharpe_ratio) || 0
       }));
       
-      // Transform scoring data
-      const scoringData = scoringResult.rows.map(row => {
+      // Transform scoring data from authentic quartile scores
+      const scoringData = performanceResult.rows.map(row => {
         const quartileLabels = {
           1: "Q1 (Top 25%)",
           2: "Q2 (26-50%)",
@@ -492,10 +467,8 @@ export class DatabaseStorage implements IStorage {
         return {
           name: `Q${row.quartile}`,
           label: quartileLabels[row.quartile as 1|2|3|4] || `Q${row.quartile}`,
-          historicalReturns: parseFloat(row.avg_returns_score) || 0,
-          riskGrade: parseFloat(row.avg_risk_score) || 0,
-          otherMetrics: parseFloat(row.avg_other_metrics_score) || 0,
-          totalScore: parseFloat(row.avg_total_score) || 0
+          compositeScore: parseFloat(row.avg_score) || 0,
+          totalScore: parseFloat(row.avg_score) || 0
         };
       });
 

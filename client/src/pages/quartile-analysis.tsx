@@ -223,16 +223,16 @@ export default function QuartileAnalysis() {
                                       </div>
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                      {quartile.historicalReturns.toFixed(1)}/40
+                                      {(quartile.compositeScore || 0).toFixed(1)}
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                      {quartile.riskGrade.toFixed(1)}/30
+                                      -
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                      {quartile.otherMetrics.toFixed(1)}/30
+                                      -
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
-                                      {quartile.totalScore.toFixed(1)}/100
+                                      {(quartile.totalScore || 0).toFixed(1)}
                                     </td>
                                   </tr>
                                 ))}
