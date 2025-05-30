@@ -202,6 +202,7 @@ class BackgroundHistoricalImporter {
   private async fetchAllHistoricalNavFromAPI(schemeCode: string): Promise<any[]> {
     // Use MFAPI.in basic endpoint to get all historical data at once
     try {
+      console.log(`  Fetching data from MFAPI.in for scheme ${schemeCode}`);
       const response = await axios.get(`https://api.mfapi.in/mf/${schemeCode}`, {
         timeout: 15000,
         headers: {
@@ -211,18 +212,33 @@ class BackgroundHistoricalImporter {
       });
 
       if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        return response.data.data
-          .map((entry: HistoricalNavEntry) => ({
-            nav_date: entry.date,
-            nav_value: parseFloat(entry.nav)
-          }))
-          .filter((entry: { nav_date: string; nav_value: number }) => 
-            !isNaN(entry.nav_value) && entry.nav_value > 0
+        console.log(`  Received ${response.data.data.length} NAV entries from MFAPI.in`);
+        
+        const processedData = response.data.data
+          .map((entry: HistoricalNavEntry) => {
+            // Convert DD-MM-YYYY to YYYY-MM-DD format
+            const dateParts = entry.date.split('-');
+            if (dateParts.length === 3) {
+              const formattedDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+              return {
+                nav_date: formattedDate,
+                nav_value: parseFloat(entry.nav)
+              };
+            }
+            return null;
+          })
+          .filter((entry: any) => 
+            entry && !isNaN(entry.nav_value) && entry.nav_value > 0
           );
+
+        console.log(`  Processed ${processedData.length} valid NAV entries`);
+        return processedData;
       }
 
+      console.log(`  No data array found in response for scheme ${schemeCode}`);
       return [];
     } catch (error) {
+      console.log(`  Error fetching data for scheme ${schemeCode}:`, error.message);
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return []; // No data available for this scheme
       }
