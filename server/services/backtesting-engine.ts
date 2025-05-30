@@ -431,29 +431,9 @@ export class BacktestingEngine {
           while (currentDate.getTime() <= endMillis) {
             const dateStr = currentDate.toISOString().split('T')[0];
             
-            // Only generate if we don't already have data for this date
+            // Only use existing authentic data - no synthetic generation allowed
             if (!existingDates.has(dateStr)) {
-              // Calculate time factor (days since start / 365)
-              const daysFactor = (currentDate.getTime() - startMillis) / (365 * dayInMillis);
-              
-              // Apply growth formula: baseline * (1 + annual_rate)^time_in_years
-              const growthComponent = Math.pow(1 + annualGrowthRate, daysFactor);
-              
-              // Add volatility using sine wave + random factor
-              const dayOfYear = Math.floor((currentDate.getTime() - startMillis) / dayInMillis) % 365;
-              const volatilityComponent = 1 + (Math.sin(dayOfYear / 30) * volatilityFactor * 0.5) + 
-                                           ((Math.random() - 0.5) * volatilityFactor);
-              
-              // Calculate NAV with growth and volatility
-              currentNAV = baselineNAV * growthComponent * volatilityComponent;
-              
-              // Add synthetic data point
-              processedData.push({
-                fund_id: fundId,
-                nav_date: new Date(currentDate),
-                nav_value: parseFloat(currentNAV.toFixed(4)),
-                is_synthetic: true // Mark as synthetic for reference
-              });
+              console.warn(`No authentic data available for ${dateStr} - skipping synthetic generation`);
             }
             
             // Move to next interval

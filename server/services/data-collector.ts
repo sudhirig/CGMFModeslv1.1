@@ -713,22 +713,11 @@ export class DataCollector {
     return { category, subcategory };
   }
   
-  // Helper: Generate realistic market values for demonstration
-  private generateRealisticMarketValue(indexName: string): number {
-    switch (indexName) {
-      case 'NIFTY 50':
-        return 22000 + (Math.random() * 500 - 250);
-      case 'NIFTY NEXT 50':
-        return 45000 + (Math.random() * 800 - 400);
-      case 'NIFTY MIDCAP 100':
-        return 42000 + (Math.random() * 700 - 350);
-      case 'NIFTY SMALLCAP 100':
-        return 14000 + (Math.random() * 400 - 200);
-      case 'INDIA VIX':
-        return 13 + (Math.random() * 2 - 1);
-      default:
-        return 10000 + (Math.random() * 500 - 250);
-    }
+  // REMOVED: No synthetic market value generation allowed
+  // Only authentic market data from verified sources is permitted
+  private getAuthenticMarketValue(indexName: string): number | null {
+    console.warn(`Synthetic market value generation disabled for ${indexName} - only authentic data allowed`);
+    return null; // Return null to indicate no synthetic data available
   }
 }
 
