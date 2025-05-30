@@ -271,10 +271,9 @@ export default function QuartileAnalysis() {
                             <tr>
                               <th className="px-4 py-3 bg-neutral-100 text-left text-xs font-medium text-neutral-500 uppercase">Fund Name</th>
                               <th className="px-4 py-3 bg-neutral-100 text-left text-xs font-medium text-neutral-500 uppercase">Category</th>
-                              <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase">Historical Returns</th>
-                              <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase">Risk Grade</th>
-                              <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase">Other Metrics</th>
-                              <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase">Total Score</th>
+                              <th className="px-4 py-3 bg-neutral-100 text-left text-xs font-medium text-neutral-500 uppercase">AMC</th>
+                              <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase">Rank</th>
+                              <th className="px-4 py-3 bg-neutral-100 text-right text-xs font-medium text-neutral-500 uppercase">Composite Score</th>
                               <th className="px-4 py-3 bg-neutral-100 text-center text-xs font-medium text-neutral-500 uppercase">Recommendation</th>
                             </tr>
                           </thead>
@@ -287,17 +286,14 @@ export default function QuartileAnalysis() {
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-500">
                                   {fund.category}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                  {fund.historicalReturnsTotal && typeof fund.historicalReturnsTotal === 'number' ? fund.historicalReturnsTotal.toFixed(1) : "N/A"}/40
+                                <td className="px-4 py-3 whitespace-nowrap text-sm text-neutral-500">
+                                  {fund.amc}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                  {fund.riskGradeTotal && typeof fund.riskGradeTotal === 'number' ? fund.riskGradeTotal.toFixed(1) : "N/A"}/30
-                                </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                  {fund.otherMetricsTotal && typeof fund.otherMetricsTotal === 'number' ? fund.otherMetricsTotal.toFixed(1) : "N/A"}/30
+                                  #{fund.rank}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
-                                  {fund.totalScore && typeof fund.totalScore === 'number' ? fund.totalScore.toFixed(1) : "N/A"}
+                                  {fund.totalScore && typeof fund.totalScore === 'number' ? fund.totalScore.toFixed(2) : "N/A"}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-xs text-center">
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-medium
