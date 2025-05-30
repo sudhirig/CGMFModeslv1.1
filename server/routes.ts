@@ -22,6 +22,7 @@ import realDailyNavUpdateRoutes from "./api/real-daily-nav-update";
 import fundCountRoutes from "./api/fund-count";
 import mftoolTestRoutes from "./api/mftool-test";
 import mfapiHistoricalImportRoutes from "./api/mfapi-historical-import";
+import quartileCalculationRoutes from "./api/quartile-calculation";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Register AMFI data import routes
@@ -59,6 +60,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register MFAPI Historical Import route
   app.use('/api/mfapi-historical', mfapiHistoricalImportRoutes);
+  
+  // Register Quartile Calculation route
+  app.use('/api/quartile', quartileCalculationRoutes);
   
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
