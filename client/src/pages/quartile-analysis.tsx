@@ -293,7 +293,7 @@ export default function QuartileAnalysis() {
                                   #{fund.rank}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
-                                  {fund.totalScore && typeof fund.totalScore === 'number' ? fund.totalScore.toFixed(2) : "N/A"}
+                                  {fund.totalScore ? parseFloat(fund.totalScore).toFixed(2) : "N/A"}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-xs text-center">
                                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-medium
