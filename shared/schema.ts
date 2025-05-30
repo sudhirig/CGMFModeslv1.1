@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, date, timestamp, decimal, foreignKey, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, date, timestamp, decimal, real, foreignKey, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -325,3 +325,60 @@ export const insertEtlPipelineRunSchema = createInsertSchema(etlPipelineRuns).om
 
 export type InsertEtlPipelineRun = z.infer<typeof insertEtlPipelineRunSchema>;
 export type EtlPipelineRun = typeof etlPipelineRuns.$inferSelect;
+
+// Fund Performance Metrics table
+export const fundPerformanceMetrics = pgTable("fund_performance_metrics", {
+  id: serial("id").primaryKey(),
+  fundId: integer("fund_id").notNull().references(() => funds.id),
+  calculationDate: timestamp("calculation_date").notNull(),
+  returns1Y: decimal("returns_1y", { precision: 8, scale: 4 }),
+  returns3Y: decimal("returns_3y", { precision: 8, scale: 4 }),
+  returns5Y: decimal("returns_5y", { precision: 8, scale: 4 }),
+  volatility: decimal("volatility", { precision: 8, scale: 4 }),
+  sharpeRatio: decimal("sharpe_ratio", { precision: 8, scale: 4 }),
+  maxDrawdown: decimal("max_drawdown", { precision: 8, scale: 4 }),
+  consistencyScore: decimal("consistency_score", { precision: 6, scale: 4 }),
+  alpha: decimal("alpha", { precision: 8, scale: 4 }),
+  beta: decimal("beta", { precision: 8, scale: 4 }),
+  informationRatio: decimal("information_ratio", { precision: 8, scale: 4 }),
+  totalNavRecords: integer("total_nav_records").notNull(),
+  dataQualityScore: decimal("data_quality_score", { precision: 6, scale: 4 }).notNull(),
+  compositeScore: decimal("composite_score", { precision: 8, scale: 4 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  fundCalculationDateIdx: index("fund_performance_fund_calc_date_idx").on(table.fundId, table.calculationDate),
+}));
+
+export const insertFundPerformanceMetricsSchema = createInsertSchema(fundPerformanceMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertFundPerformanceMetrics = z.infer<typeof insertFundPerformanceMetricsSchema>;
+export type FundPerformanceMetrics = typeof fundPerformanceMetrics.$inferSelect;
+
+// Quartile Rankings table
+export const quartileRankings = pgTable("quartile_rankings", {
+  id: serial("id").primaryKey(),
+  fundId: integer("fund_id").notNull().references(() => funds.id),
+  category: text("category").notNull(),
+  calculationDate: timestamp("calculation_date").notNull(),
+  quartile: integer("quartile").notNull(), // 1, 2, 3, 4
+  quartileLabel: text("quartile_label").notNull(), // 'BUY', 'HOLD', 'REVIEW', 'SELL'
+  rank: integer("rank").notNull(),
+  totalFunds: integer("total_funds").notNull(),
+  percentile: decimal("percentile", { precision: 6, scale: 4 }).notNull(),
+  compositeScore: decimal("composite_score", { precision: 8, scale: 4 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  fundCategoryDateIdx: index("quartile_fund_category_date_idx").on(table.fundId, table.category, table.calculationDate),
+  categoryQuartileIdx: index("quartile_category_quartile_idx").on(table.category, table.quartile, table.calculationDate),
+}));
+
+export const insertQuartileRankingSchema = createInsertSchema(quartileRankings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertQuartileRanking = z.infer<typeof insertQuartileRankingSchema>;
+export type QuartileRanking = typeof quartileRankings.$inferSelect;
