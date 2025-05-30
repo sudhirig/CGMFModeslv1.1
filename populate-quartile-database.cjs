@@ -186,7 +186,7 @@ async function calculateQuartileRankings(calculationDate) {
           composite_score = EXCLUDED.composite_score
       `, [
         fund.id, category, calculationDate, quartile, quartileLabel,
-        rank, totalFunds, percentile, parseFloat(fund.composite_score)
+        rank, totalFunds, Math.round(percentile * 100) / 100, Math.min(9999.99, Math.round(parseFloat(fund.composite_score) * 100) / 100)
       ]);
     }
 
