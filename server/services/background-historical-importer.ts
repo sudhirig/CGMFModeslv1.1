@@ -31,6 +31,7 @@ class BackgroundHistoricalImporter {
     lastProcessedFund: '',
     isRunning: false
   };
+  private processedFundIds = new Set<number>();
   
   private readonly BATCH_SIZE = 10; // Process 10 funds at a time
   private readonly DELAY_BETWEEN_BATCHES = 15000; // 15 seconds between batches
@@ -141,7 +142,7 @@ class BackgroundHistoricalImporter {
   private async getFundsNeedingHistoricalData() {
     try {
       // Add offset to ensure different funds in each batch
-      const offset = this.processedFunds;
+      const offset = this.currentProgress.totalFundsProcessed;
       
       // First, try to get funds that are similar to the successful ones
       // Focus on funds with scheme codes that are likely to work with MFAPI.in
@@ -165,12 +166,15 @@ class BackgroundHistoricalImporter {
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
             // Prioritize scheme codes in the range that worked before (110000-130000)
-            sql`${funds.schemeCode}::INTEGER BETWEEN 110000 AND 130000`
+            sql`${funds.schemeCode}::INTEGER BETWEEN 110000 AND 130000`,
+            // Exclude funds that have been processed and returned no data
+            this.processedFundIds.size > 0 ? 
+              sql`${funds.id} NOT IN (${Array.from(this.processedFundIds).join(',')})` :
+              sql`1=1`
           )
         )
         .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`, funds.id)
-        .limit(this.BATCH_SIZE)
-        .offset(offset);
+        .limit(this.BATCH_SIZE);
 
       // If no funds in the successful range, try other ranges
       if (result.length === 0) {
@@ -215,10 +219,17 @@ class BackgroundHistoricalImporter {
       const historicalData = await this.fetchAllHistoricalNavFromAPI(fund.schemeCode);
 
       if (historicalData && historicalData.length > 0) {
-        return await this.bulkInsertNavData(fund.id, historicalData);
+        const insertedCount = await this.bulkInsertNavData(fund.id, historicalData);
+        this.processedFundIds.add(fund.id);
+        return insertedCount;
       }
+      
+      // Mark fund as processed even if no data to avoid cycling
+      this.processedFundIds.add(fund.id);
       return 0;
     } catch (error) {
+      // Mark fund as processed even on error to avoid retry loops
+      this.processedFundIds.add(fund.id);
       return 0;
     }
   }
