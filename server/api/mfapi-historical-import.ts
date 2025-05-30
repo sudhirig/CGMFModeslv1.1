@@ -6,10 +6,11 @@ import { executeRawQuery } from '../db';
 const router = express.Router();
 
 // Configuration
-const BATCH_SIZE = 50;
-const REQUEST_DELAY = 1500; // 1.5 seconds between requests
-const MAX_RETRIES = 3;
-const TIMEOUT = 30000; // 30 seconds
+const BATCH_SIZE = 100; // Increased batch size
+const REQUEST_DELAY = 500; // Reduced to 0.5 seconds between requests
+const MAX_RETRIES = 2; // Reduced retries for faster processing
+const TIMEOUT = 15000; // Reduced timeout to 15 seconds
+const PARALLEL_REQUESTS = 3; // Process multiple funds simultaneously
 
 interface MFAPIScheme {
   schemeCode: number;
@@ -106,15 +107,22 @@ async function processHistoricalImport(etlRunId: number) {
   try {
     console.log('=== Starting MFAPI.in Historical NAV Import ===');
 
-    // Step 1: Get all our funds that need historical data
+    // Step 1: Get funds that need historical data, prioritizing by category
     const fundsResult = await executeRawQuery(`
-      SELECT f.id, f.scheme_code, f.fund_name, COUNT(n.nav_date) as nav_count
+      SELECT f.id, f.scheme_code, f.fund_name, f.category, COUNT(n.nav_date) as nav_count
       FROM funds f
       LEFT JOIN nav_data n ON f.id = n.fund_id
-      GROUP BY f.id, f.scheme_code, f.fund_name
+      GROUP BY f.id, f.scheme_code, f.fund_name, f.category
       HAVING COUNT(n.nav_date) <= 2
-      ORDER BY f.id
-      LIMIT 1000  -- Start with first 1000 funds
+      ORDER BY 
+        CASE f.category 
+          WHEN 'Equity' THEN 1 
+          WHEN 'Hybrid' THEN 2 
+          WHEN 'Debt' THEN 3 
+          ELSE 4 
+        END,
+        f.id
+      LIMIT 3000  -- Increased to 3000 funds
     `);
 
     const fundsToProcess = fundsResult.rows;
@@ -138,29 +146,44 @@ async function processHistoricalImport(etlRunId: number) {
         errorMessage: `Processing batch ${batchNumber}/${totalBatches}: ${processedCount} funds complete, ${successCount} successful, ${errorCount} errors`
       });
 
-      // Process each fund in the batch
-      for (const fund of batch) {
-        try {
-          const result = await processSingleFund(fund);
-          processedCount++;
+      // Process funds in parallel within each batch
+      const fundPromises = [];
+      for (let j = 0; j < batch.length; j += PARALLEL_REQUESTS) {
+        const parallelBatch = batch.slice(j, j + PARALLEL_REQUESTS);
+        
+        const batchPromises = parallelBatch.map(async (fund, index) => {
+          try {
+            // Stagger requests slightly to avoid overwhelming the API
+            await new Promise(resolve => setTimeout(resolve, index * 200));
+            
+            const result = await processSingleFund(fund);
+            processedCount++;
 
-          if (result.success) {
-            successCount++;
-            totalNavRecords += result.navCount;
-            console.log(`✓ ${fund.fund_name}: ${result.navCount} NAV records imported`);
-          } else {
+            if (result.success) {
+              successCount++;
+              totalNavRecords += result.navCount;
+              console.log(`✓ ${fund.fund_name}: ${result.navCount} NAV records imported`);
+            } else {
+              errorCount++;
+              console.log(`✗ ${fund.fund_name}: ${result.message}`);
+            }
+
+            return result;
+          } catch (fundError: any) {
             errorCount++;
-            console.log(`✗ ${fund.fund_name}: ${result.message}`);
+            processedCount++;
+            console.error(`✗ Error processing fund ${fund.id}:`, fundError.message);
+            return { success: false, navCount: 0, message: fundError.message };
           }
+        });
 
-          // Add delay between requests
-          await new Promise(resolve => setTimeout(resolve, REQUEST_DELAY));
+        fundPromises.push(...batchPromises);
 
-        } catch (fundError: any) {
-          errorCount++;
-          processedCount++;
-          console.error(`✗ Error processing fund ${fund.id}:`, fundError.message);
-        }
+        // Wait for this parallel batch to complete before starting the next
+        await Promise.allSettled(batchPromises);
+        
+        // Brief delay between parallel batches
+        await new Promise(resolve => setTimeout(resolve, REQUEST_DELAY));
       }
 
       // Log batch progress
@@ -286,11 +309,13 @@ async function searchMFAPIByName(fundName: string): Promise<MFAPIScheme[]> {
 }
 
 /**
- * Import NAV data into our database
+ * Import NAV data into our database using bulk insert for better performance
  */
 async function importNavData(fundId: number, navData: Array<{ date: string; nav: string }>): Promise<number> {
-  let importCount = 0;
+  if (!navData || navData.length === 0) return 0;
 
+  const validEntries = [];
+  
   for (const entry of navData) {
     try {
       // Convert date from DD-MM-YYYY to YYYY-MM-DD
@@ -302,20 +327,58 @@ async function importNavData(fundId: number, navData: Array<{ date: string; nav:
         continue; // Skip invalid NAV values
       }
 
-      // Use UPSERT to handle duplicates
+      validEntries.push({ fundId, navDate, navValue });
+    } catch (error: any) {
+      console.error(`Error parsing NAV data for fund ${fundId} on ${entry.date}:`, error.message);
+    }
+  }
+
+  if (validEntries.length === 0) return 0;
+
+  try {
+    // Bulk insert with conflict resolution
+    const values = validEntries.map((entry, index) => 
+      `($${index * 3 + 1}, $${index * 3 + 2}, $${index * 3 + 3}, NOW())`
+    ).join(', ');
+    
+    const params = validEntries.flatMap(entry => [entry.fundId, entry.navDate, entry.navValue]);
+    
+    await executeRawQuery(`
+      INSERT INTO nav_data (fund_id, nav_date, nav_value, created_at)
+      VALUES ${values}
+      ON CONFLICT (fund_id, nav_date) DO UPDATE
+      SET nav_value = EXCLUDED.nav_value
+    `, params);
+
+    return validEntries.length;
+  } catch (error: any) {
+    console.error(`Error bulk importing NAV data for fund ${fundId}:`, error.message);
+    // Fallback to individual inserts if bulk fails
+    return await importNavDataFallback(fundId, validEntries);
+  }
+}
+
+/**
+ * Fallback method for individual NAV data inserts
+ */
+async function importNavDataFallback(fundId: number, validEntries: Array<{ fundId: number; navDate: string; navValue: number }>): Promise<number> {
+  let importCount = 0;
+  
+  for (const entry of validEntries) {
+    try {
       await executeRawQuery(`
         INSERT INTO nav_data (fund_id, nav_date, nav_value, created_at)
         VALUES ($1, $2, $3, NOW())
         ON CONFLICT (fund_id, nav_date) DO UPDATE
         SET nav_value = EXCLUDED.nav_value
-      `, [fundId, navDate, navValue]);
-
+      `, [entry.fundId, entry.navDate, entry.navValue]);
+      
       importCount++;
     } catch (error: any) {
-      console.error(`Error importing NAV data for fund ${fundId} on ${entry.date}:`, error.message);
+      console.error(`Error importing single NAV record for fund ${fundId}:`, error.message);
     }
   }
-
+  
   return importCount;
 }
 
