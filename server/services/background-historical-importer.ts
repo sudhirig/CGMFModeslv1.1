@@ -160,8 +160,9 @@ class BackgroundHistoricalImporter {
             eq(funds.status, 'ACTIVE'),
             sql`COALESCE(nav_counts.record_count, 0) < 100`,
             sql`${funds.schemeCode} IS NOT NULL`,
+            sql`${funds.schemeCode} ~ '^[0-9]+$'`,
             // Prioritize scheme codes in the range that worked before (110000-130000)
-            sql`CAST(${funds.schemeCode} AS INTEGER) BETWEEN 110000 AND 130000`
+            sql`${funds.schemeCode}::INTEGER BETWEEN 110000 AND 130000`
           )
         )
         .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`)
