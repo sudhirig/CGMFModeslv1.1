@@ -3,8 +3,8 @@
  * Uses successful scheme code patterns to import more authentic NAV data
  */
 
-import { db } from './server/db.js';
-import { funds, navData } from './shared/schema.js';
+import { db } from './server/db.ts';
+import { funds, navData } from './shared/schema.ts';
 import { eq, sql, and } from 'drizzle-orm';
 import axios from 'axios';
 
