@@ -828,7 +828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             // Generate fund details
             const amcName = amcNames[Math.floor(Math.random() * amcNames.length)];
-            const subcategory = fundSubcategories[category][Math.floor(Math.random() * fundSubcategories[category].length)];
+            const subcategory = (fundSubcategories as any)[category][Math.floor(Math.random() * (fundSubcategories as any)[category].length)];
             const fundName = `${amcName} ${subcategory} Fund${Math.random() > 0.7 ? ' Series ' + (Math.floor(Math.random() * 5) + 1) : ''}`;
             const schemeCode = (category === 'Equity' ? '1' : category === 'Debt' ? '2' : '3') + 
                               Math.floor(Math.random() * 100000).toString().padStart(5, '0');
