@@ -276,6 +276,7 @@ class BackgroundHistoricalImporter {
 
   private async bulkInsertNavData(fundId: number, navDataArray: any[]): Promise<number> {
     if (!navDataArray || navDataArray.length === 0) {
+      console.log(`  No NAV data to insert for fund ${fundId}`);
       return 0;
     }
 
@@ -286,15 +287,18 @@ class BackgroundHistoricalImporter {
         navValue: nav.nav_value.toString()
       }));
 
+      console.log(`  Attempting to insert ${navRecords.length} NAV records for fund ${fundId}`);
+
       await db.insert(navData)
         .values(navRecords)
         .onConflictDoNothing({
           target: [navData.fundId, navData.navDate]
         });
 
+      console.log(`  Successfully inserted ${navRecords.length} NAV records for fund ${fundId}`);
       return navRecords.length;
     } catch (error) {
-      console.error('Error in bulk insert:', error);
+      console.error(`Error inserting NAV data for fund ${fundId}:`, error);
       return 0;
     }
   }
