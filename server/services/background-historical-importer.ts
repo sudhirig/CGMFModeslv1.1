@@ -97,6 +97,8 @@ class BackgroundHistoricalImporter {
         this.currentProgress.currentBatch++;
         console.log(`\n📦 Processing batch ${this.currentProgress.currentBatch} - ${fundsToProcess.length} funds`);
 
+        let batchRecordsImported = 0;
+
         // Process funds in parallel batches
         const parallelBatches = [];
         for (let i = 0; i < fundsToProcess.length; i += this.PARALLEL_REQUESTS) {
@@ -116,6 +118,7 @@ class BackgroundHistoricalImporter {
             
             if (importedCount > 0) {
               this.currentProgress.totalRecordsImported += importedCount;
+              batchRecordsImported += importedCount;
               console.log(`  ✅ ${fund.fundName}: +${importedCount} records`);
             }
 
@@ -188,8 +191,8 @@ class BackgroundHistoricalImporter {
             sql`COALESCE(nav_counts.record_count, 0) < 100`,
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
-            // Prioritize scheme codes in the range that worked before (110000-130000)
-            sql`${funds.schemeCode}::INTEGER BETWEEN 110000 AND 130000`,
+            // Skip the restrictive range filter to explore more funds
+            sql`${funds.schemeCode}::INTEGER > 100000`,
             // Exclude funds that have been processed and returned no data
             this.processedFundIds.size > 0 ? 
               sql`${funds.id} NOT IN (${Array.from(this.processedFundIds).join(',')})` :
