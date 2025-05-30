@@ -12,22 +12,25 @@ export default function QuartileAnalysis() {
   
   const categoryParam = selectedCategory === "All Categories" ? "" : selectedCategory;
   
-  // Get quartile distribution data
+  // Get quartile distribution data - always fresh
   const { data: distributionData, isLoading: isDistributionLoading } = useQuery({
     queryKey: [`/api/quartile/distribution`, categoryParam],
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always fetch fresh data
+    refetchInterval: 30000, // Auto-refresh every 30 seconds
   });
   
-  // Get quartile metrics
+  // Get quartile metrics - always fresh
   const { data: metricsData, isLoading: isMetricsLoading } = useQuery({
     queryKey: [`/api/quartile/metrics`],
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: 30000,
   });
   
-  // Get funds by selected quartile
+  // Get funds by selected quartile - always fresh
   const { data: fundsData, isLoading: isFundsLoading } = useQuery({
     queryKey: [`/api/quartile/funds/${selectedQuartile}`, categoryParam],
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
+    refetchInterval: 30000,
   });
   
   // Colors for quartiles
