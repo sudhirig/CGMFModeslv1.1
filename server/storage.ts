@@ -379,33 +379,41 @@ export class DatabaseStorage implements IStorage {
     return newPortfolio;
   }
   
-  // Quartile Analysis methods
+  // Quartile Analysis methods - using authentic quartile_rankings data
   async getFundsByQuartile(quartile: number, category?: string): Promise<any> {
     try {
-      let query = db
-        .select({
-          id: funds.id,
-          fundName: funds.fundName,
-          category: funds.category,
-          amc: funds.amcName,
-          historicalReturnsTotal: fundScores.historicalReturnsTotal,
-          riskGradeTotal: fundScores.riskGradeTotal,
-          otherMetricsTotal: fundScores.otherMetricsTotal,
-          totalScore: fundScores.totalScore,
-          recommendation: fundScores.recommendation
-        })
-        .from(fundScores)
-        .innerJoin(funds, eq(funds.id, fundScores.fundId))
-        .where(eq(fundScores.quartile, quartile))
-        .orderBy(desc(fundScores.totalScore));
-
-      if (category) {
-        query = query.where(eq(funds.category, category));
-      }
-
-      const results = await query.limit(100);
+      // Use authentic quartile_rankings table with latest calculation date
+      let whereClause = `
+        WHERE qr.quartile = $1 
+        AND qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
+      `;
+      const params: any[] = [quartile];
       
-      return { funds: results };
+      if (category) {
+        whereClause += ` AND f.category = $${params.length + 1}`;
+        params.push(category);
+      }
+      
+      const query = `
+        SELECT 
+          f.id,
+          f.fund_name as "fundName",
+          f.category,
+          f.amc_name as "amc",
+          qr.composite_score as "totalScore",
+          qr.quartile_label as "recommendation",
+          qr.rank,
+          qr.percentile
+        FROM quartile_rankings qr
+        JOIN funds f ON qr.fund_id = f.id
+        ${whereClause}
+        ORDER BY qr.rank ASC
+        LIMIT 100
+      `;
+      
+      const result = await executeRawQuery(query, params);
+      
+      return { funds: result.rows };
     } catch (error) {
       console.error("Error getting funds by quartile:", error);
       throw error;
