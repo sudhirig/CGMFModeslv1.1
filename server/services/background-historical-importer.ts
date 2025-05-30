@@ -167,11 +167,10 @@ class BackgroundHistoricalImporter {
 
   private async getFundsNeedingHistoricalData() {
     try {
-      // Add offset to ensure different funds in each batch
-      const offset = this.currentProgress.totalFundsProcessed;
+      // Calculate a different offset based on batch number to avoid cycling
+      const batchOffset = Math.floor(this.currentProgress.totalFundsProcessed / this.BATCH_SIZE) * this.BATCH_SIZE;
       
-      // First, try to get funds that are similar to the successful ones
-      // Focus on funds with scheme codes that are likely to work with MFAPI.in
+      // Use a more diverse selection strategy
       const result = await db
         .select({
           id: funds.id,
@@ -191,17 +190,13 @@ class BackgroundHistoricalImporter {
             sql`COALESCE(nav_counts.record_count, 0) < 100`,
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
-            // Skip the restrictive range filter to explore more funds
-            sql`${funds.schemeCode}::INTEGER > 100000`,
-            // Exclude funds that have been processed and returned no data
-            this.processedFundIds.size > 0 ? 
-              sql`${funds.id} NOT IN (${Array.from(this.processedFundIds).join(',')})` :
-              sql`1=1`
+            // Explore all funds above 100000 to access the full database
+            sql`${funds.schemeCode}::INTEGER > 100000`
           )
         )
-        .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`, funds.id)
+        .orderBy(sql`RANDOM()`, funds.id)  // Add randomization to explore different funds
         .limit(this.BATCH_SIZE)
-        .offset(offset);
+        .offset(batchOffset);
 
       // If no funds in the successful range, try other ranges
       if (result.length === 0) {
