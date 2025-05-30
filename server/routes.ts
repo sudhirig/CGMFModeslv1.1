@@ -1254,6 +1254,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Automated quartile scheduler endpoints
+  app.get('/api/scheduler/status', (req, res) => {
+    try {
+      const status = quartileScheduler.getStatus();
+      res.json(status);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/scheduler/trigger-daily', async (req, res) => {
+    try {
+      await quartileScheduler.triggerDailyCheck();
+      res.json({ success: true, message: 'Daily eligibility check triggered' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/scheduler/trigger-weekly', async (req, res) => {
+    try {
+      await quartileScheduler.triggerWeeklyRecalculation();
+      res.json({ success: true, message: 'Weekly quartile recalculation triggered' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/scheduler/trigger-migration', async (req, res) => {
+    try {
+      await quartileScheduler.triggerMigrationTracking();
+      res.json({ success: true, message: 'Migration tracking triggered' });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
