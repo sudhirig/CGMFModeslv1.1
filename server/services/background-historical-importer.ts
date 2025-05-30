@@ -140,6 +140,8 @@ class BackgroundHistoricalImporter {
 
   private async getFundsNeedingHistoricalData() {
     try {
+      // First, try to get funds that are similar to the successful ones
+      // Focus on funds with scheme codes that are likely to work with MFAPI.in
       const result = await db
         .select({
           id: funds.id,
@@ -156,12 +158,42 @@ class BackgroundHistoricalImporter {
         .where(
           and(
             eq(funds.status, 'ACTIVE'),
-            sql`COALESCE(nav_counts.record_count, 0) < 50`,
-            sql`${funds.schemeCode} IS NOT NULL`
+            sql`COALESCE(nav_counts.record_count, 0) < 100`,
+            sql`${funds.schemeCode} IS NOT NULL`,
+            // Prioritize scheme codes in the range that worked before (110000-130000)
+            sql`CAST(${funds.schemeCode} AS INTEGER) BETWEEN 110000 AND 130000`
           )
         )
         .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`)
         .limit(this.BATCH_SIZE);
+
+      // If no funds in the successful range, try other ranges
+      if (result.length === 0) {
+        const fallbackResult = await db
+          .select({
+            id: funds.id,
+            schemeCode: funds.schemeCode,
+            fundName: funds.fundName,
+            category: funds.category,
+            status: funds.status
+          })
+          .from(funds)
+          .leftJoin(
+            sql`(SELECT fund_id, COUNT(*) as record_count FROM nav_data GROUP BY fund_id) nav_counts`,
+            sql`nav_counts.fund_id = ${funds.id}`
+          )
+          .where(
+            and(
+              eq(funds.status, 'ACTIVE'),
+              sql`COALESCE(nav_counts.record_count, 0) < 100`,
+              sql`${funds.schemeCode} IS NOT NULL`
+            )
+          )
+          .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`)
+          .limit(this.BATCH_SIZE);
+        
+        return fallbackResult;
+      }
 
       return result;
     } catch (error) {
