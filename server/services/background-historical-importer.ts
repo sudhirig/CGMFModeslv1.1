@@ -140,8 +140,8 @@ class BackgroundHistoricalImporter {
 
   private async getFundsNeedingHistoricalData() {
     try {
-      // Focus on scheme code ranges where we know MFAPI.in has data
-      // Based on successful imports: 100000-130000 range seems to work
+      // First, try to get funds that are similar to the successful ones
+      // Focus on funds with scheme codes that are likely to work with MFAPI.in
       const result = await db
         .select({
           id: funds.id,
@@ -161,12 +161,40 @@ class BackgroundHistoricalImporter {
             sql`COALESCE(nav_counts.record_count, 0) < 100`,
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
-            // Focus on scheme codes similar to successful ones (100000-130000)
-            sql`${funds.schemeCode}::INTEGER BETWEEN 100000 AND 130000`
+            // Prioritize scheme codes in the range that worked before (110000-130000)
+            sql`${funds.schemeCode}::INTEGER BETWEEN 110000 AND 130000`
           )
         )
-        .orderBy(sql`RANDOM()`) // Randomize to avoid getting stuck on same codes
+        .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`)
         .limit(this.BATCH_SIZE);
+
+      // If no funds in the successful range, try other ranges
+      if (result.length === 0) {
+        const fallbackResult = await db
+          .select({
+            id: funds.id,
+            schemeCode: funds.schemeCode,
+            fundName: funds.fundName,
+            category: funds.category,
+            status: funds.status
+          })
+          .from(funds)
+          .leftJoin(
+            sql`(SELECT fund_id, COUNT(*) as record_count FROM nav_data GROUP BY fund_id) nav_counts`,
+            sql`nav_counts.fund_id = ${funds.id}`
+          )
+          .where(
+            and(
+              eq(funds.status, 'ACTIVE'),
+              sql`COALESCE(nav_counts.record_count, 0) < 100`,
+              sql`${funds.schemeCode} IS NOT NULL`
+            )
+          )
+          .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`)
+          .limit(this.BATCH_SIZE);
+        
+        return fallbackResult;
+      }
 
       return result;
     } catch (error) {

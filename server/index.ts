@@ -3,7 +3,6 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { quartileScheduler } from "./services/automated-quartile-scheduler";
 import { backgroundHistoricalImporter } from "./services/background-historical-importer";
-import { autoQuartileUpdater } from "./services/auto-quartile-updater";
 
 const app = express();
 app.use(express.json());
