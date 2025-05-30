@@ -504,32 +504,32 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileDistribution(category?: string): Promise<any> {
     try {
-      // Build query conditions
-      let whereClause = "";
+      // Build query conditions for authentic quartile rankings only
+      let whereClause = "WHERE qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)";
       const params: any[] = [];
       
       if (category) {
-        whereClause = "WHERE f.category = $1";
+        whereClause += " AND f.category = $1";
         params.push(category);
       }
       
-      // Query to count funds by quartile
+      // Query authentic quartile rankings table only (no synthetic data)
       const query = `
         SELECT 
           COUNT(*) as total_count,
-          COUNT(CASE WHEN fs.quartile = 1 THEN 1 END) as q1_count,
-          COUNT(CASE WHEN fs.quartile = 2 THEN 1 END) as q2_count,
-          COUNT(CASE WHEN fs.quartile = 3 THEN 1 END) as q3_count,
-          COUNT(CASE WHEN fs.quartile = 4 THEN 1 END) as q4_count
-        FROM fund_scores fs
-        JOIN funds f ON fs.fund_id = f.id
+          COUNT(CASE WHEN qr.quartile = 1 THEN 1 END) as q1_count,
+          COUNT(CASE WHEN qr.quartile = 2 THEN 1 END) as q2_count,
+          COUNT(CASE WHEN qr.quartile = 3 THEN 1 END) as q3_count,
+          COUNT(CASE WHEN qr.quartile = 4 THEN 1 END) as q4_count
+        FROM quartile_rankings qr
+        JOIN funds f ON qr.fund_id = f.id
         ${whereClause}
       `;
       
       const result = await executeRawQuery(query, params);
       
       if (result.rows.length === 0) {
-        throw new Error("No quartile data found");
+        throw new Error("No authentic quartile data found");
       }
       
       const data = result.rows[0];
@@ -554,10 +554,11 @@ export class DatabaseStorage implements IStorage {
         q1Percent,
         q2Percent,
         q3Percent,
-        q4Percent
+        q4Percent,
+        dataSource: 'authentic_storage'
       };
     } catch (error) {
-      console.error("Error getting quartile distribution:", error);
+      console.error("Error getting authentic quartile distribution:", error);
       throw error;
     }
   }
