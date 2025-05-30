@@ -171,50 +171,17 @@ class BackgroundHistoricalImporter {
   }
 
   private async importHistoricalDataForFund(fund: any): Promise<number> {
-    let totalImported = 0;
-    const monthRanges = this.generateMonthRanges(this.MAX_MONTHS_BACK);
+    // Use single API call per fund (same as successful imports)
+    try {
+      const historicalData = await this.fetchAllHistoricalNavFromAPI(fund.schemeCode);
 
-    // Process months in parallel chunks of 6 months at a time
-    const monthChunks = [];
-    for (let i = 0; i < monthRanges.length; i += 6) {
-      monthChunks.push(monthRanges.slice(i, i + 6));
-    }
-
-    for (const chunk of monthChunks) {
-      if (!this.isRunning) break;
-
-      try {
-        // Process this chunk of months in parallel
-        const chunkPromises = chunk.map(async (range) => {
-          try {
-            const historicalData = await this.fetchHistoricalNavFromAPI(
-              fund.schemeCode, 
-              range.year, 
-              range.month
-            );
-
-            if (historicalData && historicalData.length > 0) {
-              return await this.bulkInsertNavData(fund.id, historicalData);
-            }
-            return 0;
-          } catch (error) {
-            return 0;
-          }
-        });
-
-        const chunkResults = await Promise.all(chunkPromises);
-        totalImported += chunkResults.reduce((sum, count) => sum + count, 0);
-
-        // Small delay between chunks
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-      } catch (error) {
-        // Continue with next chunk if this one fails
-        continue;
+      if (historicalData && historicalData.length > 0) {
+        return await this.bulkInsertNavData(fund.id, historicalData);
       }
+      return 0;
+    } catch (error) {
+      return 0;
     }
-
-    return totalImported;
   }
 
   private generateMonthRanges(monthsBack: number) {
@@ -232,12 +199,10 @@ class BackgroundHistoricalImporter {
     return ranges;
   }
 
-  private async fetchHistoricalNavFromAPI(schemeCode: string, year: number, month: number): Promise<any[]> {
-    const paddedMonth = month.toString().padStart(2, '0');
-    const url = `https://api.mfapi.in/mf/${schemeCode}/${year}-${paddedMonth}-01`;
-
+  private async fetchAllHistoricalNavFromAPI(schemeCode: string): Promise<any[]> {
+    // Use MFAPI.in basic endpoint to get all historical data at once
     try {
-      const response = await axios.get(url, {
+      const response = await axios.get(`https://api.mfapi.in/mf/${schemeCode}`, {
         timeout: 15000,
         headers: {
           'User-Agent': 'Mozilla/5.0 (compatible; MutualFundAnalyzer/1.0)',
@@ -251,15 +216,61 @@ class BackgroundHistoricalImporter {
             nav_date: entry.date,
             nav_value: parseFloat(entry.nav)
           }))
-          .filter((entry: { nav_date: string; nav_value: number }) => !isNaN(entry.nav_value) && entry.nav_value > 0);
+          .filter((entry: { nav_date: string; nav_value: number }) => 
+            !isNaN(entry.nav_value) && entry.nav_value > 0
+          );
       }
 
       return [];
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
-        return []; // No data available for this period
+        return []; // No data available for this scheme
       }
-      throw error;
+      return []; // Return empty on any error to continue processing
+    }
+  }
+
+  private async fetchHistoricalNavFromAPI(schemeCode: string, year: number, month: number): Promise<any[]> {
+    // Use MFAPI.in basic endpoint (same as successful earlier imports)
+    try {
+      const response = await axios.get(`https://api.mfapi.in/mf/${schemeCode}`, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (compatible; MutualFundAnalyzer/1.0)',
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        // Filter data for the specific month/year requested
+        const targetYear = year;
+        const targetMonth = month;
+        
+        return response.data.data
+          .map((entry: HistoricalNavEntry) => ({
+            nav_date: entry.date,
+            nav_value: parseFloat(entry.nav)
+          }))
+          .filter((entry: { nav_date: string; nav_value: number }) => {
+            if (isNaN(entry.nav_value) || entry.nav_value <= 0) return false;
+            
+            // Parse date and check if it matches target month/year
+            try {
+              const entryDate = new Date(entry.nav_date);
+              return entryDate.getFullYear() === targetYear && 
+                     (entryDate.getMonth() + 1) === targetMonth;
+            } catch {
+              return false;
+            }
+          });
+      }
+
+      return [];
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return []; // No data available for this scheme
+      }
+      return []; // Return empty on any error to continue processing
     }
   }
 
