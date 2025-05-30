@@ -385,42 +385,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Redirect old synthetic endpoint to authentic data
+  // Use authentic quartile data only (no cache, no synthetic data)
   app.get("/api/quartile/distribution", async (req, res) => {
-    console.log("⚠️ REDIRECTING SYNTHETIC DATA REQUEST TO AUTHENTIC DATA");
+    console.log("✓ SERVING AUTHENTIC QUARTILE DATA - NO SYNTHETIC DATA ALLOWED");
+    const category = req.query.category as string || undefined;
     try {
-      const result = await executeRawQuery(`
-        SELECT 
-          COUNT(*) as total_count,
-          SUM(CASE WHEN quartile = 1 THEN 1 ELSE 0 END) as q1_count,
-          SUM(CASE WHEN quartile = 2 THEN 1 ELSE 0 END) as q2_count,
-          SUM(CASE WHEN quartile = 3 THEN 1 ELSE 0 END) as q3_count,
-          SUM(CASE WHEN quartile = 4 THEN 1 ELSE 0 END) as q4_count
-        FROM quartile_rankings
-        WHERE calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
-      `);
-
-      const data = result.rows[0];
-      const totalCount = parseInt(data.total_count);
-      const q1Count = parseInt(data.q1_count);
-      const q2Count = parseInt(data.q2_count);
-      const q3Count = parseInt(data.q3_count);
-      const q4Count = parseInt(data.q4_count);
-
-      res.json({
-        totalCount,
-        q1Count,
-        q2Count,
-        q3Count,
-        q4Count,
-        q1Percent: totalCount > 0 ? Math.round((q1Count / totalCount) * 100) : 0,
-        q2Percent: totalCount > 0 ? Math.round((q2Count / totalCount) * 100) : 0,
-        q3Percent: totalCount > 0 ? Math.round((q3Count / totalCount) * 100) : 0,
-        q4Percent: totalCount > 0 ? Math.round((q4Count / totalCount) * 100) : 0,
-        dataSource: 'authentic_redirected'
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      // Force bypass cache by calling storage method with authentic data
+      const distribution = await storage.getQuartileDistribution(category);
+      console.log("✓ Authentic distribution data:", distribution);
+      
+      // Set headers to prevent caching
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+      res.setHeader('Content-Type', 'application/json');
+      
+      res.json(distribution);
+    } catch (error) {
+      console.error("Error fetching authentic quartile distribution:", error);
+      res.status(500).json({ error: "Failed to fetch authentic quartile distribution" });
     }
   });
 
