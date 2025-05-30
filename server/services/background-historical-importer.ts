@@ -32,10 +32,11 @@ class BackgroundHistoricalImporter {
     isRunning: false
   };
   
-  private readonly BATCH_SIZE = 5; // Process 5 funds at a time
-  private readonly DELAY_BETWEEN_BATCHES = 30000; // 30 seconds between batches
-  private readonly DELAY_BETWEEN_REQUESTS = 2000; // 2 seconds between API calls
-  private readonly MAX_MONTHS_BACK = 36; // Import up to 3 years of data
+  private readonly BATCH_SIZE = 10; // Process 10 funds at a time
+  private readonly DELAY_BETWEEN_BATCHES = 15000; // 15 seconds between batches
+  private readonly DELAY_BETWEEN_REQUESTS = 500; // 0.5 seconds between API calls
+  private readonly MAX_MONTHS_BACK = 120; // Import up to 10 years of data
+  private readonly PARALLEL_REQUESTS = 3; // Run 3 parallel requests per fund
 
   async start() {
     if (this.isRunning) {
@@ -86,20 +87,35 @@ class BackgroundHistoricalImporter {
         this.currentProgress.currentBatch++;
         console.log(`\n📦 Processing batch ${this.currentProgress.currentBatch} - ${fundsToProcess.length} funds`);
 
-        for (const fund of fundsToProcess) {
+        // Process funds in parallel batches
+        const parallelBatches = [];
+        for (let i = 0; i < fundsToProcess.length; i += this.PARALLEL_REQUESTS) {
+          const batch = fundsToProcess.slice(i, i + this.PARALLEL_REQUESTS);
+          parallelBatches.push(batch);
+        }
+
+        for (const batch of parallelBatches) {
           if (!this.isRunning) break;
 
-          this.currentProgress.lastProcessedFund = fund.fundName;
-          const importedCount = await this.importHistoricalDataForFund(fund);
-          
-          if (importedCount > 0) {
-            this.currentProgress.totalRecordsImported += importedCount;
-            console.log(`  ✅ ${fund.fundName}: +${importedCount} records`);
-          }
+          // Process this batch in parallel
+          const batchPromises = batch.map(async (fund) => {
+            if (!this.isRunning) return 0;
+            
+            this.currentProgress.lastProcessedFund = fund.fundName;
+            const importedCount = await this.importHistoricalDataForFund(fund);
+            
+            if (importedCount > 0) {
+              this.currentProgress.totalRecordsImported += importedCount;
+              console.log(`  ✅ ${fund.fundName}: +${importedCount} records`);
+            }
 
-          this.currentProgress.totalFundsProcessed++;
+            this.currentProgress.totalFundsProcessed++;
+            return importedCount;
+          });
+
+          await Promise.all(batchPromises);
           
-          // Delay between funds to respect API rate limits
+          // Short delay between parallel batches
           await new Promise(resolve => setTimeout(resolve, this.DELAY_BETWEEN_REQUESTS));
         }
 
@@ -158,26 +174,42 @@ class BackgroundHistoricalImporter {
     let totalImported = 0;
     const monthRanges = this.generateMonthRanges(this.MAX_MONTHS_BACK);
 
-    for (const range of monthRanges) {
+    // Process months in parallel chunks of 6 months at a time
+    const monthChunks = [];
+    for (let i = 0; i < monthRanges.length; i += 6) {
+      monthChunks.push(monthRanges.slice(i, i + 6));
+    }
+
+    for (const chunk of monthChunks) {
       if (!this.isRunning) break;
 
       try {
-        const historicalData = await this.fetchHistoricalNavFromAPI(
-          fund.schemeCode, 
-          range.year, 
-          range.month
-        );
+        // Process this chunk of months in parallel
+        const chunkPromises = chunk.map(async (range) => {
+          try {
+            const historicalData = await this.fetchHistoricalNavFromAPI(
+              fund.schemeCode, 
+              range.year, 
+              range.month
+            );
 
-        if (historicalData && historicalData.length > 0) {
-          const imported = await this.bulkInsertNavData(fund.id, historicalData);
-          totalImported += imported;
-        }
+            if (historicalData && historicalData.length > 0) {
+              return await this.bulkInsertNavData(fund.id, historicalData);
+            }
+            return 0;
+          } catch (error) {
+            return 0;
+          }
+        });
 
-        // Small delay between API calls
-        await new Promise(resolve => setTimeout(resolve, 500));
+        const chunkResults = await Promise.all(chunkPromises);
+        totalImported += chunkResults.reduce((sum, count) => sum + count, 0);
+
+        // Small delay between chunks
+        await new Promise(resolve => setTimeout(resolve, 300));
 
       } catch (error) {
-        // Continue with next month if this one fails
+        // Continue with next chunk if this one fails
         continue;
       }
     }

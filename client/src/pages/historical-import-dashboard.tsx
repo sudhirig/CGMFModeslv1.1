@@ -218,10 +218,11 @@ export default function HistoricalImportDashboard() {
           <div className="space-y-2 text-sm">
             <p><strong>Continuous Operation:</strong> Runs 24/7 in the background, even when your laptop is shut down</p>
             <p><strong>Authentic Data:</strong> Fetches real NAV data from MFAPI.in and other free financial APIs</p>
+            <p><strong>Parallel Processing:</strong> Processes 3 funds simultaneously with 6-month data chunks in parallel</p>
             <p><strong>Smart Processing:</strong> Prioritizes funds with insufficient data for quartile analysis</p>
-            <p><strong>Rate Limited:</strong> Respects API limits with 2-30 second delays between requests</p>
+            <p><strong>Optimized Speed:</strong> 0.5 second delays between requests, 15 seconds between batches</p>
+            <p><strong>Extended Coverage:</strong> Imports up to 10 years of historical data per fund</p>
             <p><strong>Fault Tolerant:</strong> Continues processing even if individual fund data fails</p>
-            <p><strong>Historical Range:</strong> Imports up to 3 years of historical data per fund</p>
           </div>
         </CardContent>
       </Card>
