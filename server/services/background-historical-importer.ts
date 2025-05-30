@@ -200,7 +200,8 @@ class BackgroundHistoricalImporter {
           )
         )
         .orderBy(sql`COALESCE(nav_counts.record_count, 0) ASC`, funds.id)
-        .limit(this.BATCH_SIZE);
+        .limit(this.BATCH_SIZE)
+        .offset(offset);
 
       // If no funds in the successful range, try other ranges
       if (result.length === 0) {
