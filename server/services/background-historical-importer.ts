@@ -39,7 +39,7 @@ class BackgroundHistoricalImporter {
   private readonly DELAY_BETWEEN_REQUESTS = 500; // 0.5 seconds between API calls
   private readonly MAX_MONTHS_BACK = 120; // Import up to 10 years of data
   private readonly PARALLEL_REQUESTS = 10; // Run 10 parallel requests per fund
-  private readonly MAX_EMPTY_BATCHES = 5; // Stop after 5 consecutive empty batches
+  private readonly MAX_EMPTY_BATCHES = 20; // Stop after 20 consecutive empty batches
 
   async start() {
     if (this.isRunning) {
@@ -195,7 +195,7 @@ class BackgroundHistoricalImporter {
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
             // Prioritize funds likely to have historical data
-            or(
+            sql`(`
               sql`${funds.category} IN ('Equity', 'Debt', 'Hybrid')`,
               sql`${funds.fundName} ILIKE '%nifty%' OR ${funds.fundName} ILIKE '%sensex%'`,
               sql`${funds.fundName} ILIKE '%large cap%' OR ${funds.fundName} ILIKE '%bluechip%'`,
