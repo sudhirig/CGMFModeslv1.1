@@ -1284,65 +1284,6 @@ export class FundScoringEngine {
    * Calculate maximum drawdown - the largest peak-to-valley decline in NAV
    * This metric shows the largest percentage drop in value that the fund has experienced
    */
-  private calculateMaxDrawdown(navData: NavData[]): number {
-    if (!navData || navData.length < 2) return 0;
-    
-    // Sort NAV data by date (oldest first)
-    const sortedNavData = [...navData].sort((a, b) => 
-      new Date(a.navDate).getTime() - new Date(b.navDate).getTime()
-    );
-    
-    let maxDrawdown = 0;
-    let peak = sortedNavData[0].navValue;
-    let peakIndex = 0;
-    let valleyIndex = 0;
-    
-    for (let i = 0; i < sortedNavData.length; i++) {
-      const nav = sortedNavData[i];
-      
-      if (nav.navValue > peak) {
-        peak = nav.navValue;
-        peakIndex = i;
-      } else {
-        const drawdown = (peak - nav.navValue) / peak;
-        if (drawdown > maxDrawdown) {
-          maxDrawdown = drawdown;
-          valleyIndex = i;
-        }
-      }
-    }
-    
-    // Find recovery date (when NAV returns to the peak level)
-    let recoveryIndex = -1;
-    for (let i = valleyIndex + 1; i < sortedNavData.length; i++) {
-      if (sortedNavData[i].navValue >= peak) {
-        recoveryIndex = i;
-        break;
-      }
-    }
-    
-    // Store drawdown details for reporting
-    this.drawdownInfo = {
-      maxDrawdown,
-      peakDate: sortedNavData[peakIndex].navDate,
-      valleyDate: sortedNavData[valleyIndex].navDate,
-      recoveryDate: recoveryIndex !== -1 ? sortedNavData[recoveryIndex].navDate : null,
-      recoveryPeriod: recoveryIndex !== -1 ? 
-        (new Date(sortedNavData[recoveryIndex].navDate).getTime() - 
-         new Date(sortedNavData[valleyIndex].navDate).getTime()) / (1000 * 60 * 60 * 24) : null
-    };
-    
-    return maxDrawdown;
-  }
-  
-  // Store information about the latest drawdown analysis
-  private drawdownInfo: {
-    maxDrawdown: number;
-    peakDate: Date;
-    valleyDate: Date;
-    recoveryDate: Date | null;
-    recoveryPeriod: number | null;
-  } | null = null;
   
   /**
    * Calculate Beta - measure of systematic risk relative to the market
@@ -1401,43 +1342,6 @@ export class FundScoringEngine {
   }
   
   // Helper: Score return percentile
-  private scoreReturnPercentile(value: number, peerValues: number[], maxPoints: number): number {
-    // Higher return is better
-    const percentile = this.calculatePercentile(value, peerValues, true);
-    
-    // Map percentile to score
-    if (percentile >= 90) return maxPoints;
-    if (percentile >= 75) return maxPoints * 0.8;
-    if (percentile >= 50) return maxPoints * 0.6;
-    if (percentile >= 25) return maxPoints * 0.4;
-    return maxPoints * 0.2;
-  }
-  
-  // Helper: Score volatility percentile
-  private scoreVolatilityPercentile(value: number, peerValues: number[], maxPoints: number): number {
-    // Lower volatility is better
-    const percentile = this.calculatePercentile(value, peerValues, false);
-    
-    // Map percentile to score
-    if (percentile >= 90) return maxPoints;
-    if (percentile >= 75) return maxPoints * 0.8;
-    if (percentile >= 50) return maxPoints * 0.6;
-    if (percentile >= 25) return maxPoints * 0.4;
-    return maxPoints * 0.2;
-  }
-  
-  // Helper: Score up/down capture percentile
-  private scoreUpDownCapturePercentile(value: number, peerValues: number[], maxPoints: number): number {
-    // Higher up/down capture ratio is better
-    const percentile = this.calculatePercentile(value, peerValues, true);
-    
-    // Map percentile to score
-    if (percentile >= 90) return maxPoints;
-    if (percentile >= 75) return maxPoints * 0.8;
-    if (percentile >= 50) return maxPoints * 0.6;
-    if (percentile >= 25) return maxPoints * 0.4;
-    return maxPoints * 0.2;
-  }
   
   // Helper: Score drawdown percentile
   private scoreDrawdownPercentile(value: number, peerValues: number[], maxPoints: number): number {
