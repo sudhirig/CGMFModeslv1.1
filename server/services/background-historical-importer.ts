@@ -35,7 +35,7 @@ class BackgroundHistoricalImporter {
   private consecutiveEmptyBatches = 0;
   
   private readonly BATCH_SIZE = 10; // Process 10 funds at a time
-  private readonly DELAY_BETWEEN_BATCHES = 7000; // 7 seconds between batches
+  private readonly DELAY_BETWEEN_BATCHES = 5000; // 5 seconds between batches
   private readonly DELAY_BETWEEN_REQUESTS = 500; // 0.5 seconds between API calls
   private readonly MAX_MONTHS_BACK = 120; // Import up to 10 years of data
   private readonly PARALLEL_REQUESTS = 10; // Run 10 parallel requests per fund
