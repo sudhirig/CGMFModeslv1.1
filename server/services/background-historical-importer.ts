@@ -194,11 +194,30 @@ class BackgroundHistoricalImporter {
             sql`COALESCE(nav_counts.record_count, 0) < 100`,
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
-            // Explore all funds above 100000 to access the full database
-            sql`${funds.schemeCode}::INTEGER > 100000`
+            // Prioritize funds likely to have historical data
+            or(
+              sql`${funds.category} IN ('Equity', 'Debt', 'Hybrid')`,
+              sql`${funds.fundName} ILIKE '%nifty%' OR ${funds.fundName} ILIKE '%sensex%'`,
+              sql`${funds.fundName} ILIKE '%large cap%' OR ${funds.fundName} ILIKE '%bluechip%'`,
+              sql`${funds.amcName} IN ('SBI', 'ICICI', 'HDFC', 'Axis', 'Kotak')`
+            )
           )
         )
-        .orderBy(sql`RANDOM()`, funds.id)  // Add randomization to explore different funds
+        .orderBy(
+          // Prioritize funds with higher likelihood of data availability
+          sql`CASE 
+            WHEN ${funds.category} = 'Equity' THEN 1
+            WHEN ${funds.category} = 'Debt' THEN 2
+            WHEN ${funds.category} = 'Hybrid' THEN 3
+            ELSE 4
+          END`,
+          sql`CASE
+            WHEN ${funds.fundName} ILIKE '%nifty%' OR ${funds.fundName} ILIKE '%sensex%' THEN 1
+            WHEN ${funds.amcName} IN ('SBI', 'ICICI', 'HDFC', 'Axis', 'Kotak') THEN 2
+            ELSE 3
+          END`,
+          funds.id
+        )
         .limit(this.BATCH_SIZE)
         .offset(batchOffset);
 
