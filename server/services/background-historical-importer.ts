@@ -6,7 +6,7 @@
 
 import { db } from '../db.js';
 import { funds, navData } from '../../shared/schema.js';
-import { eq, lt, sql, and, isNull } from 'drizzle-orm';
+import { eq, lt, sql, and, isNull, or } from 'drizzle-orm';
 import axios from 'axios';
 
 interface HistoricalNavEntry {
@@ -195,7 +195,7 @@ class BackgroundHistoricalImporter {
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
             // Prioritize funds likely to have historical data
-            sql`(`
+            or(
               sql`${funds.category} IN ('Equity', 'Debt', 'Hybrid')`,
               sql`${funds.fundName} ILIKE '%nifty%' OR ${funds.fundName} ILIKE '%sensex%'`,
               sql`${funds.fundName} ILIKE '%large cap%' OR ${funds.fundName} ILIKE '%bluechip%'`,
@@ -333,7 +333,8 @@ class BackgroundHistoricalImporter {
       console.log(`  No data array found in response for scheme ${schemeCode}`);
       return [];
     } catch (error) {
-      console.log(`  Error fetching data for scheme ${schemeCode}:`, error.message);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(`  Error fetching data for scheme ${schemeCode}:`, errorMessage);
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         return []; // No data available for this scheme
       }
