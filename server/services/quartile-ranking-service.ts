@@ -30,7 +30,7 @@ export async function calculateQuartileRankings(): Promise<{
       SELECT f.id, f.fund_name, f.category, COUNT(n.nav_date) as nav_count
       FROM funds f
       JOIN nav_data n ON f.id = n.fund_id
-      WHERE f.category IN ('Equity', 'Debt', 'Hybrid')
+      WHERE f.category IN ('Equity', 'Debt', 'Hybrid', 'Index Fund', 'Fund of Funds', 'Gold ETF', 'Silver ETF', 'Target Maturity Fund', 'Sectoral Fund')
       GROUP BY f.id, f.fund_name, f.category
       HAVING COUNT(n.nav_date) >= 252  -- At least 1 year of data
       ORDER BY f.category, f.id
@@ -77,7 +77,7 @@ export async function calculateQuartileRankings(): Promise<{
     console.log(`Successfully calculated performance for ${performanceMetrics.length} funds`);
 
     // Step 3: Group by category and calculate quartile rankings
-    const categories = ['Equity', 'Debt', 'Hybrid'];
+    const categories = ['Equity', 'Debt', 'Hybrid', 'Index Fund', 'Fund of Funds', 'Gold ETF', 'Silver ETF', 'Target Maturity Fund', 'Sectoral Fund'];
     const quartileDistribution: Record<string, Record<number, number>> = {};
     const calculationDate = new Date();
 
