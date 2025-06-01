@@ -661,7 +661,7 @@ export class FundScoringEngine {
       
       // Check if a score already exists for this fund and date
       const existingResult = await pool.query(`
-        SELECT id FROM fund_scores
+        SELECT fund_id FROM fund_scores
         WHERE fund_id = $1 AND score_date = $2
       `, [fundId, scoreDate]);
       
