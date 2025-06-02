@@ -237,22 +237,31 @@ class BackgroundHistoricalImporter {
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
             sql`COALESCE(nav_counts.record_count, 0) = 0`,
-            // Target scheme codes in ranges known to work (6-digit codes starting with 1)
+            // Target scheme codes with proven high success patterns
             or(
-              sql`${funds.schemeCode} ~ '^1[0-9]{5}$'`,  // 6-digit codes starting with 1
-              sql`${funds.schemeCode} ~ '^2[0-9]{5}$'`,  // 6-digit codes starting with 2  
-              sql`${funds.schemeCode} ~ '^1[0-9]{4}$'`,  // 5-digit codes starting with 1
-              sql`${funds.schemeCode} ~ '^1[0-9]{3}$'`   // 4-digit codes starting with 1
+              sql`${funds.schemeCode} ~ '^120[0-9]{3}$'`,  // 120xxx - highest success rate
+              sql`${funds.schemeCode} ~ '^119[0-9]{3}$'`,  // 119xxx - high success rate
+              sql`${funds.schemeCode} ~ '^118[0-9]{3}$'`,  // 118xxx - high success rate
+              sql`${funds.schemeCode} ~ '^100[0-9]{3}$'`,  // 100xxx - proven pattern
+              sql`${funds.schemeCode} ~ '^101[0-9]{3}$'`,  // 101xxx - proven pattern
+              sql`${funds.schemeCode} ~ '^102[0-9]{3}$'`,  // 102xxx - proven pattern
+              sql`${funds.schemeCode} ~ '^147[0-9]{3}$'`,  // 147xxx - proven pattern
+              sql`${funds.schemeCode} ~ '^145[0-9]{3}$'`   // 145xxx - proven pattern
             )
           )
         )
         .orderBy(
-          // Prioritize by scheme code patterns most likely to have data
+          // Prioritize by proven successful scheme code patterns
           sql`CASE 
-            WHEN ${funds.schemeCode} ~ '^1[0-9]{5}$' THEN 1
-            WHEN ${funds.schemeCode} ~ '^1[0-9]{4}$' THEN 2
-            WHEN ${funds.schemeCode} ~ '^2[0-9]{5}$' THEN 3
-            ELSE 4
+            WHEN ${funds.schemeCode} ~ '^120[0-9]{3}$' THEN 1
+            WHEN ${funds.schemeCode} ~ '^119[0-9]{3}$' THEN 2
+            WHEN ${funds.schemeCode} ~ '^118[0-9]{3}$' THEN 3
+            WHEN ${funds.schemeCode} ~ '^100[0-9]{3}$' THEN 4
+            WHEN ${funds.schemeCode} ~ '^101[0-9]{3}$' THEN 5
+            WHEN ${funds.schemeCode} ~ '^102[0-9]{3}$' THEN 6
+            WHEN ${funds.schemeCode} ~ '^147[0-9]{3}$' THEN 7
+            WHEN ${funds.schemeCode} ~ '^145[0-9]{3}$' THEN 8
+            ELSE 9
           END`,
           sql`CASE 
             WHEN ${funds.category} = 'Equity' THEN 1
