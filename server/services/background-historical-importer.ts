@@ -89,7 +89,7 @@ class BackgroundHistoricalImporter {
     while (this.isRunning) {
       try {
         // Get next batch of funds needing historical data
-        const fundsToProcess = await this.getFundsNeedingHistoricalData();
+        let fundsToProcess = await this.getFundsNeedingHistoricalData();
         
         if (fundsToProcess.length === 0) {
           console.log('📈 All eligible funds processed! Checking for funds needing deeper historical data...');
