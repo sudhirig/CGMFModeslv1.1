@@ -253,7 +253,9 @@ class BackgroundHistoricalImporter {
           )
         )
         .orderBy(
-          // Prioritize funds with higher likelihood of data availability
+          // First priority: Funds with zero data (most important)
+          sql`COALESCE(nav_counts.record_count, 0) ASC`,
+          // Second priority: Funds with higher likelihood of data availability  
           sql`CASE 
             WHEN ${funds.category} = 'Equity' THEN 1
             WHEN ${funds.category} = 'Debt' THEN 2
