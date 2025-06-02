@@ -651,45 +651,131 @@ export class FundScoringEngine {
     return 0; // Very high expense ratio
   }
 
-  // Store fund score in the database
+  // Store fund score with both actual returns and derived scores
   private async storeFundScore(fundId: number, scoreDate: string, scores: Record<string, number>): Promise<void> {
     try {
-      // Convert to column names in the database
-      const columns = Object.keys(scores).map(key => {
-        // Convert camelCase to snake_case
-        return key.replace(/([A-Z])/g, '_$1').toLowerCase();
-      });
+      // Get fund info for context
+      const fundInfo = await this.getFundInfo(fundId);
+      if (!fundInfo) return;
       
-      const values = Object.values(scores);
+      // Get NAV data to calculate actual percentage returns
+      const navData = await this.getFundNavData(fundId, 1095); // 3 years of data
       
-      // Check if a score already exists for this fund and date
+      // Calculate actual percentage returns from NAV movements
+      const actual3mReturn = this.calculatePeriodReturn(navData, 90);
+      const actual1yReturn = this.calculatePeriodReturn(navData, 365);
+      const actual3yReturn = this.calculatePeriodReturn(navData, 1095);
+      
+      // Calculate actual volatility
+      const dailyReturns = this.calculateDailyReturns(navData, 365);
+      const actualVolatility = dailyReturns.length > 0 ? this.calculateVolatility(dailyReturns) : null;
+      
+      // Prepare comprehensive data with both actual returns and scores
+      const comprehensiveData = {
+        fund_id: fundId,
+        score_date: scoreDate,
+        
+        // Store actual percentage returns (authentic data from NAV)
+        return_3m_score: actual3mReturn || 0,
+        return_1y_score: actual1yReturn || 0,
+        return_3y_score: actual3yReturn || 0,
+        volatility_1y_percent: actualVolatility,
+        
+        // Store derived scores based on actual returns
+        return_3m_derived_score: scores.return3mScore || 0,
+        return_1y_derived_score: scores.return1yScore || 0,
+        return_3y_derived_score: scores.return3yScore || 0,
+        
+        // Other scores
+        expense_ratio_score: scores.expenseRatioScore || 0,
+        data_quality_score: navData.length / 10, // Based on actual data availability
+        
+        // Total scores
+        historical_returns_total: scores.historicalReturnsTotal || 0,
+        risk_grade_total: scores.riskGradeTotal || 0,
+        other_metrics_total: scores.otherMetricsTotal || 0,
+        total_score: scores.totalScore || 0,
+        
+        // Recommendation based on actual performance
+        recommendation: this.getRecommendationFromActualReturns(actual3mReturn, actual1yReturn, actualVolatility),
+        subcategory: fundInfo.subcategory,
+        created_at: new Date()
+      };
+      
+      // Check if score exists
       const existingResult = await pool.query(`
         SELECT fund_id FROM fund_scores
         WHERE fund_id = $1 AND score_date = $2
       `, [fundId, scoreDate]);
       
       if (existingResult.rows.length > 0) {
-        // Update existing score
-        const updateColumns = columns.map((col, i) => `${col} = $${i + 3}`).join(', ');
-        
+        // Update with comprehensive authentic data
         await pool.query(`
           UPDATE fund_scores
-          SET ${updateColumns}
+          SET 
+            return_3m_score = $3,
+            return_1y_score = $4,
+            return_3y_score = $5,
+            volatility_1y_percent = $6,
+            expense_ratio_score = $7,
+            data_quality_score = $8,
+            total_score = $9,
+            recommendation = $10,
+            subcategory = $11,
+            created_at = $12
           WHERE fund_id = $1 AND score_date = $2
-        `, [fundId, scoreDate, ...values]);
+        `, [
+          fundId, scoreDate,
+          comprehensiveData.return_3m_score,
+          comprehensiveData.return_1y_score,
+          comprehensiveData.return_3y_score,
+          comprehensiveData.volatility_1y_percent,
+          comprehensiveData.expense_ratio_score,
+          comprehensiveData.data_quality_score,
+          comprehensiveData.total_score,
+          comprehensiveData.recommendation,
+          comprehensiveData.subcategory,
+          comprehensiveData.created_at
+        ]);
       } else {
-        // Insert new score
-        const placeholders = values.map((_, i) => `$${i + 3}`).join(', ');
-        
+        // Insert comprehensive authentic data
         await pool.query(`
-          INSERT INTO fund_scores (fund_id, score_date, ${columns.join(', ')})
-          VALUES ($1, $2, ${placeholders})
-        `, [fundId, scoreDate, ...values]);
+          INSERT INTO fund_scores (
+            fund_id, score_date, return_3m_score, return_1y_score, return_3y_score,
+            volatility_1y_percent, expense_ratio_score, data_quality_score,
+            total_score, recommendation, subcategory, created_at
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+        `, [
+          fundId, scoreDate,
+          comprehensiveData.return_3m_score,
+          comprehensiveData.return_1y_score,
+          comprehensiveData.return_3y_score,
+          comprehensiveData.volatility_1y_percent,
+          comprehensiveData.expense_ratio_score,
+          comprehensiveData.data_quality_score,
+          comprehensiveData.total_score,
+          comprehensiveData.recommendation,
+          comprehensiveData.subcategory,
+          comprehensiveData.created_at
+        ]);
       }
     } catch (error) {
-      console.error(`Error storing fund score for ${fundId}:`, error);
+      console.error(`Error storing authentic fund score for ${fundId}:`, error);
       throw error;
     }
+  }
+
+  // Generate recommendation based on actual returns and volatility
+  private getRecommendationFromActualReturns(return3m: number | null, return1y: number | null, volatility: number | null): string {
+    const totalReturn = (return3m || 0) + (return1y || 0);
+    const riskAdjusted = volatility ? totalReturn / (volatility / 10) : totalReturn;
+    
+    if (riskAdjusted >= 25) return 'STRONG_BUY';
+    if (riskAdjusted >= 15) return 'BUY';
+    if (riskAdjusted >= 5) return 'HOLD';
+    if (riskAdjusted >= -5) return 'SELL';
+    return 'STRONG_SELL';
   }
 
   // Process a batch of funds
