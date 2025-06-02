@@ -4,7 +4,7 @@
  * Designed to work 24/7 in the background without user intervention
  */
 
-import { db } from '../db.js';
+import { db, executeRawQuery } from '../db.js';
 import { funds, navData } from '../../shared/schema.js';
 import { eq, lt, sql, and, isNull, or } from 'drizzle-orm';
 import axios from 'axios';
@@ -217,10 +217,7 @@ class BackgroundHistoricalImporter {
 
   private async getFundsNeedingHistoricalData() {
     try {
-      // Calculate a different offset based on batch number to avoid cycling
-      const batchOffset = Math.floor(this.currentProgress.totalFundsProcessed / this.BATCH_SIZE) * this.BATCH_SIZE;
-      
-      // Use a more diverse selection strategy
+      // Smart targeting: focus on scheme code ranges that historically work
       const result = await db
         .select({
           id: funds.id,
@@ -239,29 +236,32 @@ class BackgroundHistoricalImporter {
             eq(funds.status, 'ACTIVE'),
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
-            // Prioritize funds with zero data first, then those missing recent updates
-            sql`COALESCE(nav_counts.record_count, 0) = 0`
+            sql`COALESCE(nav_counts.record_count, 0) = 0`,
+            // Target scheme codes in ranges known to work (6-digit codes starting with 1)
+            or(
+              sql`${funds.schemeCode} ~ '^1[0-9]{5}$'`,  // 6-digit codes starting with 1
+              sql`${funds.schemeCode} ~ '^2[0-9]{5}$'`,  // 6-digit codes starting with 2  
+              sql`${funds.schemeCode} ~ '^1[0-9]{4}$'`,  // 5-digit codes starting with 1
+              sql`${funds.schemeCode} ~ '^1[0-9]{3}$'`   // 4-digit codes starting with 1
+            )
           )
         )
         .orderBy(
-          // First priority: Funds with zero data (most important)
-          sql`COALESCE(nav_counts.record_count, 0) ASC`,
-          // Second priority: Funds with higher likelihood of data availability  
+          // Prioritize by scheme code patterns most likely to have data
+          sql`CASE 
+            WHEN ${funds.schemeCode} ~ '^1[0-9]{5}$' THEN 1
+            WHEN ${funds.schemeCode} ~ '^1[0-9]{4}$' THEN 2
+            WHEN ${funds.schemeCode} ~ '^2[0-9]{5}$' THEN 3
+            ELSE 4
+          END`,
           sql`CASE 
             WHEN ${funds.category} = 'Equity' THEN 1
             WHEN ${funds.category} = 'Debt' THEN 2
-            WHEN ${funds.category} = 'Hybrid' THEN 3
-            ELSE 4
-          END`,
-          sql`CASE
-            WHEN ${funds.fundName} ILIKE '%nifty%' OR ${funds.fundName} ILIKE '%sensex%' THEN 1
-            WHEN ${funds.amcName} IN ('SBI', 'ICICI', 'HDFC', 'Axis', 'Kotak') THEN 2
             ELSE 3
           END`,
           funds.id
         )
-        .limit(this.BATCH_SIZE)
-        .offset(batchOffset);
+        .limit(this.BATCH_SIZE);
 
       // If no funds in the successful range, try other ranges
       if (result.length === 0) {
