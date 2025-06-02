@@ -383,10 +383,14 @@ export class ElivateFramework {
       WHERE index_name = 'SIP INFLOWS' 
       ORDER BY index_date DESC LIMIT 1`);
     
-    // Use actual data if available, otherwise use latest reported values
-    const fiiFlowsCr = fiiData.rows.length > 0 ? parseFloat(fiiData.rows[0].close_value) : 15000;
-    const diiFlowsCr = diiData.rows.length > 0 ? parseFloat(diiData.rows[0].close_value) : 12000;
-    const sipInflowsCr = sipData.rows.length > 0 ? parseFloat(sipData.rows[0].close_value) : 18000;
+    // Only use authentic data - no fallback values
+    if (fiiData.rows.length === 0 || diiData.rows.length === 0 || sipData.rows.length === 0) {
+      throw new Error('Authentic market data required - please ensure FII/DII/SIP data is available from authorized sources');
+    }
+    
+    const fiiFlowsCr = parseFloat(fiiData.rows[0].close_value);
+    const diiFlowsCr = parseFloat(diiData.rows[0].close_value);
+    const sipInflowsCr = parseFloat(sipData.rows[0].close_value);
     
     // Calculate component scores
     const fiiScore = this.scoreInvestorFlows(fiiFlowsCr, 3);

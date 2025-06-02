@@ -223,8 +223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fundCount = parseInt(countCheck.rows[0].count);
       
       if (fundCount < 10) {
-        console.log("Not enough funds in the database, creating some sample funds...");
-        await importSomeSampleFunds();
+        throw new Error("Insufficient fund data - please import authentic fund data from AMFI/authorized sources");
       }
       
       // Direct SQL query for better reliability
