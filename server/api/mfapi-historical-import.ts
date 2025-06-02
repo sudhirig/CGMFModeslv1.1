@@ -107,11 +107,19 @@ async function processHistoricalImport(etlRunId: number) {
   try {
     console.log('=== Starting MFAPI.in Historical NAV Import ===');
 
-    // Step 1: Get funds that need historical data, prioritizing by category
+    // Step 1: Get funds that need historical data, filtering for working MFAPI.in scheme code patterns
     const fundsResult = await executeRawQuery(`
       SELECT f.id, f.scheme_code, f.fund_name, f.category, COUNT(n.nav_date) as nav_count
       FROM funds f
       LEFT JOIN nav_data n ON f.id = n.fund_id
+      WHERE f.scheme_code IS NOT NULL 
+        AND (
+          f.scheme_code LIKE '119%' OR  -- Working pattern: Aditya Birla funds
+          f.scheme_code LIKE '120%' OR  -- Working pattern: BNP Paribas funds
+          f.scheme_code LIKE '118%' OR  -- Working pattern: HDFC FMP funds
+          f.scheme_code LIKE '101%' OR  -- Working pattern: SBI funds
+          f.scheme_code LIKE '102%'     -- Working pattern: HDFC funds
+        )
       GROUP BY f.id, f.scheme_code, f.fund_name, f.category
       HAVING COUNT(n.nav_date) <= 2
       ORDER BY 
@@ -121,12 +129,22 @@ async function processHistoricalImport(etlRunId: number) {
           WHEN 'Debt' THEN 3 
           ELSE 4 
         END,
-        f.id
-      LIMIT 3000  -- Increased to 3000 funds
+        f.scheme_code  -- Order by scheme code to process sequentially
+      LIMIT 500  -- Reduced to focus on working patterns
     `);
 
     const fundsToProcess = fundsResult.rows;
-    console.log(`Found ${fundsToProcess.length} funds that need historical NAV data`);
+    console.log(`Found ${fundsToProcess.length} funds with working MFAPI.in scheme code patterns that need historical NAV data`);
+    
+    // Log the scheme code patterns we're targeting
+    const patternCounts = {
+      '119xxx': fundsToProcess.filter(f => f.scheme_code.startsWith('119')).length,
+      '120xxx': fundsToProcess.filter(f => f.scheme_code.startsWith('120')).length,
+      '118xxx': fundsToProcess.filter(f => f.scheme_code.startsWith('118')).length,
+      '101xxx': fundsToProcess.filter(f => f.scheme_code.startsWith('101')).length,
+      '102xxx': fundsToProcess.filter(f => f.scheme_code.startsWith('102')).length
+    };
+    console.log('📊 Scheme code pattern distribution:', patternCounts);
 
     await storage.updateETLRun(etlRunId, {
       errorMessage: `Processing ${fundsToProcess.length} funds for historical NAV data import`
