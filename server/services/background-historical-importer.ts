@@ -237,15 +237,18 @@ class BackgroundHistoricalImporter {
         .where(
           and(
             eq(funds.status, 'ACTIVE'),
-            sql`COALESCE(nav_counts.record_count, 0) < 100`,
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
-            // Prioritize funds likely to have historical data
+            // Focus on funds that need recent data updates
             or(
-              sql`${funds.category} IN ('Equity', 'Debt', 'Hybrid')`,
-              sql`${funds.fundName} ILIKE '%nifty%' OR ${funds.fundName} ILIKE '%sensex%'`,
-              sql`${funds.fundName} ILIKE '%large cap%' OR ${funds.fundName} ILIKE '%bluechip%'`,
-              sql`${funds.amcName} IN ('SBI', 'ICICI', 'HDFC', 'Axis', 'Kotak')`
+              // Funds with no data at all
+              sql`COALESCE(nav_counts.record_count, 0) = 0`,
+              // Funds with some data but missing recent updates (last NAV older than 30 days)
+              sql`NOT EXISTS (
+                SELECT 1 FROM nav_data n 
+                WHERE n.fund_id = ${funds.id} 
+                AND n.nav_date >= CURRENT_DATE - INTERVAL '30 days'
+              )`
             )
           )
         )
@@ -305,21 +308,43 @@ class BackgroundHistoricalImporter {
   }
 
   private async importHistoricalDataForFund(fund: any): Promise<number> {
-    // Use single API call per fund (same as successful imports)
     try {
-      const historicalData = await this.fetchAllHistoricalNavFromAPI(fund.schemeCode);
+      // First, check what's the latest date we have for this fund
+      const latestNavResult = await db.execute(sql`
+        SELECT MAX(nav_date) as latest_date 
+        FROM nav_data 
+        WHERE fund_id = ${fund.id}
+      `);
+      
+      const latestDate = latestNavResult.rows[0]?.latest_date;
+      const cutoffDate = latestDate || new Date('2020-01-01'); // If no data, start from 2020
+      
+      console.log(`  Latest data for ${fund.fundName}: ${latestDate || 'No data'}`);
+      
+      // Fetch all data from API and filter only what we need
+      const allHistoricalData = await this.fetchAllHistoricalNavFromAPI(fund.schemeCode);
 
-      if (historicalData && historicalData.length > 0) {
-        const insertedCount = await this.bulkInsertNavData(fund.id, historicalData);
-        this.processedFundIds.add(fund.id);
-        return insertedCount;
+      if (allHistoricalData && allHistoricalData.length > 0) {
+        // Filter to only get data newer than what we already have
+        const newDataOnly = allHistoricalData.filter(nav => {
+          const navDate = new Date(nav.date);
+          return navDate > cutoffDate;
+        });
+        
+        console.log(`  Found ${newDataOnly.length} new records (${allHistoricalData.length} total)`);
+        
+        if (newDataOnly.length > 0) {
+          const insertedCount = await this.bulkInsertNavData(fund.id, newDataOnly);
+          this.processedFundIds.add(fund.id);
+          return insertedCount;
+        }
       }
       
-      // Mark fund as processed even if no data to avoid cycling
+      // Mark fund as processed even if no new data
       this.processedFundIds.add(fund.id);
       return 0;
     } catch (error) {
-      // Mark fund as processed even on error to avoid retry loops
+      console.error(`Error importing data for fund ${fund.id}:`, error);
       this.processedFundIds.add(fund.id);
       return 0;
     }
