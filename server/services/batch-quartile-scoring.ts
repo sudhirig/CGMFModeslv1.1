@@ -215,7 +215,7 @@ export class FundScoringEngine {
         scores[`actual${period.name}Return`] = returnValue;
       } else {
         scores[`return${period.name}Score`] = 0;
-        scores[`actual${period.name}Return`] = null;
+        // scores[`actual${period.name}Return`] = null; // Remove null assignment
       }
     }
     
@@ -704,14 +704,14 @@ export class FundScoringEngine {
       
       // Check if score exists
       const existingResult = await pool.query(`
-        SELECT fund_id FROM fund_scores
-        WHERE fund_id = $1 AND score_date = $2
+        SELECT fund_id FROM fund_performance_metrics 
+        WHERE fund_id = $1 AND scoring_date = $2 AND total_score IS NOT NULL
       `, [fundId, scoreDate]);
       
       if (existingResult.rows.length > 0) {
         // Update with comprehensive authentic data
         await pool.query(`
-          UPDATE fund_scores
+          UPDATE fund_performance_metrics
           SET 
             return_3m_score = $3,
             return_1y_score = $4,
@@ -740,7 +740,7 @@ export class FundScoringEngine {
       } else {
         // Insert comprehensive authentic data
         await pool.query(`
-          INSERT INTO fund_scores (
+          INSERT INTO fund_performance_metrics (
             fund_id, score_date, return_3m_score, return_1y_score, return_3y_score,
             volatility_1y_percent, expense_ratio_score, data_quality_score,
             total_score, recommendation, subcategory, created_at
@@ -909,7 +909,7 @@ export class FundScoringEngine {
   // Get the latest score date
   private async getLatestScoreDate(): Promise<string | null> {
     const result = await pool.query(`
-      SELECT MAX(score_date) as latest_date FROM fund_scores
+      SELECT MAX(scoring_date) as latest_date FROM fund_performance_metrics WHERE total_score IS NOT NULL
     `);
     return result.rows[0]?.latest_date || null;
   }
