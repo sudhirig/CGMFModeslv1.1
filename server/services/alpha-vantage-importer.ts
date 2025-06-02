@@ -235,11 +235,11 @@ class AlphaVantageImporter {
     try {
       if (navRecords.length === 0) return 0;
 
-      // Prepare records for insertion
+      // Prepare records for insertion with proper schema format
       const recordsToInsert = navRecords.map(record => ({
         fundId,
-        navValue: record.navValue,
-        navDate: new Date(record.navDate)
+        navValue: record.navValue.toString(),
+        navDate: record.navDate // Keep as string for date field
       }));
 
       // Insert in batches to avoid memory issues
