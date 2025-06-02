@@ -239,17 +239,8 @@ class BackgroundHistoricalImporter {
             eq(funds.status, 'ACTIVE'),
             sql`${funds.schemeCode} IS NOT NULL`,
             sql`${funds.schemeCode} ~ '^[0-9]+$'`,
-            // Focus on funds that need recent data updates
-            or(
-              // Funds with no data at all
-              sql`COALESCE(nav_counts.record_count, 0) = 0`,
-              // Funds with some data but missing recent updates (last NAV older than 30 days)
-              sql`NOT EXISTS (
-                SELECT 1 FROM nav_data n 
-                WHERE n.fund_id = ${funds.id} 
-                AND n.nav_date >= CURRENT_DATE - INTERVAL '30 days'
-              )`
-            )
+            // Prioritize funds with zero data first, then those missing recent updates
+            sql`COALESCE(nav_counts.record_count, 0) = 0`
           )
         )
         .orderBy(
