@@ -43,7 +43,7 @@ export class FundScoringEngine {
       
       // Get NAV data (approx. 5 years for comprehensive analysis)
       const navData = await this.getFundNavData(fundId, 365); // At least 1 year of data
-      if (navData.length < 90) { // Need at least 3 months of data for minimal scoring
+      if (navData.length < 30) { // Need at least 30 days of data for basic scoring
         console.log(`Insufficient NAV data for fund ${fundId}, skipping scoring`);
         return null;
       }
