@@ -278,9 +278,15 @@ router.get('/status', async (req, res) => {
     const fundResult = await executeRawQuery('SELECT COUNT(*) FROM funds');
     const fundCount = parseInt(fundResult.rows[0].count);
     
-    // Get NAV data count
-    const navResult = await executeRawQuery('SELECT COUNT(*) FROM nav_data');
-    const navCount = parseInt(navResult.rows[0].count);
+    // Get NAV data count with real-time accuracy
+    const navResult = await executeRawQuery(`
+      SELECT 
+        COUNT(*) as total_count,
+        COUNT(CASE WHEN created_at >= CURRENT_DATE THEN 1 END) as today_additions
+      FROM nav_data
+    `);
+    const navCount = parseInt(navResult.rows[0].total_count);
+    const todayAdditions = parseInt(navResult.rows[0].today_additions);
     
     // Get date range of NAV data
     const dateRangeResult = await executeRawQuery(`
@@ -300,6 +306,7 @@ router.get('/status', async (req, res) => {
       success: true,
       fundCount,
       navCount,
+      todayAdditions,
       navDataRange: {
         earliestDate,
         latestDate

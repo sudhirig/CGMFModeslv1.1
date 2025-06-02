@@ -151,6 +151,11 @@ export default function HistoricalImportDashboard() {
             <p className="text-xs text-muted-foreground">
               Total records in system
             </p>
+            {navStats?.todayAdditions > 0 && (
+              <div className="mt-2 text-sm text-green-600">
+                +{formatNumber(navStats.todayAdditions)} added today
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
