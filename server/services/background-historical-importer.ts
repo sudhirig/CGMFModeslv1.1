@@ -92,10 +92,21 @@ class BackgroundHistoricalImporter {
         const fundsToProcess = await this.getFundsNeedingHistoricalData();
         
         if (fundsToProcess.length === 0) {
-          console.log('📈 All funds processed! Restarting from beginning...');
-          // Reset and start over to catch any new funds or missed data
-          await new Promise(resolve => setTimeout(resolve, 300000)); // Wait 5 minutes
-          continue;
+          console.log('📈 All eligible funds processed! Checking for funds needing deeper historical data...');
+          
+          // Try to find funds with some data but needing more historical depth
+          const fundsNeedingMoreData = await this.getFundsNeedingDeeperHistory();
+          fundsToProcess = fundsNeedingMoreData;
+          
+          if (fundsNeedingMoreData.length === 0) {
+            console.log('✅ Historical import complete - all funds have adequate data coverage');
+            this.stop();
+            break;
+          } else {
+            console.log(`🔄 Found ${fundsNeedingMoreData.length} funds needing deeper historical data`);
+            // Process these funds before restarting
+            continue;
+          }
         }
 
         this.currentProgress.currentBatch++;
@@ -166,6 +177,41 @@ class BackgroundHistoricalImporter {
         // Wait before retrying
         await new Promise(resolve => setTimeout(resolve, 60000)); // Wait 1 minute on error
       }
+    }
+  }
+
+  private async getFundsNeedingDeeperHistory() {
+    try {
+      // Look for funds that have some data but need more historical depth for scoring
+      const result = await db
+        .select({
+          id: funds.id,
+          schemeCode: funds.schemeCode,
+          fundName: funds.fundName,
+          category: funds.category,
+          status: funds.status
+        })
+        .from(funds)
+        .leftJoin(
+          sql`(SELECT fund_id, COUNT(*) as record_count FROM nav_data GROUP BY fund_id) nav_counts`,
+          sql`nav_counts.fund_id = ${funds.id}`
+        )
+        .where(
+          and(
+            eq(funds.status, 'ACTIVE'),
+            sql`COALESCE(nav_counts.record_count, 0) BETWEEN 100 AND 252`, // Some data but not enough for 1-year analysis
+            sql`${funds.schemeCode} IS NOT NULL`,
+            sql`${funds.schemeCode} ~ '^[0-9]+$'`,
+            sql`${funds.category} IN ('Equity', 'Debt', 'Hybrid')` // Focus on major categories
+          )
+        )
+        .orderBy(sql`COALESCE(nav_counts.record_count, 0) DESC`) // Prioritize funds with more existing data
+        .limit(this.BATCH_SIZE);
+
+      return result;
+    } catch (error) {
+      console.error('Error fetching funds needing deeper history:', error);
+      return [];
     }
   }
 
