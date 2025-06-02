@@ -27,21 +27,21 @@ async function implementComprehensiveQuartileRanking() {
     const categoriesData = await pool.query(`
       SELECT DISTINCT 
         f.category,
-        f.sub_category,
+        f.subcategory,
         COUNT(*) as fund_count
       FROM funds f
       JOIN fund_scores fs ON f.id = fs.fund_id
       WHERE fs.overall_rating IS NOT NULL OR fs.return_1y_score IS NOT NULL
-      GROUP BY f.category, f.sub_category
+      GROUP BY f.category, f.subcategory
       HAVING COUNT(*) >= 10
-      ORDER BY f.category, f.sub_category
+      ORDER BY f.category, f.subcategory
     `);
     
     console.log(`Found ${categoriesData.rows.length} category-subcategory combinations to process`);
     
     for (const categoryData of categoriesData.rows) {
       const category = categoryData.category;
-      const subCategory = categoryData.sub_category;
+      const subCategory = categoryData.subcategory;
       const fundCount = parseInt(categoryData.fund_count);
       
       console.log(`\nProcessing: ${category} > ${subCategory} (${fundCount} funds)`);
@@ -118,7 +118,7 @@ async function processSubcategoryRankings(category, subCategory) {
       FROM fund_scores fs
       JOIN funds f ON fs.fund_id = f.id
       WHERE f.category = $1 
-      AND COALESCE(f.sub_category, 'General') = COALESCE($2, 'General')
+      AND COALESCE(f.subcategory, 'General') = COALESCE($2, 'General')
       ORDER BY composite_score DESC, fs.return_1y_score DESC NULLS LAST
     `, [category, subCategory]);
     
@@ -266,7 +266,7 @@ async function generateComprehensiveRankingReport() {
         COUNT(*) as total_funds,
         COUNT(CASE WHEN fs.subcategory_rank IS NOT NULL THEN 1 END) as ranked_funds,
         ROUND(COUNT(CASE WHEN fs.subcategory_rank IS NOT NULL THEN 1 END) * 100.0 / COUNT(*), 2) as coverage_pct,
-        COUNT(DISTINCT COALESCE(f.sub_category, 'General')) as subcategories,
+        COUNT(DISTINCT COALESCE(f.subcategory, 'General')) as subcategories,
         AVG(CASE WHEN fs.overall_rating IS NOT NULL THEN fs.overall_rating END) as avg_rating,
         MAX(fs.subcategory_rank) as max_subcategory_rank
       FROM funds f
