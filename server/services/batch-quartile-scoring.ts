@@ -208,29 +208,21 @@ export class FundScoringEngine {
       const returnValue = this.calculatePeriodReturn(navData, period.days);
       
       if (returnValue !== null) {
-        // Get category returns for ranking (if we have enough data)
-        let categoryReturns: number[] = [];
-        if (navData.length >= period.days) {
-          categoryReturns = await this.getCategoryReturns(categoryFunds, period.days);
-        }
+        // Use actual percentage return as the score base instead of quartile buckets
+        scores[`return${period.name}Score`] = this.scoreFromActualReturn(returnValue, period.weight);
         
-        // Score based on quartile ranking among peers if we have peer data
-        if (categoryReturns.length > 0) {
-          const quartile = this.getQuartileRank(returnValue, categoryReturns);
-          scores[`return${period.name}Score`] = this.quartileToScore(quartile, period.weight);
-        } else {
-          // If no peer data, score based on absolute return
-          scores[`return${period.name}Score`] = this.scoreAbsoluteReturn(returnValue, period.weight);
-        }
+        // Store the actual percentage return for reference (removing null assignment)
+        scores[`actual${period.name}Return`] = returnValue;
       } else {
         scores[`return${period.name}Score`] = 0;
+        scores[`actual${period.name}Return`] = null;
       }
     }
     
     return scores;
   }
 
-  // Calculate return for a specific period
+  // Calculate return for a specific period - returns actual percentage
   private calculatePeriodReturn(navData: any[], days: number): number | null {
     if (navData.length < days) {
       return null;
@@ -316,6 +308,17 @@ export class FundScoringEngine {
       case 4: return maxPoints * 0.25;
       default: return 0;
     }
+  }
+
+  // Score based on actual percentage return (continuous scaling, not quartile buckets)
+  private scoreFromActualReturn(returnValue: number, maxPoints: number): number {
+    // Use actual percentage return with continuous scaling instead of fixed quartiles
+    // This preserves the authentic return data while providing meaningful scores
+    
+    // Transform actual percentage return to score using continuous function
+    // Higher returns get higher scores, but cap at maxPoints
+    const baseScore = Math.max(0, returnValue * 0.5 + maxPoints * 0.4);
+    return Math.min(maxPoints, baseScore);
   }
 
   // Score absolute return (used when peer data is not available)
