@@ -20,8 +20,8 @@ export class AuthenticPerformanceCalculator {
       `;
       const navResult = await pool.query(navQuery, [fundId]);
       
-      if (navResult.rows.length < 252) {
-        return null; // Need minimum 1 year of data
+      if (navResult.rows.length < 30) {
+        return null; // Need minimum 30 days of data for basic calculations
       }
       
       const navData = navResult.rows;
@@ -29,13 +29,17 @@ export class AuthenticPerformanceCalculator {
       // Calculate daily returns
       const dailyReturns = this.calculateDailyReturns(navData);
       
-      // Calculate period returns
+      // Calculate period returns based on available data
+      const dataLength = navData.length;
       const returns = {
-        return_3m: this.calculatePeriodReturn(navData, 90),
-        return_6m: this.calculatePeriodReturn(navData, 180),
-        return_1y: this.calculatePeriodReturn(navData, 365),
-        return_3y: this.calculatePeriodReturn(navData, 1095),
-        return_5y: this.calculatePeriodReturn(navData, 1825)
+        return_3m: dataLength >= 90 ? this.calculatePeriodReturn(navData, 90) : null,
+        return_6m: dataLength >= 180 ? this.calculatePeriodReturn(navData, 180) : null,
+        return_1y: dataLength >= 365 ? this.calculatePeriodReturn(navData, 365) : null,
+        return_3y: dataLength >= 1095 ? this.calculatePeriodReturn(navData, 1095) : null,
+        return_5y: dataLength >= 1825 ? this.calculatePeriodReturn(navData, 1825) : null,
+        // For limited data, calculate what we can
+        return_1m: dataLength >= 30 ? this.calculatePeriodReturn(navData, 30) : null,
+        return_ytd: this.calculateYTDReturn(navData)
       };
       
       // Calculate risk metrics
