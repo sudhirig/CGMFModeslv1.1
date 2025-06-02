@@ -119,6 +119,7 @@ export const fundScores = pgTable("fund_scores", {
   return1yScore: decimal("return_1y_score", { precision: 4, scale: 1 }),
   return3yScore: decimal("return_3y_score", { precision: 4, scale: 1 }),
   return5yScore: decimal("return_5y_score", { precision: 4, scale: 1 }),
+  returnYtdScore: decimal("return_ytd_score", { precision: 4, scale: 1 }),
   historicalReturnsTotal: decimal("historical_returns_total", { precision: 5, scale: 1 }),
   
   // Risk grade scores (30 points)
