@@ -172,13 +172,13 @@ class CorrectedScoringValidationTest {
     
     // Get a sample of funds with good NAV data
     const fundsResult = await pool.query(`
-      SELECT f.id, f.fund_name, f.subcategory, COUNT(nd.id) as nav_count
+      SELECT f.id, f.fund_name, f.subcategory, COUNT(*) as nav_count
       FROM funds f
       JOIN nav_data nd ON f.id = nd.fund_id
       WHERE nd.created_at > '2025-05-30 06:45:00'
       GROUP BY f.id, f.fund_name, f.subcategory
-      HAVING COUNT(nd.id) >= 365
-      ORDER BY COUNT(nd.id) DESC
+      HAVING COUNT(*) >= 365
+      ORDER BY COUNT(*) DESC
       LIMIT 10
     `);
 
