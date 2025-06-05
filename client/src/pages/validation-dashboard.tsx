@@ -348,9 +348,43 @@ export default function ValidationDashboard() {
                       <div>
                         <p className="text-sm font-medium">Running Historical Validation</p>
                         <p className="text-xs text-muted-foreground">
-                          Processing point-in-time scoring and validation metrics...
+                          Processing point-in-time scoring using authentic NAV data...
                         </p>
                       </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Recent Validation Results */}
+              {validationResults && validationResults.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Validation Results</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Latest historical validation runs using authentic data
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {validationResults.slice(0, 3).map((result) => (
+                        <div key={result.validation_run_id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium">{result.validation_run_id}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {result.total_funds_tested} funds tested • {new Date(result.run_date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">
+                              {result.overall_prediction_accuracy_1y ? Number(result.overall_prediction_accuracy_1y).toFixed(1) : '0.0'}% 1Y Accuracy
+                            </p>
+                            <Badge variant={result.validation_status === 'COMPLETED' ? 'default' : 'secondary'}>
+                              {result.validation_status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
