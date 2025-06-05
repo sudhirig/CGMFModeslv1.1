@@ -121,8 +121,8 @@ export class StreamlinedHistoricalValidation {
     const historicalNavs = navData.slice(0, scoringNavIndex);
     const futureNavs = navData.slice(scoringNavIndex);
 
-    // Get authentic historical score from our production system
-    const historicalScore = await this.calculateAuthenticScore(fund, scoringDate);
+    // Get production score from our actual scoring system
+    const historicalScore = await StreamlinedHistoricalValidation.calculateAuthenticScore(fund, scoringDate);
     if (historicalScore === null) {
       return null; // No production score available
     }
