@@ -421,8 +421,16 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getQuartileMetrics(): Promise<any> {
+  async getQuartileMetrics(category?: string): Promise<any> {
     try {
+      let whereClause = "WHERE fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL";
+      const params: any[] = [];
+      
+      if (category) {
+        whereClause += " AND fsc.category = $1";
+        params.push(category);
+      }
+      
       // Query for authentic quartile performance data from fund_scores_corrected
       const performanceQuery = `
         SELECT 
@@ -432,12 +440,12 @@ export class DatabaseStorage implements IStorage {
           ROUND(AVG(fsc.total_score), 2) as avg_score,
           COUNT(*) as fund_count
         FROM fund_scores_corrected fsc
-        WHERE fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL
+        ${whereClause}
         GROUP BY fsc.quartile
         ORDER BY fsc.quartile
       `;
       
-      const performanceResult = await executeRawQuery(performanceQuery);
+      const performanceResult = await executeRawQuery(performanceQuery, params);
       
       // Transform authentic performance data from fund_scores_corrected
       const returnsData = performanceResult.rows.map(row => ({
