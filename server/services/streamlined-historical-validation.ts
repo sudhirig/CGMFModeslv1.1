@@ -160,7 +160,7 @@ export class StreamlinedHistoricalValidation {
     };
   }
 
-  private static async calculateAuthenticScore(fund: any, scoringDate: Date): Promise<number> {
+  private static async calculateAuthenticScore(fund: any, scoringDate: Date): Promise<number | null> {
     try {
       // Get existing authentic score from fund_scores_corrected table
       const scoreQuery = `
@@ -168,6 +168,9 @@ export class StreamlinedHistoricalValidation {
         FROM fund_scores_corrected
         WHERE fund_id = $1 
         AND score_date <= $2
+        AND total_score IS NOT NULL
+        AND total_score >= 0 
+        AND total_score <= 100
         ORDER BY score_date DESC
         LIMIT 1
       `;
@@ -176,59 +179,72 @@ export class StreamlinedHistoricalValidation {
       
       if (scoreResult.rows.length > 0) {
         const authenticScore = Number(scoreResult.rows[0].total_score);
-        // Ensure score is within 0-100 bounds as per documentation
-        return Math.min(Math.max(authenticScore, 0), 100);
+        // Double-check bounds enforcement for authentic data integrity
+        if (authenticScore >= 0 && authenticScore <= 100) {
+          return Math.round(authenticScore);
+        }
       }
 
-      // If no existing score, calculate from authentic NAV data only
+      // If no existing authentic score, use only verified NAV data
       const navQuery = `
         SELECT nav_value, nav_date
         FROM nav_data
-        WHERE fund_id = $1 AND nav_date <= $2
+        WHERE fund_id = $1 
+        AND nav_date <= $2
+        AND nav_value > 0
         ORDER BY nav_date DESC
         LIMIT 252
       `;
       
       const navResult = await pool.query(navQuery, [fund.id, scoringDate]);
       if (navResult.rows.length < 90) {
-        return null; // Insufficient authentic data
+        return null; // Insufficient authentic data for reliable scoring
       }
 
       const navData = navResult.rows;
       const latest = navData[0];
       
-      // Calculate authentic returns using only available NAV data
-      let score = 40; // Conservative base score for authentic calculation
+      // Conservative authentic scoring methodology (0-100 scale)
+      let score = 50; // Neutral baseline for funds with authentic data
       
-      // 1Y return component (maximum 20 points)
+      // 1Y return component (maximum ±15 points)
       if (navData.length >= 252) {
         const yearAgoNav = navData[251];
         const return1Y = ((latest.nav_value - yearAgoNav.nav_value) / yearAgoNav.nav_value) * 100;
-        score += Math.min(Math.max(return1Y / 3, -10), 20);
+        score += Math.min(Math.max(return1Y / 4, -15), 15);
       }
       
-      // 6M return component (maximum 15 points)
+      // 6M return component (maximum ±10 points)
       if (navData.length >= 126) {
         const sixMonthsAgoNav = navData[125];
         const return6M = ((latest.nav_value - sixMonthsAgoNav.nav_value) / sixMonthsAgoNav.nav_value) * 100;
-        score += Math.min(Math.max(return6M / 4, -8), 15);
+        score += Math.min(Math.max(return6M / 6, -10), 10);
       }
 
-      // 3M return component (maximum 10 points)
+      // 3M return component (maximum ±8 points)
       if (navData.length >= 63) {
         const threeMonthsAgoNav = navData[62];
         const return3M = ((latest.nav_value - threeMonthsAgoNav.nav_value) / threeMonthsAgoNav.nav_value) * 100;
-        score += Math.min(Math.max(return3M / 5, -5), 10);
+        score += Math.min(Math.max(return3M / 8, -8), 8);
       }
 
-      // Risk adjustment component (maximum 15 points)
+      // Risk-adjusted quality component (maximum ±17 points)
       const volatility = this.calculateVolatility(navData);
-      if (volatility !== null) {
-        score += Math.min(Math.max(15 - volatility, 0), 15);
+      if (volatility !== null && volatility > 0) {
+        const riskScore = Math.min(Math.max(20 - volatility, -17), 17);
+        score += riskScore;
       }
 
-      // Ensure final score is strictly within 0-100 bounds
-      return Math.min(Math.max(Math.round(score), 0), 100);
+      // CRITICAL: Enforce strict 0-100 bounds for data integrity
+      const finalScore = Math.min(Math.max(Math.round(score), 0), 100);
+      
+      // Additional safety check - reject any score outside bounds
+      if (finalScore < 0 || finalScore > 100) {
+        console.error(`Score bounds violation detected for fund ${fund.id}: ${finalScore}`);
+        return null;
+      }
+      
+      return finalScore;
       
     } catch (error) {
       console.error(`Error calculating authentic score for fund ${fund.id}:`, error);
@@ -241,14 +257,22 @@ export class StreamlinedHistoricalValidation {
     
     const returns = [];
     for (let i = 1; i < Math.min(navData.length, 252); i++) {
-      const dailyReturn = ((navData[i-1].nav_value - navData[i].nav_value) / navData[i].nav_value) * 100;
-      returns.push(dailyReturn);
+      if (navData[i].nav_value > 0 && navData[i-1].nav_value > 0) {
+        const dailyReturn = ((navData[i-1].nav_value - navData[i].nav_value) / navData[i].nav_value) * 100;
+        if (isFinite(dailyReturn)) {
+          returns.push(dailyReturn);
+        }
+      }
     }
+    
+    if (returns.length < 30) return null;
     
     const mean = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
     const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - mean, 2), 0) / returns.length;
+    const volatility = Math.sqrt(variance) * Math.sqrt(252);
     
-    return Math.sqrt(variance) * Math.sqrt(252); // Annualized volatility
+    // Ensure volatility is realistic and finite
+    return isFinite(volatility) && volatility >= 0 && volatility <= 100 ? volatility : null;
   }
 
   private static calculateQuartile(score: number): number {
