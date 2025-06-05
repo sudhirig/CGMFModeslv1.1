@@ -6,11 +6,9 @@ import { dataCollector } from "./services/data-collector";
 import { elivateFramework } from "./services/elivate-framework";
 import { fundScoringEngine } from "./services/fund-scoring";
 import { portfolioBuilder } from "./services/portfolio-builder";
-import { backtestingEngine } from "./services/backtesting-engine";
 import { fundDetailsCollector } from "./services/fund-details-collector";
 import { quartileScheduler as automatedScheduler } from "./services/automated-quartile-scheduler";
 import { quartileScheduler } from "./services/quartile-scoring-scheduler";
-import { quartileSeeder } from "./services/seed-quartile-ratings";
 import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
 import quartileScoringRoutes from "./api/quartile-scoring";
@@ -1011,44 +1009,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Alpha Vantage import routes
-  app.post("/api/alpha-vantage/import", async (req, res) => {
-    try {
-      const { alphaVantageImporter } = await import('./services/alpha-vantage-importer');
-      const batchSize = parseInt(req.body.batchSize) || 5;
-      
-      const results = await alphaVantageImporter.importHistoricalData(batchSize);
-      
-      res.json({
-        success: true,
-        message: "Alpha Vantage import completed",
-        results
-      });
-    } catch (error: any) {
-      console.error("Error in Alpha Vantage import:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "Failed to import from Alpha Vantage",
-        error: error.message 
-      });
-    }
-  });
-
-  app.post("/api/alpha-vantage/test", async (req, res) => {
-    try {
-      const { alphaVantageImporter } = await import('./services/alpha-vantage-importer');
-      const testResult = await alphaVantageImporter.testConnection();
-      
-      res.json(testResult);
-    } catch (error: any) {
-      console.error("Error testing Alpha Vantage:", error);
-      res.status(500).json({ 
-        success: false,
-        message: "Failed to test Alpha Vantage connection",
-        error: error.message 
-      });
-    }
-  });
+  // Alpha Vantage endpoints removed - production system uses AMFI data
 
   app.post("/api/etl/collect", async (req, res) => {
     try {

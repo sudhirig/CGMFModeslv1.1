@@ -45,50 +45,9 @@ export default function Sidebar() {
                 <span className="material-icons text-xl mr-3">assessment</span>
                 <span>Fund Analysis</span>
               </Link>
-              <Link href="/quartile-analysis" className={linkClass("/quartile-analysis")}>
-                <span className="material-icons text-xl mr-3">pie_chart</span>
-                <span>Quartile Analysis</span>
-              </Link>
               <Link href="/portfolio-builder" className={linkClass("/portfolio-builder")}>
                 <span className="material-icons text-xl mr-3">account_balance</span>
                 <span>Portfolio Builder</span>
-              </Link>
-            </div>
-            <div className="mb-6">
-              <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                Data Management
-              </div>
-              <Link href="/etl-pipeline" className={linkClass("/etl-pipeline")}>
-                <span className="material-icons text-xl mr-3">sync</span>
-                <span>ETL Pipeline</span>
-              </Link>
-              <Link href="/data-import-status" className={linkClass("/data-import-status")}>
-                <span className="material-icons text-xl mr-3">analytics</span>
-                <span>Data Import Status</span>
-              </Link>
-              <Link href="/historical-data-import" className={linkClass("/historical-data-import")}>
-                <span className="material-icons text-xl mr-3">update</span>
-                <span>Historical NAV Import</span>
-              </Link>
-              <Link href="/historical-import-dashboard" className={linkClass("/historical-import-dashboard")}>
-                <span className="material-icons text-xl mr-3">cloud_sync</span>
-                <span>Background Import</span>
-              </Link>
-              <Link href="/mfapi-test" className={linkClass("/mfapi-test")}>
-                <span className="material-icons text-xl mr-3">api</span>
-                <span>MFAPI.in Test</span>
-              </Link>
-              <Link href="/mftool-test" className={linkClass("/mftool-test")}>
-                <span className="material-icons text-xl mr-3">build</span>
-                <span>MFTool Test</span>
-              </Link>
-              <Link href="/database-explorer" className={linkClass("/database-explorer")}>
-                <span className="material-icons text-xl mr-3">storage</span>
-                <span>Database Explorer</span>
-              </Link>
-              <Link href="/backtesting" className={linkClass("/backtesting")}>
-                <span className="material-icons text-xl mr-3">history</span>
-                <span>Backtesting</span>
               </Link>
             </div>
             <div className="mb-6">
