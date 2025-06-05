@@ -911,16 +911,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Run historical validation using original documentation methodology
+  // Run historical validation using streamlined authentic data methodology
   app.post("/api/validation/run-historical", async (req, res) => {
     try {
-      const { historicalValidationEngine } = await import('./services/historical-validation-engine');
+      const { StreamlinedHistoricalValidation } = await import('./services/streamlined-historical-validation');
       
       const {
         startDate,
         endDate,
         validationPeriodMonths = 12,
-        categories,
         minimumDataPoints = 252
       } = req.body;
 
@@ -935,14 +934,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         validationPeriodMonths,
-        categories: categories || undefined,
         minimumDataPoints
       };
 
-      console.log(`Starting historical validation with config:`, config);
+      console.log(`Starting streamlined historical validation with config:`, config);
 
-      // Run the validation
-      const validationResult = await historicalValidationEngine.runHistoricalValidation(config);
+      // Run the streamlined validation
+      const validationResult = await StreamlinedHistoricalValidation.runValidation(config);
 
       res.json({
         success: true,
@@ -969,10 +967,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
     } catch (error) {
-      console.error("Error running historical validation:", error);
+      console.error("Error running streamlined historical validation:", error);
       res.status(500).json({ 
         message: "Failed to run historical validation",
-        error: error.message 
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
