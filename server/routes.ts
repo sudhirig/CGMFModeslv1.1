@@ -870,10 +870,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Use our completely revised portfolio service that prevents duplicates at the source
-      const { revisedPortfolioService } = await import('./services/simple-portfolio-revised');
+      // Using production portfolio builder service
       
-      // Generate a portfolio with our new approach that guarantees unique funds
-      let portfolio = await revisedPortfolioService.generatePortfolio(riskProfile);
+      // Generate a portfolio with production portfolio builder
+      let portfolio = await portfolioBuilder.buildPortfolio(riskProfile);
       
       res.json(portfolio);
     } catch (error) {
