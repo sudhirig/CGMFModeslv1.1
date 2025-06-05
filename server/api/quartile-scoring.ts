@@ -65,7 +65,7 @@ router.get('/distribution', async (req, res) => {
     }
     
     const result = await pool.query(query, params);
-    console.log("Query result:", result.rows[0]);
+    console.log("Authentic quartile distribution result:", result.rows[0]);
     
     // Calculate percentages based on actual counts
     const data = result.rows[0];
@@ -83,6 +83,7 @@ router.get('/distribution', async (req, res) => {
     const q3Percent = totalCount > 0 ? Math.round((q3Count / totalCount) * 100) : 0;
     const q4Percent = totalCount > 0 ? Math.round((q4Count / totalCount) * 100) : 0;
     
+    res.setHeader('Cache-Control', 'no-cache');
     res.json({
       totalCount,
       q1Count,
@@ -92,7 +93,9 @@ router.get('/distribution', async (req, res) => {
       q1Percent,
       q2Percent,
       q3Percent,
-      q4Percent
+      q4Percent,
+      dataSource: 'fund_scores_corrected',
+      lastUpdated: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error getting quartile distribution:', error);
@@ -146,8 +149,11 @@ router.get('/funds/:quartile', async (req, res) => {
     
     const result = await pool.query(query, params);
     
+    res.setHeader('Cache-Control', 'no-cache');
     res.json({
-      funds: result.rows
+      funds: result.rows,
+      dataSource: 'fund_scores_corrected',
+      lastUpdated: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error getting funds by quartile:', error);
@@ -185,8 +191,11 @@ router.get('/metrics', async (req, res) => {
     
     const result = await pool.query(query);
     
+    res.setHeader('Cache-Control', 'no-cache');
     res.json({
-      returnsData: result.rows
+      returnsData: result.rows,
+      dataSource: 'fund_scores_corrected',
+      lastUpdated: new Date().toISOString()
     });
   } catch (error) {
     console.error('Error getting quartile metrics:', error);
