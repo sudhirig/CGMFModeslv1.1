@@ -1545,18 +1545,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/quartile/categories', async (req, res) => {
     try {
       const query = `
-        SELECT DISTINCT fsc.category, COUNT(*) as fund_count
-        FROM fund_scores_corrected fsc
-        WHERE fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL
-        GROUP BY fsc.category
-        ORDER BY fund_count DESC
+        SELECT 
+          f.category,
+          COUNT(f.id) as total_funds,
+          COUNT(fsc.fund_id) as scored_funds
+        FROM funds f
+        LEFT JOIN fund_scores_corrected fsc ON f.id = fsc.fund_id 
+          AND fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL
+        WHERE f.category IS NOT NULL
+        GROUP BY f.category
+        ORDER BY COUNT(fsc.fund_id) DESC, COUNT(f.id) DESC
       `;
       
       const result = await executeRawQuery(query);
       
       const categories = result.rows.map(row => ({
         name: row.category,
-        fundCount: parseInt(row.fund_count)
+        totalFunds: parseInt(row.total_funds),
+        fundCount: parseInt(row.scored_funds)
       }));
       
       res.json(categories);

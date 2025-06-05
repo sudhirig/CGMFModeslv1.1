@@ -164,7 +164,7 @@ export default function QuartileAnalysis2() {
                   <SelectItem value="all">All Categories</SelectItem>
                   {categoriesData?.map((category: any) => (
                     <SelectItem key={category.name} value={category.name}>
-                      {category.name} ({category.fundCount})
+                      {category.name} ({category.fundCount} with quartiles, {category.totalFunds} total)
                     </SelectItem>
                   ))}
                 </SelectContent>
