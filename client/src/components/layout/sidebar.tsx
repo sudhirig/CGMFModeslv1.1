@@ -94,6 +94,10 @@ export default function Sidebar() {
                 <span className="material-icons text-xl mr-3">history</span>
                 <span>Backtesting</span>
               </Link>
+              <Link href="/validation-dashboard" className={linkClass("/validation-dashboard")}>
+                <span className="material-icons text-xl mr-3">verified</span>
+                <span>Validation Dashboard</span>
+              </Link>
             </div>
             <div className="mb-6">
               <div className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">

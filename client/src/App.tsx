@@ -18,6 +18,7 @@ import HistoricalDataImport from "@/pages/historical-data-import";
 import DataImportStatus from "@/pages/data-import-status";
 import AutomationDashboard from "@/pages/automation-dashboard";
 import HistoricalImportDashboard from "@/pages/historical-import-dashboard";
+import ValidationDashboard from "@/pages/validation-dashboard";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -43,6 +44,7 @@ function Router() {
             <Route path="/data-import-status" component={DataImportStatus} />
             <Route path="/automation-dashboard" component={AutomationDashboard} />
             <Route path="/historical-import-dashboard" component={HistoricalImportDashboard} />
+            <Route path="/validation-dashboard" component={ValidationDashboard} />
             <Route component={NotFound} />
           </Switch>
         </main>

@@ -875,6 +875,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API routes for backtesting validation
+  app.get("/api/validation/results", async (req, res) => {
+    try {
+      const query = `
+        SELECT 
+          validation_run_id,
+          run_date,
+          total_funds_tested,
+          validation_period_months,
+          overall_prediction_accuracy_3m,
+          overall_prediction_accuracy_6m,
+          overall_prediction_accuracy_1y,
+          overall_score_correlation_3m,
+          overall_score_correlation_6m,
+          overall_score_correlation_1y,
+          quartile_stability_3m,
+          quartile_stability_6m,
+          quartile_stability_1y,
+          strong_buy_accuracy,
+          buy_accuracy,
+          hold_accuracy,
+          sell_accuracy,
+          strong_sell_accuracy,
+          validation_status
+        FROM validation_summary_reports
+        ORDER BY run_date DESC
+        LIMIT 10
+      `;
+      const result = await pool.query(query);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching validation results:", error);
+      res.status(500).json({ message: "Failed to fetch validation results" });
+    }
+  });
+
+  app.get("/api/validation/details/:runId", async (req, res) => {
+    try {
+      const { runId } = req.params;
+      const query = `
+        SELECT 
+          svr.fund_id,
+          f.fund_name,
+          f.category,
+          svr.historical_total_score,
+          svr.historical_recommendation,
+          svr.historical_quartile,
+          svr.actual_return_3m,
+          svr.actual_return_6m,
+          svr.actual_return_1y,
+          svr.prediction_accuracy_3m,
+          svr.prediction_accuracy_6m,
+          svr.prediction_accuracy_1y,
+          svr.score_correlation_3m,
+          svr.score_correlation_6m,
+          svr.score_correlation_1y,
+          svr.quartile_maintained_3m,
+          svr.quartile_maintained_6m,
+          svr.quartile_maintained_1y
+        FROM scoring_validation_results svr
+        JOIN funds f ON svr.fund_id = f.id
+        WHERE svr.validation_run_id = $1
+        ORDER BY svr.historical_total_score DESC
+        LIMIT 100
+      `;
+      const result = await pool.query(query, [runId]);
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error fetching validation details:", error);
+      res.status(500).json({ message: "Failed to fetch validation details" });
+    }
+  });
+
   // API routes for model portfolios
   app.get("/api/portfolios", async (req, res) => {
     try {
