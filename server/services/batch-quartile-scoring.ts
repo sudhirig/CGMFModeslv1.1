@@ -741,7 +741,7 @@ export class FundScoringEngine {
         // Insert comprehensive authentic data
         await pool.query(`
           INSERT INTO fund_performance_metrics (
-            fund_id, score_date, return_3m_score, return_1y_score, return_3y_score,
+            fund_id, scoring_date, return_3m_score, return_1y_score, return_3y_score,
             volatility_1y_percent, expense_ratio_score, data_quality_score,
             total_score, recommendation, subcategory, created_at
           )
