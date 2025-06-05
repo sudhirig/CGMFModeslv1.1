@@ -1,5 +1,5 @@
 import express from 'express';
-import { calculateQuartileRankings, getQuartileRankings, getQuartileDistribution, getFundPerformanceMetrics } from '../services/quartile-ranking-service';
+import { CorrectedScoringEngine } from '../services/corrected-scoring-engine';
 import { storage } from '../storage';
 
 const router = express.Router();

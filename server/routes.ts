@@ -9,16 +9,7 @@ import { fundDetailsCollector } from "./services/fund-details-collector";
 import { quartileScheduler as automatedScheduler } from "./services/automated-quartile-scheduler";
 import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
-import quartileScoringRoutes from "./api/quartile-scoring";
-import historicalNavImportRoutes from "./api/import-historical-nav";
-
-import triggerRescoringRoutes from "./api/trigger-quartile-rescoring";
-import restartHistoricalImportRoutes from "./api/restart-historical-import";
-import realHistoricalNavImportRoutes from "./api/real-historical-nav-import";
 import realDailyNavUpdateRoutes from "./api/real-daily-nav-update";
-import fundCountRoutes from "./api/fund-count";
-import mftoolTestRoutes from "./api/mftool-test";
-import mfapiHistoricalImportRoutes from "./api/mfapi-historical-import";
 import quartileCalculationRoutes from "./api/quartile-calculation";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -28,34 +19,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Fund Details routes
   app.use('/api/fund-details', fundDetailsImportRoutes);
   
-  // Register Quartile Scoring routes
-  app.use('/api/quartile', quartileScoringRoutes);
-  
-  // Register Historical NAV import route
-  app.use('/api/historical-nav', historicalNavImportRoutes);
-  
-  // Fix NAV Data route removed - synthetic data generation eliminated
-  
-  // Register Quartile Rescoring route
-  app.use('/api/rescoring', triggerRescoringRoutes);
-  
-  // Register Historical Import Restart route
-  app.use('/api/historical-restart', restartHistoricalImportRoutes);
-  
-  // Register Authentic Historical NAV Import route
-  app.use('/api/authentic-nav', realHistoricalNavImportRoutes);
-  
   // Register Real Daily NAV Update route
   app.use('/api/daily-nav', realDailyNavUpdateRoutes);
-  
-  // Register Fund Count route
-  app.use('/api/funds/count', fundCountRoutes);
-  
-  // Register MFTool Test route
-  app.use('/api/mftool', mftoolTestRoutes);
-  
-  // Register MFAPI Historical Import route
-  app.use('/api/mfapi-historical', mfapiHistoricalImportRoutes);
   
   // Register Quartile Calculation route
   app.use('/api/quartile', quartileCalculationRoutes);
@@ -702,7 +667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/score/fund/:id", async (req, res) => {
     try {
       const fundId = parseInt(req.params.id);
-      const result = await fundScoringEngine.scoreFund(fundId);
+      const result = await storage.getFundScore(fundId);
       res.json(result);
     } catch (error) {
       console.error("Error scoring fund:", error);
@@ -713,7 +678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/score/category/:category", async (req, res) => {
     try {
       const category = req.params.category;
-      const results = await fundScoringEngine.scoreAllFundsInCategory(category);
+      const results = await storage.getFundsByCategory(category);
       res.json(results);
     } catch (error) {
       console.error("Error scoring category:", error);
@@ -723,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/score/all", async (req, res) => {
     try {
-      const results = await fundScoringEngine.scoreAllFunds();
+      const results = await storage.getAllFunds();
       res.json(results);
     } catch (error) {
       console.error("Error scoring all funds:", error);
