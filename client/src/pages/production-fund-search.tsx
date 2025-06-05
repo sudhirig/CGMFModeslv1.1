@@ -36,13 +36,13 @@ export default function ProductionFundSearch() {
   const [selectedFund, setSelectedFund] = useState<FundScore | null>(null);
 
   // Fetch all fund scores with search and filter capabilities
-  const { data: fundScores, isLoading, error } = useQuery({
+  const { data: fundScores, isLoading, error } = useQuery<FundScore[]>({
     queryKey: ['/api/fund-scores/search', searchQuery, selectedSubcategory, selectedQuartile],
     enabled: true
   });
 
   // Fetch subcategories for filter dropdown
-  const { data: subcategories } = useQuery({
+  const { data: subcategories } = useQuery<string[]>({
     queryKey: ['/api/fund-scores/subcategories'],
     enabled: true
   });
@@ -95,7 +95,7 @@ export default function ProductionFundSearch() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-neutral-900">Fund Analysis Platform</h1>
           <p className="mt-2 text-neutral-600">
-            Comprehensive analysis of {fundScores?.length || 0} mutual funds with authentic scoring methodology
+            Comprehensive analysis of {fundScores.length || 0} mutual funds with authentic scoring methodology
           </p>
         </div>
 
@@ -119,7 +119,7 @@ export default function ProductionFundSearch() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {subcategories?.map((sub: string) => (
+                  {subcategories.map((sub: string) => (
                     <SelectItem key={sub} value={sub}>{sub}</SelectItem>
                   ))}
                 </SelectContent>

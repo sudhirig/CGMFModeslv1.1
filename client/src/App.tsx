@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import FundAnalysis from "@/pages/fund-analysis";
+import ProductionFundSearch from "@/pages/production-fund-search";
 import PortfolioBuilder from "@/pages/portfolio-builder";
 import EtlPipeline from "@/pages/etl-pipeline";
 import Backtesting from "@/pages/backtesting";
@@ -28,6 +29,7 @@ function Router() {
         <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none">
           <Switch>
             <Route path="/" component={Dashboard} />
+            <Route path="/fund-search" component={ProductionFundSearch} />
             <Route path="/fund-analysis" component={FundAnalysis} />
             <Route path="/portfolio-builder" component={PortfolioBuilder} />
             <Route path="/etl-pipeline" component={EtlPipeline} />

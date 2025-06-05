@@ -37,6 +37,10 @@ export default function Sidebar() {
                 <span className="material-icons text-xl mr-3">trending_up</span>
                 <span>ELIVATE Framework</span>
               </Link>
+              <Link href="/fund-search" className={linkClass("/fund-search")}>
+                <span className="material-icons text-xl mr-3">search</span>
+                <span>Fund Search</span>
+              </Link>
               <Link href="/fund-analysis" className={linkClass("/fund-analysis")}>
                 <span className="material-icons text-xl mr-3">assessment</span>
                 <span>Fund Analysis</span>

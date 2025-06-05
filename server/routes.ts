@@ -63,6 +63,153 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Quartile Calculation route
   app.use('/api/quartile', quartileCalculationRoutes);
+
+  // Production Fund Search API endpoints using authenticated corrected scoring data
+  app.get('/api/fund-scores/search', async (req, res) => {
+    try {
+      const { search, subcategory, quartile, limit = 100 } = req.query;
+      
+      let query = `
+        SELECT 
+          fsc.fund_id,
+          f.fund_name,
+          fsc.subcategory,
+          fsc.total_score,
+          fsc.quartile,
+          fsc.subcategory_rank,
+          fsc.subcategory_total,
+          fsc.subcategory_percentile,
+          fsc.historical_returns_total,
+          fsc.risk_grade_total,
+          fsc.fundamentals_total,
+          fsc.other_metrics_total,
+          fsc.return_1y_score,
+          fsc.return_3y_score,
+          fsc.return_5y_score,
+          fsc.calmar_ratio_1y,
+          fsc.sortino_ratio_1y,
+          fsc.recommendation
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE fsc.score_date = CURRENT_DATE
+      `;
+      
+      const params: any[] = [];
+      let paramCount = 0;
+      
+      if (search && search !== '') {
+        paramCount++;
+        query += ` AND (LOWER(f.fund_name) LIKE $${paramCount} OR LOWER(f.amc_name) LIKE $${paramCount})`;
+        params.push(`%${search.toString().toLowerCase()}%`);
+      }
+      
+      if (subcategory && subcategory !== 'all') {
+        paramCount++;
+        query += ` AND fsc.subcategory = $${paramCount}`;
+        params.push(subcategory);
+      }
+      
+      if (quartile && quartile !== 'all') {
+        paramCount++;
+        query += ` AND fsc.quartile = $${paramCount}`;
+        params.push(parseInt(quartile.toString()));
+      }
+      
+      query += ` ORDER BY fsc.total_score DESC LIMIT $${paramCount + 1}`;
+      params.push(parseInt(limit.toString()));
+      
+      const result = await pool.query(query, params);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Fund search error:', error);
+      res.status(500).json({ error: 'Failed to search funds' });
+    }
+  });
+
+  app.get('/api/fund-scores/subcategories', async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT DISTINCT subcategory 
+        FROM fund_scores_corrected 
+        WHERE score_date = CURRENT_DATE 
+        ORDER BY subcategory
+      `);
+      
+      res.json(result.rows.map(row => row.subcategory));
+    } catch (error) {
+      console.error('Subcategories fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch subcategories' });
+    }
+  });
+
+  app.get('/api/fund-scores/top-performers', async (req, res) => {
+    try {
+      const { subcategory, limit = 10 } = req.query;
+      
+      let query = `
+        SELECT 
+          fsc.fund_id,
+          f.fund_name,
+          fsc.subcategory,
+          fsc.total_score,
+          fsc.quartile,
+          fsc.subcategory_rank,
+          fsc.subcategory_percentile,
+          fsc.recommendation,
+          fsc.calmar_ratio_1y,
+          fsc.sortino_ratio_1y
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE fsc.score_date = CURRENT_DATE
+      `;
+      
+      const params: any[] = [];
+      
+      if (subcategory && subcategory !== 'all') {
+        query += ` AND fsc.subcategory = $1`;
+        params.push(subcategory);
+        query += ` ORDER BY fsc.total_score DESC LIMIT $2`;
+        params.push(parseInt(limit.toString()));
+      } else {
+        query += ` AND fsc.quartile = 1 ORDER BY fsc.total_score DESC LIMIT $1`;
+        params.push(parseInt(limit.toString()));
+      }
+      
+      const result = await pool.query(query, params);
+      
+      res.json(result.rows);
+    } catch (error) {
+      console.error('Top performers fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch top performers' });
+    }
+  });
+
+  app.get('/api/fund-scores/statistics', async (req, res) => {
+    try {
+      const result = await pool.query(`
+        SELECT 
+          COUNT(*) as total_funds,
+          COUNT(DISTINCT subcategory) as total_subcategories,
+          AVG(total_score)::numeric(5,2) as average_score,
+          MIN(total_score) as min_score,
+          MAX(total_score) as max_score,
+          COUNT(CASE WHEN quartile = 1 THEN 1 END) as q1_funds,
+          COUNT(CASE WHEN quartile = 2 THEN 1 END) as q2_funds,
+          COUNT(CASE WHEN quartile = 3 THEN 1 END) as q3_funds,
+          COUNT(CASE WHEN quartile = 4 THEN 1 END) as q4_funds,
+          COUNT(CASE WHEN calmar_ratio_1y IS NOT NULL THEN 1 END) as funds_with_calmar,
+          COUNT(CASE WHEN sortino_ratio_1y IS NOT NULL THEN 1 END) as funds_with_sortino
+        FROM fund_scores_corrected 
+        WHERE score_date = CURRENT_DATE
+      `);
+      
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error('Statistics fetch error:', error);
+      res.status(500).json({ error: 'Failed to fetch statistics' });
+    }
+  });
   
   // [Removed duplicate route - using the router in api/fund-details-import.ts instead]
 
