@@ -43,18 +43,18 @@ router.get('/distribution', async (req, res) => {
   try {
     const category = req.query.category as string | undefined;
     
-    console.log("✓ DIRECT QUARTILE DISTRIBUTION QUERY RUNNING WITH DEBUGGING");
+    console.log("✓ DIRECT QUARTILE DISTRIBUTION ROUTE HIT!");
     
     let query = `
       SELECT 
         COUNT(*) as total_count,
-        SUM(CASE WHEN quartile = 1 THEN 1 ELSE 0 END) as q1_count,
-        SUM(CASE WHEN quartile = 2 THEN 1 ELSE 0 END) as q2_count,
-        SUM(CASE WHEN quartile = 3 THEN 1 ELSE 0 END) as q3_count,
-        SUM(CASE WHEN quartile = 4 THEN 1 ELSE 0 END) as q4_count
-      FROM quartile_rankings qr
-      JOIN funds f ON qr.fund_id = f.id
-      WHERE qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
+        SUM(CASE WHEN fsc.quartile = 1 THEN 1 ELSE 0 END) as q1_count,
+        SUM(CASE WHEN fsc.quartile = 2 THEN 1 ELSE 0 END) as q2_count,
+        SUM(CASE WHEN fsc.quartile = 3 THEN 1 ELSE 0 END) as q3_count,
+        SUM(CASE WHEN fsc.quartile = 4 THEN 1 ELSE 0 END) as q4_count
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.score_date = CURRENT_DATE
     `;
     
     const params: any[] = [];
@@ -63,22 +63,6 @@ router.get('/distribution', async (req, res) => {
       query += ` AND f.category = $1`;
       params.push(category);
     }
-    
-    // Check authentic quartile rankings data
-    const checkQuery = `SELECT COUNT(*) as count FROM quartile_rankings WHERE calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)`;
-    const checkResult = await pool.query(checkQuery);
-    console.log("Total authentic quartile rankings:", checkResult.rows[0].count);
-    
-    // Check authentic quartile distribution
-    const quartileCheckQuery = `
-      SELECT quartile_label, quartile, COUNT(*) as count
-      FROM quartile_rankings
-      WHERE calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
-      GROUP BY quartile_label, quartile
-      ORDER BY quartile
-    `;
-    const quartileCheckResult = await pool.query(quartileCheckQuery);
-    console.log("Authentic quartile distribution:", quartileCheckResult.rows);
     
     const result = await pool.query(query, params);
     console.log("Query result:", result.rows[0]);
@@ -133,6 +117,8 @@ router.get('/funds/:quartile', async (req, res) => {
       });
     }
     
+    console.log("✓ DIRECT QUARTILE FUNDS ROUTE HIT!");
+    
     let query = `
       SELECT 
         f.id,
@@ -140,12 +126,12 @@ router.get('/funds/:quartile', async (req, res) => {
         f.amc_name as "amcName",
         f.category,
         f.subcategory,
-        fs.total_score as "totalScore",
-        fs.quartile,
-        fs.recommendation
-      FROM fund_scores fs
-      JOIN funds f ON fs.fund_id = f.id
-      WHERE fs.quartile = $1
+        fsc.total_score as "totalScore",
+        fsc.quartile,
+        fsc.recommendation
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.quartile = $1 AND fsc.score_date = CURRENT_DATE
     `;
     
     const params: any[] = [quartile];
@@ -155,7 +141,7 @@ router.get('/funds/:quartile', async (req, res) => {
       params.push(category);
     }
     
-    query += ` ORDER BY fs.total_score DESC LIMIT $${params.length + 1}`;
+    query += ` ORDER BY fsc.total_score DESC LIMIT $${params.length + 1}`;
     params.push(limit);
     
     const result = await pool.query(query, params);
@@ -175,52 +161,26 @@ router.get('/funds/:quartile', async (req, res) => {
 // Endpoint to get quartile performance metrics
 router.get('/metrics', async (req, res) => {
   try {
-    // Get average returns by quartile
+    console.log("✓ DIRECT QUARTILE METRICS ROUTE HIT!");
+    
+    // Get average returns by quartile using authentic fund_scores_corrected data
     const query = `
-      WITH latest_nav AS (
-        SELECT 
-          fund_id, 
-          nav_value,
-          nav_date
-        FROM nav_data
-        WHERE (fund_id, nav_date) IN (
-          SELECT fund_id, MAX(nav_date) 
-          FROM nav_data 
-          GROUP BY fund_id
-        )
-      ),
-      year_ago_nav AS (
-        SELECT 
-          fund_id, 
-          nav_value,
-          nav_date
-        FROM nav_data
-        WHERE nav_date BETWEEN CURRENT_DATE - INTERVAL '370 days' AND CURRENT_DATE - INTERVAL '360 days'
-        AND (fund_id, nav_date) IN (
-          SELECT fund_id, MAX(nav_date)
-          FROM nav_data
-          WHERE nav_date BETWEEN CURRENT_DATE - INTERVAL '370 days' AND CURRENT_DATE - INTERVAL '360 days'
-          GROUP BY fund_id
-        )
-      )
       SELECT 
         CASE 
-          WHEN fs.quartile = 1 THEN 'Q1'
-          WHEN fs.quartile = 2 THEN 'Q2'
-          WHEN fs.quartile = 3 THEN 'Q3'
-          WHEN fs.quartile = 4 THEN 'Q4'
+          WHEN fsc.quartile = 1 THEN 'Q1'
+          WHEN fsc.quartile = 2 THEN 'Q2'
+          WHEN fsc.quartile = 3 THEN 'Q3'
+          WHEN fsc.quartile = 4 THEN 'Q4'
           ELSE 'Unrated'
         END as name,
-        ROUND(AVG((ln.nav_value / yn.nav_value - 1) * 100)::numeric, 2) as "return1Y",
-        ROUND(AVG(fs.total_score)::numeric, 2) as "avgScore",
+        ROUND(AVG(fsc.return_1y_score * 20)::numeric, 2) as "return1Y",
+        ROUND(AVG(fsc.total_score)::numeric, 2) as "avgScore",
         COUNT(*) as "fundCount"
-      FROM fund_scores fs
-      JOIN funds f ON fs.fund_id = f.id
-      JOIN latest_nav ln ON fs.fund_id = ln.fund_id
-      JOIN year_ago_nav yn ON fs.fund_id = yn.fund_id
-      WHERE fs.quartile IS NOT NULL
-      GROUP BY fs.quartile
-      ORDER BY fs.quartile
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.quartile IS NOT NULL AND fsc.score_date = CURRENT_DATE
+      GROUP BY fsc.quartile
+      ORDER BY fsc.quartile
     `;
     
     const result = await pool.query(query);
