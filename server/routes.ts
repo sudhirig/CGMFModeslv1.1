@@ -911,6 +911,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Run historical validation using original documentation methodology
+  app.post("/api/validation/run-historical", async (req, res) => {
+    try {
+      const { historicalValidationEngine } = await import('./services/historical-validation-engine');
+      
+      const {
+        startDate,
+        endDate,
+        validationPeriodMonths = 12,
+        categories,
+        minimumDataPoints = 252
+      } = req.body;
+
+      // Validate input parameters
+      if (!startDate || !endDate) {
+        return res.status(400).json({ 
+          message: "Start date and end date are required" 
+        });
+      }
+
+      const config = {
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        validationPeriodMonths,
+        categories: categories || undefined,
+        minimumDataPoints
+      };
+
+      console.log(`Starting historical validation with config:`, config);
+
+      // Run the validation
+      const validationResult = await historicalValidationEngine.runHistoricalValidation(config);
+
+      res.json({
+        success: true,
+        validationRunId: validationResult.validationRunId,
+        summary: {
+          totalFundsTested: validationResult.totalFundsTested,
+          predictionAccuracy: {
+            threeMonth: validationResult.predictionAccuracy3M,
+            sixMonth: validationResult.predictionAccuracy6M,
+            oneYear: validationResult.predictionAccuracy1Y
+          },
+          scoreCorrelation: {
+            threeMonth: validationResult.scoreCorrelation3M,
+            sixMonth: validationResult.scoreCorrelation6M,
+            oneYear: validationResult.scoreCorrelation1Y
+          },
+          quartileStability: {
+            threeMonth: validationResult.quartileStability3M,
+            sixMonth: validationResult.quartileStability6M,
+            oneYear: validationResult.quartileStability1Y
+          },
+          recommendationAccuracy: validationResult.recommendationAccuracy
+        }
+      });
+
+    } catch (error) {
+      console.error("Error running historical validation:", error);
+      res.status(500).json({ 
+        message: "Failed to run historical validation",
+        error: error.message 
+      });
+    }
+  });
+
   app.get("/api/validation/details/:runId", async (req, res) => {
     try {
       const { runId } = req.params;
