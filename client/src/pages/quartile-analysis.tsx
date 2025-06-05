@@ -210,7 +210,7 @@ export default function QuartileAnalysis() {
                                 </tr>
                               </thead>
                               <tbody className="bg-white divide-y divide-neutral-200">
-                                {metricsData.scoringData.map((quartile) => (
+                                {metricsData?.returnsData?.map((quartile) => (
                                   <tr key={quartile.name}>
                                     <td className="px-4 py-3 whitespace-nowrap">
                                       <div className="flex items-center">
@@ -219,20 +219,26 @@ export default function QuartileAnalysis() {
                                           quartile.name === "Q2" ? "bg-blue-500" : 
                                           quartile.name === "Q3" ? "bg-yellow-500" : "bg-red-500"
                                         }`}></div>
-                                        <div className="text-sm font-medium text-neutral-900">{quartile.label}</div>
+                                        <div className="text-sm font-medium text-neutral-900">{quartile.name}</div>
                                       </div>
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                      {(quartile.compositeScore || 0).toFixed(1)}
+                                      {(quartile.return1Y || 0).toFixed(1)}%
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
-                                      -
+                                      {(quartile.return3Y || 0).toFixed(1)}%
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-neutral-900">
                                       -
                                     </td>
                                     <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium">
-                                      {(quartile.totalScore || 0).toFixed(1)}
+                                      <span className={`text-sm ${
+                                        quartile.name === "Q1" ? "text-green-600" : 
+                                        quartile.name === "Q2" ? "text-blue-600" : 
+                                        quartile.name === "Q3" ? "text-yellow-600" : "text-red-600"
+                                      }`}>
+                                        {(quartile.avgScore || 0).toFixed(1)}
+                                      </span>
                                     </td>
                                   </tr>
                                 ))}
