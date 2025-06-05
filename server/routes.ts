@@ -219,9 +219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log("🚀 Auto-starting fund details bulk processing scheduler...");
   fundDetailsCollector.startScheduledBulkProcessing(100, 5, 24);
   
-  // Auto-start the quartile scoring scheduler (weekly)
-  console.log("🚀 Auto-starting quartile scoring scheduler...");
-  quartileScheduler.startScheduler(7);
+  // Quartile scoring scheduler disabled - production system uses fund_scores_corrected
+  console.log("ℹ️ Legacy quartile scheduler disabled - using production scoring system");
   
   // We're not using any synthetic data for quartile ratings
   console.log("🚫 No synthetic quartile ratings will be used - only real data allowed");
