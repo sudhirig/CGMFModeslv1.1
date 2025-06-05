@@ -45,6 +45,7 @@ function Router() {
             <Route path="/automation-dashboard" component={AutomationDashboard} />
             <Route path="/historical-import-dashboard" component={HistoricalImportDashboard} />
             <Route path="/validation-dashboard" component={ValidationDashboard} />
+            <Route path="/validation" component={ValidationDashboard} />
             <Route component={NotFound} />
           </Switch>
         </main>
