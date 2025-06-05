@@ -10,7 +10,7 @@ import { TrendingUp, TrendingDown, Target, Award } from "lucide-react";
 
 export default function QuartileAnalysis2() {
   const [selectedQuartile, setSelectedQuartile] = useState<string>("1");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   
   // Get available categories for filtering
   const { data: categoriesData, isLoading: isCategoriesLoading } = useQuery({
@@ -22,7 +22,7 @@ export default function QuartileAnalysis2() {
   const { data: distributionData, isLoading: isDistributionLoading } = useQuery({
     queryKey: [`/api/quartile/distribution`, selectedCategory],
     queryFn: () => {
-      const url = selectedCategory 
+      const url = selectedCategory && selectedCategory !== "all"
         ? `/api/quartile/category/${encodeURIComponent(selectedCategory)}/distribution`
         : `/api/quartile/distribution`;
       return fetch(url).then(res => res.json());
@@ -34,7 +34,7 @@ export default function QuartileAnalysis2() {
   const { data: metricsData, isLoading: isMetricsLoading } = useQuery({
     queryKey: [`/api/quartile/metrics`, selectedCategory],
     queryFn: () => {
-      const url = selectedCategory 
+      const url = selectedCategory && selectedCategory !== "all"
         ? `/api/quartile/category/${encodeURIComponent(selectedCategory)}/metrics`
         : `/api/quartile/metrics`;
       return fetch(url).then(res => res.json());
@@ -46,7 +46,10 @@ export default function QuartileAnalysis2() {
   const { data: fundsData, isLoading: isFundsLoading } = useQuery({
     queryKey: [`/api/quartile/funds/${selectedQuartile}`, selectedCategory],
     queryFn: () => {
-      const url = `/api/quartile/funds/${selectedQuartile}${selectedCategory ? `?category=${encodeURIComponent(selectedCategory)}` : ''}`;
+      const categoryParam = selectedCategory && selectedCategory !== "all" 
+        ? `?category=${encodeURIComponent(selectedCategory)}` 
+        : '';
+      const url = `/api/quartile/funds/${selectedQuartile}${categoryParam}`;
       return fetch(url).then(res => res.json());
     },
     staleTime: 5 * 60 * 1000,
@@ -158,7 +161,7 @@ export default function QuartileAnalysis2() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {categoriesData?.map((category: any) => (
                     <SelectItem key={category.name} value={category.name}>
                       {category.name} ({category.fundCount})
@@ -168,7 +171,7 @@ export default function QuartileAnalysis2() {
               </Select>
             </div>
           </div>
-          {selectedCategory && (
+          {selectedCategory && selectedCategory !== "all" && (
             <div className="mt-2">
               <Badge variant="secondary" className="text-sm">
                 Viewing: {selectedCategory} Category
