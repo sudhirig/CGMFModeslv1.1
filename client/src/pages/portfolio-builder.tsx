@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { usePortfolioBacktest } from "@/hooks/use-portfolio-backtest";
+// Portfolio backtest functionality removed - focusing on portfolio building
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, 
