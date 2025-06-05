@@ -4,7 +4,7 @@
  * Ensures 0-8 point individual scoring with proper component totals
  */
 
-import { db } from '../db';
+import { db } from '../db/index.js';
 
 interface NavRecord {
   nav_date: string;

@@ -1,0 +1,28 @@
+[vite] connecting...
+[vite] connected.
+Error fetching scheduled status: 
+AxiosError {message: "Request failed with status code 503", name: "AxiosError", code: "ERR_BAD_RESPONSE", config: {…}, request: XMLHttpRequest, …}
+
+at t.value (https://e864d73c-a063-4f01-bd28-a2a90cf0bdc5-00-1whyj5gmykka9.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://e864d73c-a063-4f01-bd28-a2a90cf0bdc5-00-1whyj5gmykka9.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://e864d73c-a063-4f01-bd28-a2a90cf0bdc5-00-1whyj5gmykka9.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://e864d73c-a063-4f01-bd28-a2a90cf0bdc5-00-1whyj5gmykka9.worf.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Error fetching AMFI status: 
+AxiosError {message: "Request failed with status code 503", name: "AxiosError", code: "ERR_BAD_RESPONSE", config: {…}, request: XMLHttpRequest, …}
+code: "ERR_BAD_RESPONSE"
+config: Object
+message: "Request failed with status code 503"
+name: "AxiosError"
+request: XMLHttpRequest
+response: Object
+status: 503
+stack: "AxiosError: Request failed with status code 503↵ at settle (https://e864d73c-a063-4f01-bd28-a2a90cf0bdc5-00-1whyj5gmykka9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/axios.js?v=12601202:1229:12)↵ at XMLHttpRequest.onloadend (https://e864d73c-a063-4f01-bd28-a2a90cf0bdc5-00-1whyj5gmykka9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/axios.js?v=12601202:1561:7)↵ at Axios.request (https://e864d73c-a063-4f01-bd28-a2a90cf0bdc5-00-1whyj5gmykka9.worf.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/axios.js?v=12601202:2119:41)↵ at async fetchAmfiStatus (https://e864d73c-a063-4f01-bd28-a2a90cf0bdc5-00-1whyj5gmykka9.worf.replit.dev/src/pages/etl-pipeline.tsx:135:24)"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object
+
+Error fetching scheduled status: 
+AxiosError {message: "Request failed with status code 503", name: "AxiosError", code: "ERR_BAD_RESPONSE", config: {…}, request: XMLHttpRequest, …}
+
+Error fetching scheduled status: 
+AxiosError {message: "Request failed with status code 503", name: "AxiosError", code: "ERR_BAD_RESPONSE", config: {…}, request: XMLHttpRequest, …}

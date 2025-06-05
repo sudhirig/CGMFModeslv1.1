@@ -4,12 +4,25 @@ import { storage } from "./storage";
 import { db, executeRawQuery, pool } from "./db";
 import { dataCollector } from "./services/data-collector";
 import { elivateFramework } from "./services/elivate-framework";
+import { fundScoringEngine } from "./services/fund-scoring";
 import { portfolioBuilder } from "./services/portfolio-builder";
+import { backtestingEngine } from "./services/backtesting-engine";
 import { fundDetailsCollector } from "./services/fund-details-collector";
 import { quartileScheduler as automatedScheduler } from "./services/automated-quartile-scheduler";
+import { quartileScheduler } from "./services/quartile-scoring-scheduler";
+import { quartileSeeder } from "./services/seed-quartile-ratings";
 import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
+import quartileScoringRoutes from "./api/quartile-scoring";
+import historicalNavImportRoutes from "./api/import-historical-nav";
+
+import triggerRescoringRoutes from "./api/trigger-quartile-rescoring";
+import restartHistoricalImportRoutes from "./api/restart-historical-import";
+import realHistoricalNavImportRoutes from "./api/real-historical-nav-import";
 import realDailyNavUpdateRoutes from "./api/real-daily-nav-update";
+import fundCountRoutes from "./api/fund-count";
+import mftoolTestRoutes from "./api/mftool-test";
+import mfapiHistoricalImportRoutes from "./api/mfapi-historical-import";
 import quartileCalculationRoutes from "./api/quartile-calculation";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -19,8 +32,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Fund Details routes
   app.use('/api/fund-details', fundDetailsImportRoutes);
   
+  // Register Quartile Scoring routes
+  app.use('/api/quartile', quartileScoringRoutes);
+  
+  // Register Historical NAV import route
+  app.use('/api/historical-nav', historicalNavImportRoutes);
+  
+  // Fix NAV Data route removed - synthetic data generation eliminated
+  
+  // Register Quartile Rescoring route
+  app.use('/api/rescoring', triggerRescoringRoutes);
+  
+  // Register Historical Import Restart route
+  app.use('/api/historical-restart', restartHistoricalImportRoutes);
+  
+  // Register Authentic Historical NAV Import route
+  app.use('/api/authentic-nav', realHistoricalNavImportRoutes);
+  
   // Register Real Daily NAV Update route
   app.use('/api/daily-nav', realDailyNavUpdateRoutes);
+  
+  // Register Fund Count route
+  app.use('/api/funds/count', fundCountRoutes);
+  
+  // Register MFTool Test route
+  app.use('/api/mftool', mftoolTestRoutes);
+  
+  // Register MFAPI Historical Import route
+  app.use('/api/mfapi-historical', mfapiHistoricalImportRoutes);
   
   // Register Quartile Calculation route
   app.use('/api/quartile', quartileCalculationRoutes);
@@ -180,8 +219,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log("🚀 Auto-starting fund details bulk processing scheduler...");
   fundDetailsCollector.startScheduledBulkProcessing(100, 5, 24);
   
-  // Quartile scoring scheduler disabled - production system uses fund_scores_corrected
-  console.log("ℹ️ Legacy quartile scheduler disabled - using production scoring system");
+  // Auto-start the quartile scoring scheduler (weekly)
+  console.log("🚀 Auto-starting quartile scoring scheduler...");
+  quartileScheduler.startScheduler(7);
   
   // We're not using any synthetic data for quartile ratings
   console.log("🚫 No synthetic quartile ratings will be used - only real data allowed");
@@ -667,7 +707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/score/fund/:id", async (req, res) => {
     try {
       const fundId = parseInt(req.params.id);
-      const result = await storage.getFundScore(fundId);
+      const result = await fundScoringEngine.scoreFund(fundId);
       res.json(result);
     } catch (error) {
       console.error("Error scoring fund:", error);
@@ -678,7 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/score/category/:category", async (req, res) => {
     try {
       const category = req.params.category;
-      const results = await storage.getFundsByCategory(category);
+      const results = await fundScoringEngine.scoreAllFundsInCategory(category);
       res.json(results);
     } catch (error) {
       console.error("Error scoring category:", error);
@@ -688,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/score/all", async (req, res) => {
     try {
-      const results = await storage.getAllFunds();
+      const results = await fundScoringEngine.scoreAllFunds();
       res.json(results);
     } catch (error) {
       console.error("Error scoring all funds:", error);
@@ -870,10 +910,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Use our completely revised portfolio service that prevents duplicates at the source
-      // Using production portfolio builder service
+      const { revisedPortfolioService } = await import('./services/simple-portfolio-revised');
       
-      // Generate a portfolio with production portfolio builder
-      let portfolio = await portfolioBuilder.buildPortfolio(riskProfile);
+      // Generate a portfolio with our new approach that guarantees unique funds
+      let portfolio = await revisedPortfolioService.generatePortfolio(riskProfile);
       
       res.json(portfolio);
     } catch (error) {
@@ -972,7 +1012,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Alpha Vantage endpoints removed - production system uses AMFI data
+  // Alpha Vantage import routes
+  app.post("/api/alpha-vantage/import", async (req, res) => {
+    try {
+      const { alphaVantageImporter } = await import('./services/alpha-vantage-importer');
+      const batchSize = parseInt(req.body.batchSize) || 5;
+      
+      const results = await alphaVantageImporter.importHistoricalData(batchSize);
+      
+      res.json({
+        success: true,
+        message: "Alpha Vantage import completed",
+        results
+      });
+    } catch (error: any) {
+      console.error("Error in Alpha Vantage import:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to import from Alpha Vantage",
+        error: error.message 
+      });
+    }
+  });
+
+  app.post("/api/alpha-vantage/test", async (req, res) => {
+    try {
+      const { alphaVantageImporter } = await import('./services/alpha-vantage-importer');
+      const testResult = await alphaVantageImporter.testConnection();
+      
+      res.json(testResult);
+    } catch (error: any) {
+      console.error("Error testing Alpha Vantage:", error);
+      res.status(500).json({ 
+        success: false,
+        message: "Failed to test Alpha Vantage connection",
+        error: error.message 
+      });
+    }
+  });
 
   app.post("/api/etl/collect", async (req, res) => {
     try {
@@ -1105,7 +1182,363 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Production system focuses on fund analysis - backtesting functionality removed
+  // API routes for backtesting
+  app.post("/api/backtest", async (req, res) => {
+    try {
+      const { 
+        portfolioId, 
+        riskProfile, 
+        startDate, 
+        endDate, 
+        initialAmount, 
+        rebalancePeriod 
+      } = req.body;
+      
+      if ((!portfolioId && !riskProfile) || !startDate || !endDate || !initialAmount) {
+        return res.status(400).json({ 
+          message: "Missing required parameters. Please provide either portfolioId or riskProfile, plus startDate, endDate, and initialAmount." 
+        });
+      }
+      
+      const parsedStartDate = new Date(startDate);
+      const parsedEndDate = new Date(endDate);
+      const parsedAmount = parseFloat(initialAmount);
+      
+      if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime()) || isNaN(parsedAmount)) {
+        return res.status(400).json({ 
+          message: "Invalid date format or amount. Please provide valid values." 
+        });
+      }
+      
+      if (parsedStartDate >= parsedEndDate) {
+        return res.status(400).json({ 
+          message: "Start date must be before end date." 
+        });
+      }
+      
+      const result = await backtestingEngine.runBacktest({
+        portfolioId: portfolioId ? parseInt(portfolioId as string) : undefined,
+        riskProfile,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        initialAmount: parsedAmount,
+        rebalancePeriod
+      });
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error running backtest:", error);
+      res.status(500).json({ message: "Failed to run backtest", error: (error as Error).message });
+    }
+  });
+  
+  // Enhanced portfolio backtest API with additional metrics
+  app.post("/api/backtest/portfolio", async (req, res) => {
+    try {
+      const { 
+        portfolioId, 
+        startDate: startDateString, 
+        endDate: endDateString, 
+        initialAmount,
+        rebalancePeriod = 'quarterly'
+      } = req.body;
+      
+      // Validate required parameters
+      if (!portfolioId) {
+        return res.status(400).json({ 
+          message: "Portfolio ID is required for portfolio backtesting." 
+        });
+      }
+      
+      if (!startDateString || !endDateString || !initialAmount) {
+        return res.status(400).json({ 
+          message: "Start date, end date, and initial amount are required." 
+        });
+      }
+      
+      // Parse dates and amount
+      const parsedStartDate = new Date(startDateString);
+      const parsedEndDate = new Date(endDateString);
+      const parsedAmount = parseFloat(initialAmount.toString());
+      
+      // Validate parsed values
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ 
+          message: "Initial amount must be a positive number." 
+        });
+      }
+      
+      if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime())) {
+        return res.status(400).json({ 
+          message: "Invalid date format." 
+        });
+      }
+      
+      if (parsedStartDate >= parsedEndDate) {
+        return res.status(400).json({ 
+          message: "Start date must be before end date." 
+        });
+      }
+      
+      // Get the portfolio first to validate it exists
+      const portfolio = await storage.getModelPortfolio(parseInt(portfolioId.toString()));
+      
+      if (!portfolio) {
+        return res.status(404).json({
+          message: `Portfolio with ID ${portfolioId} not found.`
+        });
+      }
+      
+      console.log(`Generating backtest for portfolio ${portfolioId} with ${portfolio.allocations.length} allocations`);
+      
+      // Get NAV data for each fund in the portfolio
+      const allNavData = [];
+      for (const allocation of portfolio.allocations) {
+        if (!allocation.fund || !allocation.fund.id) continue;
+        
+        const navData = await storage.getNavData(allocation.fund.id, parsedStartDate, parsedEndDate);
+        if (navData && navData.length > 0) {
+          allNavData.push({
+            fundId: allocation.fund.id,
+            allocation: allocation.allocationPercent,
+            navData
+          });
+        }
+      }
+
+      console.log(`Retrieved NAV data for ${allNavData.length} funds in portfolio`);
+      
+      // Get benchmark data
+      const benchmarkIndex = await storage.getMarketIndex("NIFTY 50", parsedStartDate, parsedEndDate);
+      console.log(`Retrieved ${benchmarkIndex.length} benchmark data points`);
+      
+      // Generate performance data based on NAV changes
+      const portfolioPerformance = [];
+      const benchmarkPerformance = [];
+      
+      // Create a map of dates to track portfolio value over time
+      const dateMap = new Map();
+      
+      // Initialize with start date
+      let currentDate = new Date(parsedStartDate);
+      const endDateObj = new Date(parsedEndDate);
+      
+      // Generate dates between start and end
+      while (currentDate <= endDateObj) {
+        const dateKey = currentDate.toISOString().split('T')[0];
+        dateMap.set(dateKey, {
+          portfolioValue: 0,
+          benchmarkValue: 0,
+          hasRealData: false
+        });
+        
+        // Move to next date (increment by 1 day)
+        currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1));
+      }
+      
+      // Calculate portfolio performance using real NAV data
+      for (const fund of allNavData) {
+        for (const nav of fund.navData) {
+          const navDate = new Date(nav.navDate);
+          const dateKey = navDate.toISOString().split('T')[0];
+          
+          if (dateMap.has(dateKey)) {
+            const data = dateMap.get(dateKey);
+            // Add fund's contribution based on allocation
+            const fundContribution = (parsedAmount * (fund.allocation / 100)) * 
+                                     (parseFloat(nav.navValue.toString()) / parseFloat(fund.navData[0].navValue.toString()));
+            data.portfolioValue += fundContribution;
+            data.hasRealData = true;
+            dateMap.set(dateKey, data);
+          }
+        }
+      }
+      
+      // Calculate benchmark performance
+      for (const benchmark of benchmarkIndex) {
+        const benchmarkDate = new Date(benchmark.indexDate);
+        const dateKey = benchmarkDate.toISOString().split('T')[0];
+        
+        if (dateMap.has(dateKey)) {
+          const data = dateMap.get(dateKey);
+          // Fix: Use closeValue instead of non-existent indexValue
+          const benchmarkValue = benchmark.closeValue ? parseFloat(benchmark.closeValue) : 0;
+          const initialValue = benchmarkIndex[0].closeValue ? parseFloat(benchmarkIndex[0].closeValue) : 1;
+          data.benchmarkValue = parsedAmount * (benchmarkValue / initialValue);
+          dateMap.set(dateKey, data);
+        }
+      }
+      
+      // Fill in missing data with linear interpolation
+      let prevDate = null;
+      let prevData = null;
+      
+      // Convert map to sorted array to properly handle interpolation
+      const sortedDates = Array.from(dateMap.keys()).sort();
+      
+      for (const dateKey of sortedDates) {
+        const data = dateMap.get(dateKey);
+        
+        // If no real data for this date but we have previous data
+        if (!data.hasRealData && prevData) {
+          // Find next date with real data for interpolation
+          let nextDate = null;
+          let nextData = null;
+          
+          for (let i = sortedDates.indexOf(dateKey) + 1; i < sortedDates.length; i++) {
+            const nextKey = sortedDates[i];
+            const nextEntry = dateMap.get(nextKey);
+            if (nextEntry.hasRealData) {
+              nextDate = nextKey;
+              nextData = nextEntry;
+              break;
+            }
+          }
+          
+          // If we found both previous and next data points, interpolate
+          if (nextData) {
+            const prevIndex = sortedDates.indexOf(prevDate);
+            const currentIndex = sortedDates.indexOf(dateKey);
+            const nextIndex = sortedDates.indexOf(nextDate);
+            
+            const totalSteps = nextIndex - prevIndex;
+            const currentStep = currentIndex - prevIndex;
+            const ratio = currentStep / totalSteps;
+            
+            data.portfolioValue = prevData.portfolioValue + 
+                                 (nextData.portfolioValue - prevData.portfolioValue) * ratio;
+          } else {
+            // If no future data, use previous value
+            data.portfolioValue = prevData.portfolioValue;
+          }
+        }
+        
+        // Set benchmark value if it's zero
+        if (data.benchmarkValue === 0 && prevData) {
+          data.benchmarkValue = prevData.benchmarkValue;
+        }
+        
+        // Only update prevData if we have real data or have calculated it
+        if (data.portfolioValue > 0) {
+          prevDate = dateKey;
+          prevData = data;
+        }
+        
+        // Add to performance arrays if we have data
+        if (data.portfolioValue > 0) {
+          portfolioPerformance.push({
+            date: dateKey,
+            value: parseFloat(data.portfolioValue.toFixed(2))
+          });
+        }
+        
+        if (data.benchmarkValue > 0) {
+          benchmarkPerformance.push({
+            date: dateKey,
+            value: parseFloat(data.benchmarkValue.toFixed(2))
+          });
+        }
+      }
+      
+      // Make sure we have values for each day by filling in any remaining gaps
+      const filledPortfolioPerformance = [];
+      const dateKeys = Object.keys(sortedDates);
+      
+      for (let i = 0; i < sortedDates.length; i++) {
+        const dateKey = sortedDates[i];
+        const data = dateMap.get(dateKey);
+        
+        // Add entry with best available data
+        filledPortfolioPerformance.push({
+          date: dateKey,
+          value: data.portfolioValue > 0 ? 
+                 parseFloat(data.portfolioValue.toFixed(2)) : 
+                 (filledPortfolioPerformance.length > 0 ? 
+                  filledPortfolioPerformance[filledPortfolioPerformance.length - 1].value : 
+                  parsedAmount)
+        });
+      }
+      
+      // Calculate metrics
+      const startValue = parsedAmount;
+      const endValue = filledPortfolioPerformance.length > 0 ? 
+                      filledPortfolioPerformance[filledPortfolioPerformance.length - 1].value : 
+                      parsedAmount;
+      
+      const totalDays = (parsedEndDate.getTime() - parsedStartDate.getTime()) / (1000 * 60 * 60 * 24);
+      const years = totalDays / 365;
+      
+      const netProfit = endValue - startValue;
+      const percentageGain = ((endValue / startValue) - 1) * 100;
+      const annualizedReturn = (Math.pow((endValue / startValue), (1 / years)) - 1) * 100;
+      
+      // Calculate volatility (standard deviation of daily returns)
+      const dailyReturns = [];
+      for (let i = 1; i < filledPortfolioPerformance.length; i++) {
+        const prevValue = filledPortfolioPerformance[i-1].value;
+        const currentValue = filledPortfolioPerformance[i].value;
+        const dailyReturn = (currentValue / prevValue) - 1;
+        dailyReturns.push(dailyReturn);
+      }
+      
+      // Calculate standard deviation
+      const mean = dailyReturns.reduce((sum, value) => sum + value, 0) / dailyReturns.length;
+      const squaredDiffs = dailyReturns.map(value => Math.pow(value - mean, 2));
+      const variance = squaredDiffs.reduce((sum, value) => sum + value, 0) / squaredDiffs.length;
+      const dailyVolatility = Math.sqrt(variance);
+      const annualizedVolatility = dailyVolatility * Math.sqrt(252) * 100; // 252 trading days in a year
+      
+      // Calculate max drawdown
+      let maxValue = filledPortfolioPerformance[0].value;
+      let maxDrawdown = 0;
+      
+      for (const point of filledPortfolioPerformance) {
+        if (point.value > maxValue) {
+          maxValue = point.value;
+        }
+        
+        const drawdown = (maxValue - point.value) / maxValue * 100;
+        if (drawdown > maxDrawdown) {
+          maxDrawdown = drawdown;
+        }
+      }
+      
+      // Calculate Sharpe ratio (using risk-free rate of 5%)
+      const riskFreeRate = 5; // 5% annual risk-free rate
+      const excessReturn = annualizedReturn - riskFreeRate;
+      const sharpeRatio = annualizedVolatility > 0 ? excessReturn / annualizedVolatility : 0;
+      
+      // Create enhanced result object
+      const enhancedResult = {
+        portfolioPerformance: filledPortfolioPerformance,
+        benchmarkPerformance,
+        metrics: {
+          totalReturn: parseFloat(percentageGain.toFixed(2)),
+          annualizedReturn: parseFloat(annualizedReturn.toFixed(2)),
+          volatility: parseFloat(annualizedVolatility.toFixed(2)),
+          sharpeRatio: parseFloat(sharpeRatio.toFixed(2)),
+          maxDrawdown: parseFloat(maxDrawdown.toFixed(2)),
+          successRate: parseFloat((100 - maxDrawdown).toFixed(2))
+        },
+        summary: {
+          startValue: parseFloat(startValue.toFixed(2)),
+          endValue: parseFloat(endValue.toFixed(2)),
+          netProfit: parseFloat(netProfit.toFixed(2)),
+          percentageGain: parseFloat(percentageGain.toFixed(2))
+        }
+      };
+      
+      console.log(`Generated backtest with ${enhancedResult.portfolioPerformance.length} portfolio data points and ${enhancedResult.benchmarkPerformance.length} benchmark data points`);
+      
+      res.json(enhancedResult);
+    } catch (error) {
+      console.error("Error running portfolio backtest:", error);
+      res.status(500).json({ 
+        message: "Failed to run portfolio backtest", 
+        error: (error as Error).message 
+      });
+    }
+  });
 
   // Automated quartile scheduler endpoints
   app.get('/api/scheduler/status', (req, res) => {

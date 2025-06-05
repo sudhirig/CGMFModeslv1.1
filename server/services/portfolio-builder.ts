@@ -1,6 +1,6 @@
 import { storage } from '../storage';
 import { elivateFramework } from './elivate-framework';
-// Fund scoring engine removed during cleanup
+import { fundScoringEngine } from './fund-scoring';
 import type { 
   InsertModelPortfolio,
   InsertModelPortfolioAllocation,
@@ -479,14 +479,6 @@ export class PortfolioBuilder {
     }
     
     return returns;
-  }
-
-  /**
-   * Build a portfolio using the generateModelPortfolio method
-   * This method provides the interface expected by the routes
-   */
-  async buildPortfolio(riskProfile: string): Promise<any> {
-    return this.generateModelPortfolio(riskProfile as RiskProfile);
   }
 }
 

@@ -1,0 +1,181 @@
+import requests
+import pandas as pd
+import json
+from datetime import datetime, timedelta
+import time
+
+class MFAPIDataFetcher:
+    """
+    Fetch historical NAV data for Indian mutual funds using MFAPI.in
+    """
+    
+    def __init__(self):
+        self.base_url = "https://api.mfapi.in/mf"
+        
+    def get_all_schemes(self):
+        """Get all available mutual fund schemes"""
+        try:
+            response = requests.get(f"{self.base_url}")
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Error fetching schemes: {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"Exception in get_all_schemes: {e}")
+            return None
+    
+    def search_scheme_by_name(self, search_term):
+        """Search for schemes by name"""
+        try:
+            response = requests.get(f"{self.base_url}/search?q={search_term}")
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Error searching schemes: {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"Exception in search_scheme_by_name: {e}")
+            return None
+    
+    def get_scheme_historical_data(self, scheme_code):
+        """
+        Get complete historical NAV data for a scheme
+        Returns: Dict with scheme info and historical data
+        """
+        try:
+            response = requests.get(f"{self.base_url}/{scheme_code}")
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Error fetching data for scheme {scheme_code}: {response.status_code}")
+                return None
+        except Exception as e:
+            print(f"Exception in get_scheme_historical_data: {e}")
+            return None
+    
+    def get_filtered_historical_data(self, scheme_code, start_date=None, end_date=None):
+        """
+        Get historical data filtered by date range
+        start_date, end_date: strings in format 'YYYY-MM-DD'
+        """
+        data = self.get_scheme_historical_data(scheme_code)
+        if not data or 'data' not in data:
+            return None
+            
+        historical_data = data['data']
+        
+        if start_date or end_date:
+            filtered_data = []
+            for entry in historical_data:
+                entry_date = datetime.strptime(entry['date'], '%d-%m-%Y')
+                
+                # Check date range
+                if start_date:
+                    start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+                    if entry_date < start_dt:
+                        continue
+                        
+                if end_date:
+                    end_dt = datetime.strptime(end_date, '%Y-%m-%d')
+                    if entry_date > end_dt:
+                        continue
+                        
+                filtered_data.append(entry)
+            
+            data['data'] = filtered_data
+        
+        return data
+    
+    def convert_to_dataframe(self, scheme_data):
+        """Convert scheme data to pandas DataFrame"""
+        if not scheme_data or 'data' not in scheme_data:
+            return None
+            
+        df = pd.DataFrame(scheme_data['data'])
+        df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+        df['nav'] = pd.to_numeric(df['nav'])
+        df = df.sort_values('date')
+        df.reset_index(drop=True, inplace=True)
+        
+        # Add scheme metadata
+        df['scheme_name'] = scheme_data.get('meta', {}).get('scheme_name', '')
+        df['scheme_code'] = scheme_data.get('meta', {}).get('scheme_code', '')
+        
+        return df
+    
+    def get_multiple_schemes_data(self, scheme_codes, delay=0.5):
+        """
+        Get data for multiple schemes with delay to avoid rate limiting
+        """
+        all_data = {}
+        
+        for i, scheme_code in enumerate(scheme_codes):
+            print(f"Fetching data for scheme {scheme_code} ({i+1}/{len(scheme_codes)})")
+            
+            data = self.get_scheme_historical_data(scheme_code)
+            if data:
+                all_data[scheme_code] = data
+            
+            # Add delay to avoid rate limiting
+            if delay > 0 and i < len(scheme_codes) - 1:
+                time.sleep(delay)
+        
+        return all_data
+
+# Example usage
+def example_usage():
+    """Example of how to use the MFAPIDataFetcher"""
+    
+    fetcher = MFAPIDataFetcher()
+    
+    # 1. Search for a specific fund
+    print("=== Searching for HDFC funds ===")
+    hdfc_funds = fetcher.search_scheme_by_name("HDFC")
+    if hdfc_funds:
+        print(f"Found {len(hdfc_funds)} HDFC funds")
+        # Print first 3 funds
+        for fund in hdfc_funds[:3]:
+            print(f"- {fund['schemeName']} (Code: {fund['schemeCode']})")
+    
+    # 2. Get historical data for a specific scheme
+    print("\n=== Getting historical data for a specific scheme ===")
+    scheme_code = "119551"  # Example: HDFC Top 100 Fund
+    
+    # Get all historical data
+    historical_data = fetcher.get_scheme_historical_data(scheme_code)
+    if historical_data:
+        print(f"Scheme: {historical_data['meta']['scheme_name']}")
+        print(f"Total historical records: {len(historical_data['data'])}")
+        
+        # Convert to DataFrame
+        df = fetcher.convert_to_dataframe(historical_data)
+        if df is not None:
+            print(f"DataFrame shape: {df.shape}")
+            print("\nLast 5 NAV records:")
+            print(df.tail())
+    
+    # 3. Get filtered data for specific date range
+    print("\n=== Getting filtered historical data ===")
+    filtered_data = fetcher.get_filtered_historical_data(
+        scheme_code, 
+        start_date="2023-01-01", 
+        end_date="2023-12-31"
+    )
+    
+    if filtered_data:
+        df_filtered = fetcher.convert_to_dataframe(filtered_data)
+        if df_filtered is not None:
+            print(f"Filtered data for 2023: {len(df_filtered)} records")
+            print("\nFirst 5 records:")
+            print(df_filtered.head())
+    
+    # 4. Get data for multiple schemes
+    print("\n=== Getting data for multiple schemes ===")
+    sample_schemes = ["119551", "119552", "119553"]  # Example scheme codes
+    multiple_data = fetcher.get_multiple_schemes_data(sample_schemes, delay=1)
+    
+    print(f"Successfully fetched data for {len(multiple_data)} schemes")
+
+if __name__ == "__main__":
+    example_usage()
