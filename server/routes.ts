@@ -552,10 +552,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/quartile/metrics", async (_req, res) => {
+  app.get("/api/quartile/metrics", async (req, res) => {
     console.log("✓ QUARTILE METRICS ROUTE HIT");
+    const category = req.query.category as string || undefined;
     try {
-      const metrics = await storage.getQuartileMetrics();
+      const metrics = await storage.getQuartileMetrics(category);
       console.log("✓ Metrics data:", metrics);
       res.json(metrics);
     } catch (error) {
@@ -1537,6 +1538,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to run portfolio backtest", 
         error: (error as Error).message 
       });
+    }
+  });
+
+  // Category-based quartile endpoints
+  app.get('/api/quartile/categories', async (req, res) => {
+    try {
+      const query = `
+        SELECT DISTINCT fsc.category, COUNT(*) as fund_count
+        FROM fund_scores_corrected fsc
+        WHERE fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL
+        GROUP BY fsc.category
+        ORDER BY fund_count DESC
+      `;
+      
+      const result = await executeRawQuery(query);
+      
+      const categories = result.rows.map(row => ({
+        name: row.category,
+        fundCount: parseInt(row.fund_count)
+      }));
+      
+      res.json(categories);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/quartile/category/:category/distribution', async (req, res) => {
+    try {
+      const category = req.params.category;
+      const distribution = await storage.getQuartileDistribution(category);
+      res.json(distribution);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get('/api/quartile/category/:category/metrics', async (req, res) => {
+    try {
+      const category = req.params.category;
+      const metrics = await storage.getQuartileMetrics(category);
+      res.json(metrics);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 

@@ -10,22 +10,45 @@ import { TrendingUp, TrendingDown, Target, Award } from "lucide-react";
 
 export default function QuartileAnalysis2() {
   const [selectedQuartile, setSelectedQuartile] = useState<string>("1");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
   
-  // Get authentic quartile distribution from fund_scores_corrected
+  // Get available categories for filtering
+  const { data: categoriesData, isLoading: isCategoriesLoading } = useQuery({
+    queryKey: [`/api/quartile/categories`],
+    staleTime: 5 * 60 * 1000,
+  });
+  
+  // Get authentic quartile distribution from fund_scores_corrected (with optional category filter)
   const { data: distributionData, isLoading: isDistributionLoading } = useQuery({
-    queryKey: [`/api/quartile/distribution`],
+    queryKey: [`/api/quartile/distribution`, selectedCategory],
+    queryFn: () => {
+      const url = selectedCategory 
+        ? `/api/quartile/category/${encodeURIComponent(selectedCategory)}/distribution`
+        : `/api/quartile/distribution`;
+      return fetch(url).then(res => res.json());
+    },
     staleTime: 5 * 60 * 1000,
   });
   
-  // Get authentic quartile metrics from fund_scores_corrected
+  // Get authentic quartile metrics from fund_scores_corrected (with optional category filter)
   const { data: metricsData, isLoading: isMetricsLoading } = useQuery({
-    queryKey: [`/api/quartile/metrics`],
+    queryKey: [`/api/quartile/metrics`, selectedCategory],
+    queryFn: () => {
+      const url = selectedCategory 
+        ? `/api/quartile/category/${encodeURIComponent(selectedCategory)}/metrics`
+        : `/api/quartile/metrics`;
+      return fetch(url).then(res => res.json());
+    },
     staleTime: 5 * 60 * 1000,
   });
   
-  // Get sample funds by quartile from fund_scores_corrected
+  // Get sample funds by quartile from fund_scores_corrected (with optional category filter)
   const { data: fundsData, isLoading: isFundsLoading } = useQuery({
-    queryKey: [`/api/quartile/funds/${selectedQuartile}`],
+    queryKey: [`/api/quartile/funds/${selectedQuartile}`, selectedCategory],
+    queryFn: () => {
+      const url = `/api/quartile/funds/${selectedQuartile}${selectedCategory ? `?category=${encodeURIComponent(selectedCategory)}` : ''}`;
+      return fetch(url).then(res => res.json());
+    },
     staleTime: 5 * 60 * 1000,
   });
 
@@ -122,10 +145,36 @@ export default function QuartileAnalysis2() {
       <div className="px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-neutral-900">Quartile Analysis 2</h1>
-          <p className="text-neutral-600 mt-1">
-            Comprehensive quartile-based fund performance analysis using authentic data from fund_scores_corrected
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-neutral-900">Category-Based Quartile Analysis</h1>
+              <p className="text-neutral-600 mt-1">
+                Comprehensive category-level peer comparison using authentic data from fund_scores_corrected
+              </p>
+            </div>
+            <div className="mt-4 sm:mt-0 sm:ml-4">
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Categories</SelectItem>
+                  {categoriesData?.map((category: any) => (
+                    <SelectItem key={category.name} value={category.name}>
+                      {category.name} ({category.fundCount})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {selectedCategory && (
+            <div className="mt-2">
+              <Badge variant="secondary" className="text-sm">
+                Viewing: {selectedCategory} Category
+              </Badge>
+            </div>
+          )}
         </div>
 
         {/* Summary Cards */}
