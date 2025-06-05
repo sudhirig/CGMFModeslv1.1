@@ -62,6 +62,14 @@ interface ValidationDetail {
 }
 
 export default function ValidationDashboard() {
+  const [startDate, setStartDate] = useState("2023-01-01");
+  const [endDate, setEndDate] = useState("2024-01-01");
+  const [validationPeriodMonths, setValidationPeriodMonths] = useState(12);
+  const [minimumDataPoints, setMinimumDataPoints] = useState(252);
+
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const { data: validationResults, isLoading: resultsLoading } = useQuery<ValidationSummary[]>({
     queryKey: ["/api/validation/results"],
   });
@@ -69,6 +77,48 @@ export default function ValidationDashboard() {
   const { data: validationDetails, isLoading: detailsLoading } = useQuery<ValidationDetail[]>({
     queryKey: ["/api/validation/details/VALIDATION_RUN_2025_06_05"],
   });
+
+  const runHistoricalValidation = useMutation({
+    mutationFn: async (validationConfig: any) => {
+      const response = await fetch("/api/validation/run-historical", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(validationConfig),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to run historical validation");
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Historical Validation Started",
+        description: `Validation run ${data.validationRunId} completed successfully with ${data.summary.totalFundsTested} funds tested.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/validation/results"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Validation Failed",
+        description: error.message || "Failed to run historical validation",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRunHistoricalValidation = () => {
+    runHistoricalValidation.mutate({
+      startDate,
+      endDate,
+      validationPeriodMonths,
+      minimumDataPoints,
+    });
+  };
 
   const latestResult = validationResults?.[0];
 
@@ -157,6 +207,7 @@ export default function ValidationDashboard() {
           <Tabs defaultValue="overview" className="space-y-4">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="historical">Historical Validation</TabsTrigger>
               <TabsTrigger value="recommendations">Recommendation Accuracy</TabsTrigger>
               <TabsTrigger value="details">Fund Details</TabsTrigger>
             </TabsList>
@@ -212,6 +263,131 @@ export default function ValidationDashboard() {
                         {latestResult.quartile_stability_1y ? Number(latestResult.quartile_stability_1y).toFixed(1) : '0.0'}%
                       </span>
                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="historical" className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Run Historical Validation
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Execute point-in-time historical validation using the original documentation methodology
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="start-date">Start Date</Label>
+                      <Input
+                        id="start-date"
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="end-date">End Date</Label>
+                      <Input
+                        id="end-date"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="validation-period">Validation Period (months)</Label>
+                      <Input
+                        id="validation-period"
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={validationPeriodMonths}
+                        onChange={(e) => setValidationPeriodMonths(Number(e.target.value))}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="minimum-data">Minimum Data Points</Label>
+                      <Input
+                        id="minimum-data"
+                        type="number"
+                        min="90"
+                        max="1000"
+                        value={minimumDataPoints}
+                        onChange={(e) => setMinimumDataPoints(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-4">
+                    <div className="text-sm text-muted-foreground">
+                      This will run point-in-time scoring validation using only authentic historical data
+                    </div>
+                    <Button 
+                      onClick={handleRunHistoricalValidation}
+                      disabled={runHistoricalValidation.isPending}
+                      className="flex items-center gap-2"
+                    >
+                      <Play className="h-4 w-4" />
+                      {runHistoricalValidation.isPending ? "Running..." : "Start Validation"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Validation Progress/Results */}
+              {runHistoricalValidation.isPending && (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center space-x-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <div>
+                        <p className="text-sm font-medium">Running Historical Validation</p>
+                        <p className="text-xs text-muted-foreground">
+                          Processing point-in-time scoring and validation metrics...
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Enhanced Validation Features */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Point-in-Time Scoring</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">
+                      Calculates fund scores using only data available up to historical scoring dates, preventing look-ahead bias
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Prediction Accuracy</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">
+                      Validates scoring accuracy across 3M, 6M, and 1Y periods with comprehensive performance tracking
+                    </p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Quartile Stability</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">
+                      Tracks quartile maintenance over time and validates recommendation accuracy by type
+                    </p>
                   </CardContent>
                 </Card>
               </div>
