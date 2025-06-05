@@ -115,7 +115,7 @@ export default function ValidationDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {latestResult.overall_prediction_accuracy_3m ? latestResult.overall_prediction_accuracy_3m.toFixed(1) : '0.0'}%
+                  {(latestResult.overall_prediction_accuracy_3m !== null && latestResult.overall_prediction_accuracy_3m !== undefined) ? latestResult.overall_prediction_accuracy_3m.toFixed(1) : '0.0'}%
                 </div>
                 <Progress value={latestResult.overall_prediction_accuracy_3m || 0} className="mt-2" />
               </CardContent>
