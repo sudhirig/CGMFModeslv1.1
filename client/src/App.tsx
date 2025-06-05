@@ -13,6 +13,7 @@ import Backtesting from "@/pages/backtesting";
 import DatabaseExplorer from "@/pages/database-explorer";
 import ElivateFramework from "@/pages/elivate-framework";
 import QuartileAnalysis from "@/pages/quartile-analysis";
+import QuartileAnalysis2 from "@/pages/quartile-analysis-2";
 import HistoricalDataImport from "@/pages/historical-data-import";
 import DataImportStatus from "@/pages/data-import-status";
 import AutomationDashboard from "@/pages/automation-dashboard";
@@ -37,6 +38,7 @@ function Router() {
             <Route path="/database-explorer" component={DatabaseExplorer} />
             <Route path="/elivate-framework" component={ElivateFramework} />
             <Route path="/quartile-analysis" component={QuartileAnalysis} />
+            <Route path="/quartile-analysis-2" component={QuartileAnalysis2} />
             <Route path="/historical-data-import" component={HistoricalDataImport} />
             <Route path="/data-import-status" component={DataImportStatus} />
             <Route path="/automation-dashboard" component={AutomationDashboard} />
