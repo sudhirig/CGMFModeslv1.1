@@ -166,19 +166,19 @@ export default function ValidationDashboard() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm">3 Month</span>
                       <span className="font-medium">
-                        {latestResult.overall_score_correlation_3m.toFixed(3)}
+                        {latestResult.overall_score_correlation_3m ? latestResult.overall_score_correlation_3m.toFixed(3) : '0.000'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">6 Month</span>
                       <span className="font-medium">
-                        {latestResult.overall_score_correlation_6m.toFixed(3)}
+                        {latestResult.overall_score_correlation_6m ? latestResult.overall_score_correlation_6m.toFixed(3) : '0.000'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">1 Year</span>
                       <span className="font-medium">
-                        {latestResult.overall_score_correlation_1y.toFixed(3)}
+                        {latestResult.overall_score_correlation_1y ? latestResult.overall_score_correlation_1y.toFixed(3) : '0.000'}
                       </span>
                     </div>
                   </CardContent>
@@ -192,19 +192,19 @@ export default function ValidationDashboard() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm">3 Month</span>
                       <span className="font-medium">
-                        {latestResult.quartile_stability_3m.toFixed(1)}%
+                        {latestResult.quartile_stability_3m ? latestResult.quartile_stability_3m.toFixed(1) : '0.0'}%
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">6 Month</span>
                       <span className="font-medium">
-                        {latestResult.quartile_stability_6m.toFixed(1)}%
+                        {latestResult.quartile_stability_6m ? latestResult.quartile_stability_6m.toFixed(1) : '0.0'}%
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm">1 Year</span>
                       <span className="font-medium">
-                        {latestResult.quartile_stability_1y.toFixed(1)}%
+                        {latestResult.quartile_stability_1y ? latestResult.quartile_stability_1y.toFixed(1) : '0.0'}%
                       </span>
                     </div>
                   </CardContent>
@@ -221,31 +221,31 @@ export default function ValidationDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-600">
-                        {latestResult.strong_buy_accuracy.toFixed(1)}%
+                        {latestResult.strong_buy_accuracy ? latestResult.strong_buy_accuracy.toFixed(1) : '0.0'}%
                       </div>
                       <div className="text-sm text-muted-foreground">Strong Buy</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-green-500">
-                        {latestResult.buy_accuracy.toFixed(1)}%
+                        {latestResult.buy_accuracy ? latestResult.buy_accuracy.toFixed(1) : '0.0'}%
                       </div>
                       <div className="text-sm text-muted-foreground">Buy</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-yellow-500">
-                        {latestResult.hold_accuracy.toFixed(1)}%
+                        {latestResult.hold_accuracy ? latestResult.hold_accuracy.toFixed(1) : '0.0'}%
                       </div>
                       <div className="text-sm text-muted-foreground">Hold</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-orange-500">
-                        {latestResult.sell_accuracy.toFixed(1)}%
+                        {latestResult.sell_accuracy ? latestResult.sell_accuracy.toFixed(1) : '0.0'}%
                       </div>
                       <div className="text-sm text-muted-foreground">Sell</div>
                     </div>
                     <div className="text-center">
                       <div className="text-2xl font-bold text-red-500">
-                        {latestResult.strong_sell_accuracy.toFixed(1)}%
+                        {latestResult.strong_sell_accuracy ? latestResult.strong_sell_accuracy.toFixed(1) : '0.0'}%
                       </div>
                       <div className="text-sm text-muted-foreground">Strong Sell</div>
                     </div>
@@ -282,7 +282,7 @@ export default function ValidationDashboard() {
                               {detail.fund_name}
                             </TableCell>
                             <TableCell>{detail.category}</TableCell>
-                            <TableCell>{detail.historical_total_score.toFixed(1)}</TableCell>
+                            <TableCell>{detail.historical_total_score ? detail.historical_total_score.toFixed(1) : '0.0'}</TableCell>
                             <TableCell>
                               <Badge
                                 variant={
