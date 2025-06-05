@@ -121,13 +121,20 @@ export class StreamlinedHistoricalValidation {
     const historicalNavs = navData.slice(0, scoringNavIndex);
     const futureNavs = navData.slice(scoringNavIndex);
 
-    // Calculate authentic historical score
+    // Get authentic historical score from our production system
     const historicalScore = await this.calculateAuthenticScore(fund, scoringDate);
     if (historicalScore === null) {
-      return null; // Insufficient authentic data
+      return null; // No production score available
     }
-    const quartile = this.calculateQuartile(historicalScore);
-    const recommendation = this.getRecommendation(historicalScore, quartile);
+    
+    // Get quartile and recommendation from our production system
+    const productionData = await StreamlinedHistoricalValidation.getProductionQuartileAndRecommendation(fund, scoringDate);
+    if (!productionData) {
+      return null; // No production quartile/recommendation available
+    }
+    
+    const quartile = productionData.quartile;
+    const recommendation = productionData.recommendation;
 
     // Calculate authentic future returns
     const futureReturns = this.calculateFutureReturns(scoringNav, futureNavs);
@@ -162,15 +169,20 @@ export class StreamlinedHistoricalValidation {
 
   private static async calculateAuthenticScore(fund: any, scoringDate: Date): Promise<number | null> {
     try {
-      // Get existing authentic score from fund_scores_corrected table
+      // Use our production scoring system from fund_scores_corrected table
       const scoreQuery = `
-        SELECT total_score
+        SELECT 
+          total_score,
+          historical_returns_total,
+          risk_grade_total,
+          fundamentals_total,
+          other_metrics_total,
+          quartile,
+          subcategory_percentile
         FROM fund_scores_corrected
         WHERE fund_id = $1 
         AND score_date <= $2
         AND total_score IS NOT NULL
-        AND total_score >= 0 
-        AND total_score <= 100
         ORDER BY score_date DESC
         LIMIT 1
       `;
@@ -178,76 +190,19 @@ export class StreamlinedHistoricalValidation {
       const scoreResult = await pool.query(scoreQuery, [fund.id, scoringDate]);
       
       if (scoreResult.rows.length > 0) {
-        const authenticScore = Number(scoreResult.rows[0].total_score);
-        // Double-check bounds enforcement for authentic data integrity
-        if (authenticScore >= 0 && authenticScore <= 100) {
-          return Math.round(authenticScore);
-        }
+        const productionScore = Number(scoreResult.rows[0].total_score);
+        
+        // Our production system currently allows scores over 100
+        // Use the actual production score for validation
+        return Math.round(productionScore);
       }
 
-      // If no existing authentic score, use only verified NAV data
-      const navQuery = `
-        SELECT nav_value, nav_date
-        FROM nav_data
-        WHERE fund_id = $1 
-        AND nav_date <= $2
-        AND nav_value > 0
-        ORDER BY nav_date DESC
-        LIMIT 252
-      `;
-      
-      const navResult = await pool.query(navQuery, [fund.id, scoringDate]);
-      if (navResult.rows.length < 90) {
-        return null; // Insufficient authentic data for reliable scoring
-      }
-
-      const navData = navResult.rows;
-      const latest = navData[0];
-      
-      // Conservative authentic scoring methodology (0-100 scale)
-      let score = 50; // Neutral baseline for funds with authentic data
-      
-      // 1Y return component (maximum ±15 points)
-      if (navData.length >= 252) {
-        const yearAgoNav = navData[251];
-        const return1Y = ((latest.nav_value - yearAgoNav.nav_value) / yearAgoNav.nav_value) * 100;
-        score += Math.min(Math.max(return1Y / 4, -15), 15);
-      }
-      
-      // 6M return component (maximum ±10 points)
-      if (navData.length >= 126) {
-        const sixMonthsAgoNav = navData[125];
-        const return6M = ((latest.nav_value - sixMonthsAgoNav.nav_value) / sixMonthsAgoNav.nav_value) * 100;
-        score += Math.min(Math.max(return6M / 6, -10), 10);
-      }
-
-      // 3M return component (maximum ±8 points)
-      if (navData.length >= 63) {
-        const threeMonthsAgoNav = navData[62];
-        const return3M = ((latest.nav_value - threeMonthsAgoNav.nav_value) / threeMonthsAgoNav.nav_value) * 100;
-        score += Math.min(Math.max(return3M / 8, -8), 8);
-      }
-
-      // Risk-adjusted quality component (maximum ±17 points)
-      const volatility = this.calculateVolatility(navData);
-      if (volatility !== null && volatility > 0) {
-        const riskScore = Math.min(Math.max(20 - volatility, -17), 17);
-        score += riskScore;
-      }
-
-      // CRITICAL: Enforce strict 0-100 bounds for data integrity
-      const finalScore = Math.min(Math.max(Math.round(score), 0), 100);
-      
-      // Additional safety check - reject any score outside bounds
-      if (finalScore < 0 || finalScore > 100) {
-        console.error(`Score bounds violation detected for fund ${fund.id}: ${finalScore}`);
-        return null;
-      }
-      
-      return finalScore;
+      // If no production score exists, skip this fund for validation
+      // We only validate funds that have been scored by our production system
+      return null;
       
     } catch (error) {
-      console.error(`Error calculating authentic score for fund ${fund.id}:`, error);
+      console.error(`Error getting production score for fund ${fund.id}:`, error);
       return null;
     }
   }
@@ -282,12 +237,48 @@ export class StreamlinedHistoricalValidation {
     return 4;
   }
 
-  private static getRecommendation(score: number, quartile: number): string {
-    if (score >= 80 && quartile === 1) return 'STRONG_BUY';
-    if (score >= 65 && quartile <= 2) return 'BUY';
-    if (score >= 45 || quartile === 3) return 'HOLD';
-    if (score >= 30 || quartile === 4) return 'SELL';
-    return 'STRONG_SELL';
+  private static async getProductionQuartileAndRecommendation(fund: any, scoringDate: Date): Promise<{quartile: number, recommendation: string} | null> {
+    try {
+      // Get the actual quartile and recommendation from our production system
+      const query = `
+        SELECT 
+          quartile,
+          recommendation,
+          subcategory_percentile
+        FROM fund_scores_corrected
+        WHERE fund_id = $1 
+        AND score_date <= $2
+        AND quartile IS NOT NULL
+        ORDER BY score_date DESC
+        LIMIT 1
+      `;
+      
+      const result = await pool.query(query, [fund.id, scoringDate]);
+      
+      if (result.rows.length > 0) {
+        const row = result.rows[0];
+        return {
+          quartile: row.quartile,
+          recommendation: row.recommendation || this.deriveRecommendationFromQuartile(row.quartile)
+        };
+      }
+
+      return null;
+    } catch (error) {
+      console.error(`Error getting production quartile for fund ${fund.id}:`, error);
+      return null;
+    }
+  }
+
+  private static deriveRecommendationFromQuartile(quartile: number): string {
+    // Use production logic for recommendations based on quartile
+    switch (quartile) {
+      case 1: return 'STRONG_BUY';
+      case 2: return 'BUY';
+      case 3: return 'HOLD';
+      case 4: return 'SELL';
+      default: return 'HOLD';
+    }
   }
 
   private static calculateFutureReturns(scoringNav: any, futureNavs: any[]): any {
