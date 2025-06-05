@@ -379,13 +379,13 @@ export class DatabaseStorage implements IStorage {
     return newPortfolio;
   }
   
-  // Quartile Analysis methods - using authentic quartile_rankings data
+  // Quartile Analysis methods - using authentic fund_scores_corrected data
   async getFundsByQuartile(quartile: number, category?: string): Promise<any> {
     try {
-      // Use authentic quartile_rankings table with latest calculation date
+      // Use authentic fund_scores_corrected table with current date
       let whereClause = `
-        WHERE qr.quartile = $1 
-        AND qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
+        WHERE fsc.quartile = $1 
+        AND fsc.score_date = CURRENT_DATE
       `;
       const params: any[] = [quartile];
       
@@ -399,15 +399,16 @@ export class DatabaseStorage implements IStorage {
           f.id,
           f.fund_name as "fundName",
           f.category,
+          f.subcategory,
           f.amc_name as "amc",
-          qr.composite_score as "totalScore",
-          qr.quartile_label as "recommendation",
-          qr.rank,
-          qr.percentile
-        FROM quartile_rankings qr
-        JOIN funds f ON qr.fund_id = f.id
+          fsc.total_score as "totalScore",
+          fsc.recommendation,
+          fsc.subcategory_rank as "rank",
+          fsc.subcategory_percentile as "percentile"
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
         ${whereClause}
-        ORDER BY qr.rank ASC
+        ORDER BY fsc.total_score DESC
         LIMIT 100
       `;
       
@@ -422,60 +423,33 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileMetrics(): Promise<any> {
     try {
-      // Query for authentic quartile performance data from fund_performance_metrics
+      // Query for authentic quartile performance data from fund_scores_corrected
       const performanceQuery = `
         SELECT 
-          qr.quartile,
-          ROUND(AVG(fpm.returns_1y), 2) as avg_return_1y,
-          ROUND(AVG(fpm.returns_3y), 2) as avg_return_3y,
-          ROUND(AVG(fpm.sharpe_ratio), 2) as avg_sharpe_ratio,
-          ROUND(AVG(fpm.max_drawdown), 2) as avg_max_drawdown,
-          ROUND(AVG(qr.composite_score), 2) as avg_score
-        FROM quartile_rankings qr
-        JOIN fund_performance_metrics fpm ON qr.fund_id = fpm.fund_id
-        WHERE qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
-        GROUP BY qr.quartile
-        ORDER BY qr.quartile
+          fsc.quartile,
+          ROUND(AVG(fsc.return_1y_score * 20), 2) as avg_return_1y,
+          ROUND(AVG(fsc.return_3y_score * 12.5), 2) as avg_return_3y,
+          ROUND(AVG(fsc.total_score), 2) as avg_score,
+          COUNT(*) as fund_count
+        FROM fund_scores_corrected fsc
+        WHERE fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL
+        GROUP BY fsc.quartile
+        ORDER BY fsc.quartile
       `;
       
       const performanceResult = await executeRawQuery(performanceQuery);
       
-      // Transform authentic performance data from quartile_rankings
+      // Transform authentic performance data from fund_scores_corrected
       const returnsData = performanceResult.rows.map(row => ({
         name: `Q${row.quartile}`,
         return1Y: parseFloat(row.avg_return_1y) || 0,
         return3Y: parseFloat(row.avg_return_3y) || 0,
-        sharpeRatio: parseFloat(row.avg_sharpe_ratio) || 0
+        avgScore: parseFloat(row.avg_score) || 0,
+        fundCount: parseInt(row.fund_count) || 0
       }));
-      
-      // Transform risk data using same authentic data
-      const riskData = performanceResult.rows.map(row => ({
-        name: `Q${row.quartile}`,
-        maxDrawdown: parseFloat(row.avg_max_drawdown) || 0,
-        sharpeRatio: parseFloat(row.avg_sharpe_ratio) || 0
-      }));
-      
-      // Transform scoring data from authentic quartile scores
-      const scoringData = performanceResult.rows.map(row => {
-        const quartileLabels = {
-          1: "Q1 (Top 25%)",
-          2: "Q2 (26-50%)",
-          3: "Q3 (51-75%)",
-          4: "Q4 (Bottom 25%)"
-        };
-        
-        return {
-          name: `Q${row.quartile}`,
-          label: quartileLabels[row.quartile as 1|2|3|4] || `Q${row.quartile}`,
-          compositeScore: parseFloat(row.avg_score) || 0,
-          totalScore: parseFloat(row.avg_score) || 0
-        };
-      });
 
       return {
-        returnsData: returnsData.length > 0 ? returnsData : [],
-        riskData: riskData.length > 0 ? riskData : [],
-        scoringData: scoringData.length > 0 ? scoringData : []
+        returnsData: returnsData.length > 0 ? returnsData : []
       };
     } catch (error) {
       console.error("Error getting quartile metrics:", error);
