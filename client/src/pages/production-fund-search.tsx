@@ -95,7 +95,7 @@ export default function ProductionFundSearch() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-neutral-900">Fund Analysis Platform</h1>
           <p className="mt-2 text-neutral-600">
-            Comprehensive analysis of {fundScores.length || 0} mutual funds with authentic scoring methodology
+            Comprehensive analysis of {fundScores?.length || 0} mutual funds with authentic scoring methodology
           </p>
         </div>
 
@@ -119,9 +119,9 @@ export default function ProductionFundSearch() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {subcategories.map((sub: string) => (
+                  {subcategories?.map((sub: string) => (
                     <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                  ))}
+                  )) || []}
                 </SelectContent>
               </Select>
 
@@ -162,7 +162,7 @@ export default function ProductionFundSearch() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {fundScores?.map((fund: FundScore) => (
+                  {(fundScores || []).map((fund: FundScore) => (
                     <div
                       key={fund.fund_id}
                       className={`p-4 rounded-lg border cursor-pointer transition-colors ${
