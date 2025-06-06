@@ -140,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get authentic validation baseline data for frontend
-  app.get('/api/validation/authentic-baseline', async (req, res) => {
+  app.get('/api/validation/baseline-status', async (req, res) => {
     try {
       const baselineQuery = `
         SELECT 
@@ -167,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await pool.query(baselineQuery);
       
       if (result.rows.length === 0) {
-        return res.json({
+        return res.status(200).json({
           status: 'no_baseline',
           message: 'No authentic validation baseline found'
         });
@@ -175,24 +175,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const baseline = result.rows[0];
       
-      res.json({
+      res.status(200).json({
         status: 'authentic_baseline_established',
         baseline_date: baseline.baseline_date,
         validation_target_date: baseline.validation_target_date,
-        total_funds: baseline.total_funds,
+        total_funds: parseInt(baseline.total_funds),
         score_range: {
-          min: baseline.min_score,
-          max: baseline.max_score,
-          average: baseline.avg_score
+          min: parseFloat(baseline.min_score),
+          max: parseFloat(baseline.max_score),
+          average: parseFloat(baseline.avg_score)
         },
         recommendations: {
-          strong_buy: baseline.strong_buy_count,
-          buy: baseline.buy_count,
-          hold: baseline.hold_count,
-          sell: baseline.sell_count,
-          strong_sell: baseline.strong_sell_count
+          strong_buy: parseInt(baseline.strong_buy_count),
+          buy: parseInt(baseline.buy_count),
+          hold: parseInt(baseline.hold_count),
+          sell: parseInt(baseline.sell_count),
+          strong_sell: parseInt(baseline.strong_sell_count)
         },
-        validation_horizon_months: baseline.validation_horizon_months,
+        validation_horizon_months: parseInt(baseline.validation_horizon_months),
         methodology: baseline.score_methodology_version,
         authentic_data_only: baseline.archived_for_future_validation,
         validation_timeline: {
@@ -204,7 +204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
     } catch (error) {
       console.error('Error fetching authentic baseline:', error);
-      res.status(500).json({ error: 'Failed to fetch authentic validation baseline' });
+      res.status(500).json({ error: 'Failed to fetch authentic validation baseline', details: error.message });
     }
   });
 
