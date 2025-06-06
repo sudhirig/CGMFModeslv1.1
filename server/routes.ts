@@ -11,6 +11,7 @@ import { fundDetailsCollector } from "./services/fund-details-collector";
 import { quartileScheduler as automatedScheduler } from "./services/automated-quartile-scheduler";
 import { quartileScheduler } from "./services/quartile-scoring-scheduler";
 import { quartileSeeder } from "./services/seed-quartile-ratings";
+import { CriticalSystemFixes } from "./critical-system-fixes";
 import amfiImportRoutes from "./api/amfi-import";
 import fundDetailsImportRoutes from "./api/fund-details-import";
 import quartileScoringRoutes from "./api/quartile-scoring";
@@ -64,6 +65,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Quartile Calculation route
   app.use('/api/quartile', quartileCalculationRoutes);
 
+  // Critical System Fixes endpoint
+  app.post('/api/system/execute-critical-fixes', async (req, res) => {
+    try {
+      console.log('Executing comprehensive system fixes...');
+      const result = await CriticalSystemFixes.executeAllFixes();
+      res.json(result);
+    } catch (error) {
+      console.error('Critical fixes execution error:', error);
+      res.status(500).json({ error: 'Failed to execute critical fixes' });
+    }
+  });
+
   // Production Fund Search API endpoints using authenticated corrected scoring data
   app.get('/api/fund-scores/search', async (req, res) => {
     try {
@@ -91,7 +104,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fsc.recommendation
         FROM fund_scores_corrected fsc
         JOIN funds f ON fsc.fund_id = f.id
-        WHERE fsc.score_date = CURRENT_DATE
+        WHERE fsc.score_date = '2025-06-05'
       `;
       
       const params: any[] = [];
@@ -132,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await pool.query(`
         SELECT DISTINCT subcategory 
         FROM fund_scores_corrected 
-        WHERE score_date = CURRENT_DATE 
+        WHERE score_date = '2025-06-05' 
         ORDER BY subcategory
       `);
       
@@ -161,7 +174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fsc.sortino_ratio_1y
         FROM fund_scores_corrected fsc
         JOIN funds f ON fsc.fund_id = f.id
-        WHERE fsc.score_date = CURRENT_DATE
+        WHERE fsc.score_date = '2025-06-05'
       `;
       
       const params: any[] = [];
@@ -201,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           COUNT(CASE WHEN calmar_ratio_1y IS NOT NULL THEN 1 END) as funds_with_calmar,
           COUNT(CASE WHEN sortino_ratio_1y IS NOT NULL THEN 1 END) as funds_with_sortino
         FROM fund_scores_corrected 
-        WHERE score_date = CURRENT_DATE
+        WHERE score_date = '2025-06-05'
       `);
       
       res.json(result.rows[0]);
