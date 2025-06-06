@@ -19,6 +19,7 @@ import DataImportStatus from "@/pages/data-import-status";
 import AutomationDashboard from "@/pages/automation-dashboard";
 import HistoricalImportDashboard from "@/pages/historical-import-dashboard";
 import ValidationDashboard from "@/pages/validation-dashboard";
+import AdvancedAnalyticsPage from "@/pages/AdvancedAnalyticsPage";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -46,6 +47,7 @@ function Router() {
             <Route path="/historical-import-dashboard" component={HistoricalImportDashboard} />
             <Route path="/validation-dashboard" component={ValidationDashboard} />
             <Route path="/validation" component={ValidationDashboard} />
+            <Route path="/advanced-analytics" component={AdvancedAnalyticsPage} />
             <Route component={NotFound} />
           </Switch>
         </main>
