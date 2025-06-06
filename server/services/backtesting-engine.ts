@@ -744,7 +744,6 @@ export class BacktestingEngine {
       // First attempt to fetch real recommended model portfolios from the database
       const models = await pool.query(`
         SELECT id, name, risk_profile FROM model_portfolios 
-        WHERE status = 'ACTIVE'
         ORDER BY created_at DESC
       `);
       
