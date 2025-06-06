@@ -1434,8 +1434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         FROM nav_data
         WHERE fund_id IN (
           SELECT id FROM funds 
-          WHERE status = 'ACTIVE' 
-          AND scheme_code IS NOT NULL 
+          WHERE scheme_code IS NOT NULL 
           AND scheme_code ~ '^[0-9]+$'
         )
       `);

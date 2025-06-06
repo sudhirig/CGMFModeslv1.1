@@ -761,7 +761,7 @@ export class BacktestingEngine {
           
           // Get allocations for this model
           const allocations = await pool.query(`
-            SELECT mpa.allocation, mpa.fund_id, f.category, f.fund_name
+            SELECT mpa.allocation_percent, mpa.fund_id, f.category, f.fund_name
             FROM model_portfolio_allocations mpa
             JOIN funds f ON mpa.fund_id = f.id
             WHERE mpa.portfolio_id = $1
@@ -778,9 +778,9 @@ export class BacktestingEngine {
               const fund = fundDetails.rows[0];
               
               // Ensure allocation is a number
-              const allocation = typeof row.allocation === 'string' 
-                ? parseFloat(row.allocation) 
-                : row.allocation;
+              const allocation = typeof row.allocation_percent === 'string' 
+                ? parseFloat(row.allocation_percent) 
+                : row.allocation_percent;
               
               return {
                 fund: fund,
