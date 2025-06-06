@@ -383,3 +383,130 @@ export const insertQuartileRankingSchema = createInsertSchema(quartileRankings).
 
 export type InsertQuartileRanking = z.infer<typeof insertQuartileRankingSchema>;
 export type QuartileRanking = typeof quartileRankings.$inferSelect;
+
+// Fund Scores Corrected (Primary Scoring Table)
+export const fundScoresCorrected = pgTable("fund_scores_corrected", {
+  fundId: integer("fund_id").references(() => funds.id),
+  scoreDate: date("score_date").notNull(),
+  
+  // Return metrics (absolute values)
+  return1mAbsolute: decimal("return_1m_absolute", { precision: 8, scale: 4 }),
+  return3mAbsolute: decimal("return_3m_absolute", { precision: 8, scale: 4 }),
+  return6mAbsolute: decimal("return_6m_absolute", { precision: 8, scale: 4 }),
+  return1yAbsolute: decimal("return_1y_absolute", { precision: 8, scale: 4 }),
+  return3yAbsolute: decimal("return_3y_absolute", { precision: 8, scale: 4 }),
+  return5yAbsolute: decimal("return_5y_absolute", { precision: 8, scale: 4 }),
+  returnYtdAbsolute: decimal("return_ytd_absolute", { precision: 8, scale: 4 }),
+  
+  // Risk metrics
+  volatility1yPercent: decimal("volatility_1y_percent", { precision: 8, scale: 4 }),
+  maxDrawdown: decimal("max_drawdown", { precision: 8, scale: 4 }),
+  
+  // Advanced risk metrics
+  calmarRatio1y: decimal("calmar_ratio_1y", { precision: 8, scale: 4 }),
+  sortinoRatio1y: decimal("sortino_ratio_1y", { precision: 8, scale: 4 }),
+  var95_1y: decimal("var_95_1y", { precision: 8, scale: 4 }),
+  downsideDeviation1y: decimal("downside_deviation_1y", { precision: 8, scale: 4 }),
+  trackingError1y: decimal("tracking_error_1y", { precision: 8, scale: 4 }),
+  
+  // Score components
+  historicalReturnsTotal: decimal("historical_returns_total", { precision: 5, scale: 1 }),
+  riskGradeTotal: decimal("risk_grade_total", { precision: 5, scale: 1 }),
+  fundamentalsTotal: decimal("fundamentals_total", { precision: 5, scale: 1 }),
+  otherMetricsTotal: decimal("other_metrics_total", { precision: 5, scale: 1 }),
+  
+  // Individual scores
+  return1yScore: decimal("return_1y_score", { precision: 4, scale: 1 }),
+  return3yScore: decimal("return_3y_score", { precision: 4, scale: 1 }),
+  return5yScore: decimal("return_5y_score", { precision: 4, scale: 1 }),
+  
+  // Final results
+  totalScore: decimal("total_score", { precision: 5, scale: 1 }).notNull(),
+  quartile: integer("quartile").notNull(),
+  recommendation: text("recommendation").notNull(),
+  
+  // Category and subcategory analysis
+  category: text("category"),
+  subcategory: text("subcategory"),
+  subcategoryRank: integer("subcategory_rank"),
+  subcategoryTotal: integer("subcategory_total"),
+  subcategoryPercentile: decimal("subcategory_percentile", { precision: 5, scale: 2 }),
+  subcategoryQuartile: integer("subcategory_quartile"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => {
+  return {
+    pk: uniqueIndex("fund_scores_corrected_pk").on(table.fundId, table.scoreDate)
+  };
+});
+
+export const insertFundScoreCorrectedSchema = createInsertSchema(fundScoresCorrected).omit({
+  createdAt: true
+});
+
+export type InsertFundScoreCorrected = z.infer<typeof insertFundScoreCorrectedSchema>;
+export type FundScoreCorrected = typeof fundScoresCorrected.$inferSelect;
+
+// Backtesting Results
+export const backtestingResults = pgTable("backtesting_results", {
+  id: serial("id").primaryKey(),
+  fundId: integer("fund_id").references(() => funds.id),
+  validationDate: date("validation_date").notNull(),
+  historicalScoreDate: date("historical_score_date").notNull(),
+  historicalTotalScore: decimal("historical_total_score", { precision: 5, scale: 1 }),
+  historicalRecommendation: text("historical_recommendation"),
+  historicalQuartile: integer("historical_quartile"),
+  actualReturn3m: decimal("actual_return_3m", { precision: 8, scale: 4 }),
+  actualReturn6m: decimal("actual_return_6m", { precision: 8, scale: 4 }),
+  actualReturn1y: decimal("actual_return_1y", { precision: 8, scale: 4 }),
+  predictedPerformance: text("predicted_performance"),
+  actualPerformance: text("actual_performance"),
+  predictionAccuracy: boolean("prediction_accuracy"),
+  quartileMaintained: boolean("quartile_maintained"),
+  scoreAccuracy3m: decimal("score_accuracy_3m", { precision: 6, scale: 2 }),
+  scoreAccuracy6m: decimal("score_accuracy_6m", { precision: 6, scale: 2 }),
+  scoreAccuracy1y: decimal("score_accuracy_1y", { precision: 6, scale: 2 }),
+  quartileAccuracyScore: decimal("quartile_accuracy_score", { precision: 6, scale: 4 }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertBacktestingResultSchema = createInsertSchema(backtestingResults).omit({
+  id: true,
+  createdAt: true
+});
+
+export type InsertBacktestingResult = z.infer<typeof insertBacktestingResultSchema>;
+export type BacktestingResult = typeof backtestingResults.$inferSelect;
+
+// Validation Summary Reports
+export const validationSummaryReports = pgTable("validation_summary_reports", {
+  id: serial("id").primaryKey(),
+  validationRunId: text("validation_run_id").notNull().unique(),
+  runDate: date("run_date").notNull(),
+  totalFundsTested: integer("total_funds_tested").notNull(),
+  validationPeriodMonths: integer("validation_period_months").notNull(),
+  overallPredictionAccuracy3m: decimal("overall_prediction_accuracy_3m", { precision: 5, scale: 2 }),
+  overallPredictionAccuracy6m: decimal("overall_prediction_accuracy_6m", { precision: 5, scale: 2 }),
+  overallPredictionAccuracy1y: decimal("overall_prediction_accuracy_1y", { precision: 5, scale: 2 }),
+  overallScoreCorrelation3m: decimal("overall_score_correlation_3m", { precision: 5, scale: 2 }),
+  overallScoreCorrelation6m: decimal("overall_score_correlation_6m", { precision: 5, scale: 2 }),
+  overallScoreCorrelation1y: decimal("overall_score_correlation_1y", { precision: 5, scale: 2 }),
+  quartileStability3m: decimal("quartile_stability_3m", { precision: 5, scale: 2 }),
+  quartileStability6m: decimal("quartile_stability_6m", { precision: 5, scale: 2 }),
+  quartileStability1y: decimal("quartile_stability_1y", { precision: 5, scale: 2 }),
+  strongBuyAccuracy: decimal("strong_buy_accuracy", { precision: 5, scale: 2 }),
+  buyAccuracy: decimal("buy_accuracy", { precision: 5, scale: 2 }),
+  holdAccuracy: decimal("hold_accuracy", { precision: 5, scale: 2 }),
+  sellAccuracy: decimal("sell_accuracy", { precision: 5, scale: 2 }),
+  strongSellAccuracy: decimal("strong_sell_accuracy", { precision: 5, scale: 2 }),
+  validationStatus: text("validation_status").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertValidationSummaryReportSchema = createInsertSchema(validationSummaryReports).omit({
+  id: true,
+  createdAt: true
+});
+
+export type InsertValidationSummaryReport = z.infer<typeof insertValidationSummaryReportSchema>;
+export type ValidationSummaryReport = typeof validationSummaryReports.$inferSelect;
