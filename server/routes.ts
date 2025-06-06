@@ -348,6 +348,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced validation and backtesting integration endpoint
+  app.post('/api/validation/run-enhanced', async (req, res) => {
+    try {
+      console.log('Running enhanced validation with advanced analytics integration...');
+      
+      const EnhancedValidationEngine = (await import('./services/enhanced-validation-engine.js')).default;
+      const validationResults = await EnhancedValidationEngine.runEnhancedValidation();
+      
+      res.json({
+        success: true,
+        message: 'Enhanced validation completed successfully',
+        data: validationResults,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('Error running enhanced validation:', error);
+      res.status(500).json({ error: 'Failed to run enhanced validation' });
+    }
+  });
+
+  app.get('/api/validation/advanced-metrics', async (req, res) => {
+    try {
+      // Get validation metrics that include advanced analytics integration
+      const advancedMetrics = await pool.query(`
+        SELECT 
+          br.fund_id,
+          f.fund_name,
+          f.category,
+          fsc.calmar_ratio_1y,
+          fsc.sortino_ratio_1y,
+          fsc.var_95_1y,
+          fsc.downside_deviation_1y,
+          fsc.total_score,
+          fsc.recommendation,
+          fsc.quartile,
+          fsc.subcategory_quartile,
+          br.actual_return_1y,
+          br.prediction_accuracy,
+          br.quartile_maintained
+        FROM backtesting_results br
+        JOIN funds f ON br.fund_id = f.id
+        LEFT JOIN fund_scores_corrected fsc ON br.fund_id = fsc.fund_id 
+          AND fsc.score_date = '2025-06-05'
+        WHERE br.validation_date >= CURRENT_DATE - INTERVAL '30 days'
+        ORDER BY fsc.total_score DESC NULLS LAST
+        LIMIT 50
+      `);
+
+      res.json(advancedMetrics.rows);
+      
+    } catch (error) {
+      console.error('Error fetching advanced validation metrics:', error);
+      res.status(500).json({ error: 'Failed to fetch advanced validation metrics' });
+    }
+  });
+
   // Fund details scheduling moved to dedicated router in api/fund-details-import.ts
   
   // Auto-start the scheduled bulk processing on server startup
