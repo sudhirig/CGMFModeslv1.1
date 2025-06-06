@@ -101,6 +101,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Authentic Validation System endpoints
+  app.post('/api/validation/create-baseline', async (req, res) => {
+    try {
+      const { historicalDate, validationHorizonMonths } = req.body;
+      const { AuthenticValidationEngine } = await import('./services/authentic-validation-engine.js');
+      const result = await AuthenticValidationEngine.createPointInTimeBaseline(
+        historicalDate || '2024-12-05', 
+        validationHorizonMonths || 6
+      );
+      res.json({ success: true, baselineRecords: result });
+    } catch (error) {
+      console.error('Baseline creation error:', error);
+      res.status(500).json({ error: 'Failed to create validation baseline' });
+    }
+  });
+
+  app.post('/api/validation/track-forward', async (req, res) => {
+    try {
+      const { predictionDate, validationDate } = req.body;
+      const { AuthenticValidationEngine } = await import('./services/authentic-validation-engine.js');
+      const result = await AuthenticValidationEngine.trackForwardPerformance(
+        predictionDate, 
+        validationDate
+      );
+      res.json({ success: true, updatedRecords: result });
+    } catch (error) {
+      console.error('Forward tracking error:', error);
+      res.status(500).json({ error: 'Failed to track forward performance' });
+    }
+  });
+
+  app.get('/api/validation/authentic-status', async (req, res) => {
+    try {
+      const { AuthenticValidationEngine } = await import('./services/authentic-validation-engine.js');
+      const status = await AuthenticValidationEngine.getValidationSystemStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Authentic validation status error:', error);
+      res.status(500).json({ error: 'Failed to get authentic validation status' });
+    }
+  });
+
   // Production Fund Search API endpoints using authenticated corrected scoring data
   app.get('/api/fund-scores/search', async (req, res) => {
     try {
