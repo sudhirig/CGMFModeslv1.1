@@ -77,6 +77,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fix Validation System endpoint
+  app.post('/api/validation/fix-system', async (req, res) => {
+    try {
+      const { ProperValidationEngine } = await import('./services/proper-validation-engine.js');
+      const result = await ProperValidationEngine.initializeProperValidation();
+      res.json(result);
+    } catch (error) {
+      console.error('Validation system fix error:', error);
+      res.status(500).json({ error: 'Failed to fix validation system' });
+    }
+  });
+
+  // Get Proper Validation Status endpoint
+  app.get('/api/validation/proper-status', async (req, res) => {
+    try {
+      const { ProperValidationEngine } = await import('./services/proper-validation-engine.js');
+      const status = await ProperValidationEngine.getValidationStatus();
+      res.json(status);
+    } catch (error) {
+      console.error('Validation status error:', error);
+      res.status(500).json({ error: 'Failed to get validation status' });
+    }
+  });
+
   // Production Fund Search API endpoints using authenticated corrected scoring data
   app.get('/api/fund-scores/search', async (req, res) => {
     try {
