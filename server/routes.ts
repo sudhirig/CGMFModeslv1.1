@@ -139,6 +139,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get authentic validation baseline data for frontend
+  app.get('/api/validation/authentic-baseline', async (req, res) => {
+    try {
+      const baselineQuery = `
+        SELECT 
+          baseline_date,
+          validation_target_date,
+          score_methodology_version,
+          COUNT(*) as total_funds,
+          MIN(total_score) as min_score,
+          MAX(total_score) as max_score,
+          ROUND(AVG(total_score), 2) as avg_score,
+          COUNT(CASE WHEN recommendation = 'STRONG_BUY' THEN 1 END) as strong_buy_count,
+          COUNT(CASE WHEN recommendation = 'BUY' THEN 1 END) as buy_count,
+          COUNT(CASE WHEN recommendation = 'HOLD' THEN 1 END) as hold_count,
+          COUNT(CASE WHEN recommendation = 'SELL' THEN 1 END) as sell_count,
+          COUNT(CASE WHEN recommendation = 'STRONG_SELL' THEN 1 END) as strong_sell_count,
+          validation_horizon_months,
+          archived_for_future_validation
+        FROM authentic_future_validation_baseline
+        WHERE baseline_date = '2025-06-05'
+        GROUP BY baseline_date, validation_target_date, score_methodology_version, 
+                 validation_horizon_months, archived_for_future_validation
+      `;
+      
+      const result = await pool.query(baselineQuery);
+      
+      if (result.rows.length === 0) {
+        return res.json({
+          status: 'no_baseline',
+          message: 'No authentic validation baseline found'
+        });
+      }
+      
+      const baseline = result.rows[0];
+      
+      res.json({
+        status: 'authentic_baseline_established',
+        baseline_date: baseline.baseline_date,
+        validation_target_date: baseline.validation_target_date,
+        total_funds: baseline.total_funds,
+        score_range: {
+          min: baseline.min_score,
+          max: baseline.max_score,
+          average: baseline.avg_score
+        },
+        recommendations: {
+          strong_buy: baseline.strong_buy_count,
+          buy: baseline.buy_count,
+          hold: baseline.hold_count,
+          sell: baseline.sell_count,
+          strong_sell: baseline.strong_sell_count
+        },
+        validation_horizon_months: baseline.validation_horizon_months,
+        methodology: baseline.score_methodology_version,
+        authentic_data_only: baseline.archived_for_future_validation,
+        validation_timeline: {
+          current_phase: 'baseline_established',
+          next_milestone: baseline.validation_target_date,
+          description: 'Authentic baseline archived for 6-month forward validation'
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error fetching authentic baseline:', error);
+      res.status(500).json({ error: 'Failed to fetch authentic validation baseline' });
+    }
+  });
+
   // Production Fund Search API endpoints using authenticated corrected scoring data
   app.get('/api/fund-scores/search', async (req, res) => {
     try {

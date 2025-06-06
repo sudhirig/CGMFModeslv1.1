@@ -18,6 +18,33 @@ import { useToast } from "@/hooks/use-toast";
 import { TrendingUp, TrendingDown, Target, BarChart3, Play, Calendar } from "lucide-react";
 import { useState } from "react";
 
+interface AuthenticValidationBaseline {
+  status: string;
+  baseline_date: string;
+  validation_target_date: string;
+  total_funds: number;
+  score_range: {
+    min: number;
+    max: number;
+    average: number;
+  };
+  recommendations: {
+    strong_buy: number;
+    buy: number;
+    hold: number;
+    sell: number;
+    strong_sell: number;
+  };
+  validation_horizon_months: number;
+  methodology: string;
+  authentic_data_only: boolean;
+  validation_timeline: {
+    current_phase: string;
+    next_milestone: string;
+    description: string;
+  };
+}
+
 interface ValidationSummary {
   validation_run_id: string;
   run_date: string;
@@ -69,6 +96,10 @@ export default function ValidationDashboard() {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const { data: authenticBaseline, isLoading: baselineLoading } = useQuery<AuthenticValidationBaseline>({
+    queryKey: ["/api/validation/authentic-baseline"],
+  });
 
   const { data: validationResults, isLoading: resultsLoading } = useQuery<ValidationSummary[]>({
     queryKey: ["/api/validation/results"],
@@ -145,6 +176,63 @@ export default function ValidationDashboard() {
           {latestResult?.validation_status || "No Data"}
         </Badge>
       </div>
+
+      {/* Authentic Validation Baseline Display */}
+      {authenticBaseline && (
+        <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-800 dark:text-green-200">
+              <Target className="h-5 w-5" />
+              Authentic Validation Baseline - {authenticBaseline.methodology}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <h4 className="font-semibold text-green-800 dark:text-green-200">Baseline Status</h4>
+                <div className="text-sm space-y-1">
+                  <div><strong>Baseline Date:</strong> {new Date(authenticBaseline.baseline_date).toLocaleDateString()}</div>
+                  <div><strong>Target Validation:</strong> {new Date(authenticBaseline.validation_target_date).toLocaleDateString()}</div>
+                  <div><strong>Total Funds:</strong> {authenticBaseline.total_funds.toLocaleString()}</div>
+                  <div><strong>Validation Horizon:</strong> {authenticBaseline.validation_horizon_months} months</div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-semibold text-green-800 dark:text-green-200">Score Distribution</h4>
+                <div className="text-sm space-y-1">
+                  <div><strong>Score Range:</strong> {authenticBaseline.score_range.min} - {authenticBaseline.score_range.max}</div>
+                  <div><strong>Average Score:</strong> {authenticBaseline.score_range.average}</div>
+                  <div><strong>Data Integrity:</strong> {authenticBaseline.authentic_data_only ? "✓ Authentic Only" : "⚠ Contains Synthetic"}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="font-semibold text-green-800 dark:text-green-200">Recommendation Breakdown</h4>
+                <div className="text-sm space-y-1">
+                  <div><strong>Strong Buy:</strong> {authenticBaseline.recommendations.strong_buy}</div>
+                  <div><strong>Buy:</strong> {authenticBaseline.recommendations.buy}</div>
+                  <div><strong>Hold:</strong> {authenticBaseline.recommendations.hold}</div>
+                  <div><strong>Sell:</strong> {authenticBaseline.recommendations.sell}</div>
+                  <div><strong>Strong Sell:</strong> {authenticBaseline.recommendations.strong_sell}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-4 p-3 bg-white dark:bg-gray-900 rounded-md border">
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className="h-4 w-4 text-blue-600" />
+                <strong className="text-blue-600 dark:text-blue-400">Validation Timeline</strong>
+              </div>
+              <div className="text-sm">
+                <div><strong>Current Phase:</strong> {authenticBaseline.validation_timeline.current_phase.replace('_', ' ').toUpperCase()}</div>
+                <div><strong>Next Milestone:</strong> {new Date(authenticBaseline.validation_timeline.next_milestone).toLocaleDateString()}</div>
+                <div className="mt-2 text-gray-600 dark:text-gray-400">{authenticBaseline.validation_timeline.description}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {latestResult && (
         <>
