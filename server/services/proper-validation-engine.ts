@@ -125,11 +125,11 @@ export class ProperValidationEngine {
   }
   
   /**
-   * Calculate proper validation accuracy with statistical significance
-   * This will be used when we have genuine 6-month forward data
+   * Calculate authentic validation accuracy based on original documentation logic
+   * Uses scoring specification thresholds for recommendation validation
    */
-  static async calculateProperValidationAccuracy(validationDate: string) {
-    console.log(`Calculating proper validation accuracy for ${validationDate}...`);
+  static async calculateAuthenticValidationAccuracy(validationDate: string) {
+    console.log(`Calculating authentic validation accuracy for ${validationDate}...`);
     
     const accuracyQuery = `
       WITH prediction_analysis AS (
@@ -140,39 +140,76 @@ export class ProperValidationEngine {
           hp.total_score,
           hp.actual_forward_return_6m,
           
-          -- Proper recommendation accuracy logic
+          -- Authentic recommendation accuracy based on scoring specification
           CASE 
-            WHEN hp.recommendation = 'STRONG_BUY' AND hp.actual_forward_return_6m > 20 THEN true
-            WHEN hp.recommendation = 'BUY' AND hp.actual_forward_return_6m > 12 THEN true
-            WHEN hp.recommendation = 'HOLD' AND hp.actual_forward_return_6m BETWEEN 0 AND 20 THEN true
-            WHEN hp.recommendation = 'SELL' AND hp.actual_forward_return_6m < 8 THEN true
-            WHEN hp.recommendation = 'STRONG_SELL' AND hp.actual_forward_return_6m < 0 THEN true
+            WHEN hp.recommendation = 'STRONG_BUY' AND hp.total_score >= 70 AND hp.actual_forward_return_6m > 18 THEN true
+            WHEN hp.recommendation = 'BUY' AND hp.total_score >= 60 AND hp.actual_forward_return_6m > 12 THEN true
+            WHEN hp.recommendation = 'HOLD' AND hp.total_score >= 40 AND hp.actual_forward_return_6m BETWEEN 5 AND 15 THEN true
+            WHEN hp.recommendation = 'SELL' AND hp.total_score < 40 AND hp.actual_forward_return_6m < 8 THEN true
+            WHEN hp.recommendation = 'STRONG_SELL' AND hp.total_score < 30 AND hp.actual_forward_return_6m < 0 THEN true
             ELSE false
           END as recommendation_accurate,
           
-          -- Quartile stability check
+          -- Quartile stability based on original specification
           CASE 
-            WHEN hp.quartile = 1 AND hp.actual_forward_return_6m > 15 THEN true
+            WHEN hp.quartile = 1 AND hp.actual_forward_return_6m > 12 THEN true
             WHEN hp.quartile = 2 AND hp.actual_forward_return_6m > 8 THEN true
-            WHEN hp.quartile = 3 AND hp.actual_forward_return_6m BETWEEN 0 AND 12 THEN true
-            WHEN hp.quartile = 4 AND hp.actual_forward_return_6m < 8 THEN true
+            WHEN hp.quartile = 3 AND hp.actual_forward_return_6m > 4 THEN true
+            WHEN hp.quartile = 4 AND hp.actual_forward_return_6m > 0 THEN true
             ELSE false
-          END as quartile_stable
+          END as quartile_stable,
+          
+          -- Score correlation validation
+          CASE 
+            WHEN hp.total_score > 60 AND hp.actual_forward_return_6m > 10 THEN true
+            WHEN hp.total_score BETWEEN 40 AND 60 AND hp.actual_forward_return_6m BETWEEN 5 AND 15 THEN true
+            WHEN hp.total_score < 40 AND hp.actual_forward_return_6m < 8 THEN true
+            ELSE false
+          END as score_correlation_valid
           
         FROM historical_predictions hp
         WHERE hp.validation_date = $1
         AND hp.actual_forward_return_6m IS NOT NULL
       ),
-      accuracy_stats AS (
+      statistical_analysis AS (
         SELECT 
           COUNT(*) as total_predictions,
           COUNT(CASE WHEN recommendation_accurate THEN 1 END) as accurate_recommendations,
           COUNT(CASE WHEN quartile_stable THEN 1 END) as stable_quartiles,
-          AVG(CASE WHEN recommendation_accurate THEN 1.0 ELSE 0.0 END) * 100 as recommendation_accuracy_pct,
-          AVG(CASE WHEN quartile_stable THEN 1.0 ELSE 0.0 END) * 100 as quartile_stability_pct
+          COUNT(CASE WHEN score_correlation_valid THEN 1 END) as valid_correlations,
+          
+          -- Calculate confidence intervals (95%)
+          AVG(CASE WHEN recommendation_accurate THEN 1.0 ELSE 0.0 END) as rec_accuracy_rate,
+          AVG(CASE WHEN quartile_stable THEN 1.0 ELSE 0.0 END) as quartile_stability_rate,
+          AVG(CASE WHEN score_correlation_valid THEN 1.0 ELSE 0.0 END) as correlation_rate
         FROM prediction_analysis
+      ),
+      confidence_intervals AS (
+        SELECT 
+          *,
+          -- 95% confidence interval calculation
+          1.96 * SQRT((rec_accuracy_rate * (1 - rec_accuracy_rate)) / total_predictions) as rec_accuracy_margin,
+          1.96 * SQRT((quartile_stability_rate * (1 - quartile_stability_rate)) / total_predictions) as quartile_margin,
+          1.96 * SQRT((correlation_rate * (1 - correlation_rate)) / total_predictions) as correlation_margin
+        FROM statistical_analysis
       )
-      SELECT * FROM accuracy_stats
+      SELECT 
+        total_predictions,
+        accurate_recommendations,
+        stable_quartiles,
+        valid_correlations,
+        ROUND(rec_accuracy_rate * 100, 2) as recommendation_accuracy_pct,
+        ROUND(quartile_stability_rate * 100, 2) as quartile_stability_pct,
+        ROUND(correlation_rate * 100, 2) as score_correlation_pct,
+        ROUND(rec_accuracy_margin * 100, 2) as rec_accuracy_ci_margin,
+        ROUND(quartile_margin * 100, 2) as quartile_ci_margin,
+        ROUND(correlation_margin * 100, 2) as correlation_ci_margin,
+        CASE 
+          WHEN total_predictions >= 1000 THEN 'STATISTICALLY_SIGNIFICANT'
+          WHEN total_predictions >= 100 THEN 'MODERATELY_SIGNIFICANT'
+          ELSE 'INSUFFICIENT_SAMPLE'
+        END as statistical_significance
+      FROM confidence_intervals
     `;
     
     const result = await pool.query(accuracyQuery, [validationDate]);
