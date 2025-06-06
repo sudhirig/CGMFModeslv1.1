@@ -101,16 +101,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Authentic Validation System endpoints
+  // Scoring-Aligned Validation System endpoints
   app.post('/api/validation/create-baseline', async (req, res) => {
     try {
-      const { historicalDate, validationHorizonMonths } = req.body;
-      const { AuthenticValidationEngine } = await import('./services/authentic-validation-engine.js');
-      const result = await AuthenticValidationEngine.createPointInTimeBaseline(
-        historicalDate || '2024-12-05', 
-        validationHorizonMonths || 6
-      );
-      res.json({ success: true, baselineRecords: result });
+      const { ScoringAlignedValidationEngine } = await import('./services/scoring-aligned-validation-engine.js');
+      const result = await ScoringAlignedValidationEngine.initializeValidationSystem();
+      res.json(result);
     } catch (error) {
       console.error('Baseline creation error:', error);
       res.status(500).json({ error: 'Failed to create validation baseline' });
