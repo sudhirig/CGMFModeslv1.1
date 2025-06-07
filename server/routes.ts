@@ -1042,8 +1042,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/elivate/collect-authentic-data", async (req, res) => {
     try {
-      const { ComprehensiveDataCollector } = await import('./services/comprehensive-data-collector.js');
-      const result = await ComprehensiveDataCollector.collectAllAuthenticData();
+      const { EnhancedDataAggregator } = await import('./services/enhanced-data-aggregator.js');
+      const result = await EnhancedDataAggregator.populateElivateIndicators();
       res.json(result);
     } catch (error) {
       console.error("Error collecting authentic market data:", error);
@@ -1052,6 +1052,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to collect authentic market data", 
         error: errorMessage,
         suggestion: "Please ensure API keys are configured for external data sources"
+      });
+    }
+  });
+
+  app.post("/api/elivate/collect-fred-india", async (req, res) => {
+    try {
+      const { FREDIndiaCollector } = await import('./services/fred-india-collector.js');
+      const result = await FREDIndiaCollector.collectCompleteIndiaData();
+      res.json(result);
+    } catch (error) {
+      console.error("Error collecting FRED India data:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ 
+        message: "Failed to collect FRED India data", 
+        error: errorMessage
       });
     }
   });
