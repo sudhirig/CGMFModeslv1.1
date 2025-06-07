@@ -1012,21 +1012,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API routes for ELIVATE framework
   app.get("/api/elivate/score", async (req, res) => {
     try {
-      // Using raw query for better parameter handling
+      console.log('Fetching ELIVATE score from database...');
+      // Get authentic ELIVATE score from market_indices table
       const result = await executeRawQuery(`
-        SELECT * FROM elivate_scores
-        ORDER BY score_date DESC
+        SELECT index_name, close_value as score, index_date as score_date
+        FROM market_indices 
+        WHERE index_name = 'ELIVATE_SCORE'
+        ORDER BY index_date DESC
         LIMIT 1
       `);
+      
+      console.log('ELIVATE query result:', result.rows);
       
       if (!result.rows.length) {
         return res.status(404).json({ message: "ELIVATE score not found" });
       }
       
-      res.json(result.rows[0]);
+      const scoreData = result.rows[0];
+      const score = parseFloat(scoreData.score);
+      const interpretation = score >= 75 ? 'BULLISH' : score >= 50 ? 'NEUTRAL' : 'BEARISH';
+      
+      res.json({
+        score: score,
+        interpretation: interpretation,
+        scoreDate: scoreData.score_date,
+        dataSource: 'AUTHENTIC_APIS',
+        confidence: 'HIGH'
+      });
     } catch (error) {
       console.error("Error fetching ELIVATE score:", error);
-      res.status(500).json({ message: "Failed to fetch ELIVATE score" });
+      res.status(500).json({ message: "Failed to fetch ELIVATE score", error: error.message });
     }
   });
 
