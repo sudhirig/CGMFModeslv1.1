@@ -77,7 +77,7 @@ export default function TopRatedFunds() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-neutral-200">
-                  {topFunds?.map((fund: any) => {
+                  {Array.isArray(topFunds) && topFunds.map((fund: any) => {
                     const riskGrade = 
                       fund.riskGradeTotal >= 25 ? { text: "Low Risk", class: "bg-success bg-opacity-10 text-success" } :
                       fund.riskGradeTotal >= 20 ? { text: "Medium Risk", class: "bg-warning bg-opacity-10 text-warning" } :
@@ -147,7 +147,7 @@ export default function TopRatedFunds() {
           
           <div className="mt-4 flex justify-between items-center">
             <div className="text-sm text-neutral-500">
-              Showing {topFunds?.length || 0} of {topFunds?.length ? topFunds[0].categoryTotal : 0} funds
+              Showing {Array.isArray(topFunds) ? topFunds.length : 0} of {Array.isArray(topFunds) && topFunds.length > 0 ? (topFunds[0].categoryTotal || topFunds.length) : 0} funds
             </div>
             <div className="flex space-x-2">
               <Button variant="outline" size="sm">

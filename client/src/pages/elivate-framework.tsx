@@ -675,15 +675,16 @@ export default function ElivateFramework() {
                       <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
                         <div className="text-sm font-medium text-gray-500 mb-1">Risk Assessment</div>
                         <div className="text-base font-medium text-gray-900">
-                          {elivateScore?.totalElivateScore >= 75 
-                            ? "Lower than average risk" 
-                            : elivateScore?.totalElivateScore >= 50 
-                            ? "Average risk level" 
-                            : "Higher than average risk"
-                          }
+                          {elivateScore?.totalElivateScore ? (
+                            elivateScore.totalElivateScore >= 70 
+                              ? "Lower risk environment" 
+                              : elivateScore.totalElivateScore >= 40 
+                              ? "Moderate risk environment" 
+                              : "Higher risk environment"
+                          ) : "Risk assessment unavailable"}
                         </div>
                         <div className="text-sm text-gray-600 mt-1">
-                          Based on market volatility and trends
+                          Based on ELIVATE framework analysis
                         </div>
                       </div>
                     </div>
