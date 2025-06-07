@@ -185,9 +185,7 @@ class CompleteELIVATECalculator {
       INSERT INTO market_indices (index_name, close_value, index_date)
       VALUES ($1, $2, CURRENT_DATE)
       ON CONFLICT (index_name, index_date) 
-      DO UPDATE SET 
-        close_value = EXCLUDED.close_value,
-        updated_at = CURRENT_TIMESTAMP
+      DO UPDATE SET close_value = EXCLUDED.close_value
     `, [
       'ELIVATE_ENHANCED_COMPLETE',
       score

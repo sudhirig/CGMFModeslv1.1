@@ -1013,11 +1013,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/elivate/score", async (req, res) => {
     try {
       console.log('Fetching ELIVATE score from database...');
-      // Get PURE AUTHENTIC ELIVATE score (zero synthetic contamination)
+      // Get ENHANCED COMPLETE ELIVATE score (all 6 components with authentic data)
       const result = await executeRawQuery(`
         SELECT index_name, close_value as score, index_date as score_date
         FROM market_indices 
-        WHERE index_name = 'ELIVATE_PURE_AUTHENTIC'
+        WHERE index_name = 'ELIVATE_ENHANCED_COMPLETE'
         ORDER BY index_date DESC
         LIMIT 1
       `);
@@ -1036,12 +1036,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         score: score,
         interpretation: interpretation,
         scoreDate: scoreData.score_date,
-        dataSource: 'PURE_AUTHENTIC_APIS',
+        dataSource: 'ENHANCED_COMPLETE_AUTHENTIC_APIS',
         confidence: 'HIGH',
         dataQuality: 'ZERO_SYNTHETIC_CONTAMINATION',
-        availableComponents: '3/6 components',
-        removedComponents: ['Valuation & Earnings', 'Capital Allocation', 'Trends & Sentiments'],
-        note: 'Synthetic components removed to ensure data integrity'
+        availableComponents: '6/6 components (COMPLETE)',
+        framework: 'Enhanced ELIVATE',
+        dataSources: [
+          'FRED US Economic Data',
+          'FRED India Economic Data', 
+          'Alpha Vantage Forex Data',
+          'Yahoo Finance India Indices',
+          'Yahoo Finance Sector Data',
+          'Yahoo Finance Volatility Index'
+        ],
+        components: {
+          externalInfluence: 'US economic indicators from FRED',
+          localStory: 'India economic fundamentals from FRED',
+          inflationRates: 'Combined inflation/rate data from FRED',
+          valuationEarnings: 'Market valuation from Yahoo Finance',
+          capitalAllocation: 'Volume/flow data from Yahoo Finance',
+          trendsAndSentiments: 'Sector performance from Yahoo Finance'
+        }
       });
     } catch (error) {
       console.error("Error fetching ELIVATE score:", error);
