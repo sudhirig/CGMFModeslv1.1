@@ -442,13 +442,32 @@ export class ElivateFramework {
     advanceDeclineRatio: number;
     score: number;
   }> {
-    // Extract VIX data if available
-    const vixData = latestIndices.find(index => index.indexName === 'INDIA VIX');
+    console.log("Fetching trends and sentiments data from authorized market sources");
     
-    // Simulated data
-    const stocksAbove200dmaPct = 65.3;  // % of Nifty 500 stocks above 200-DMA
-    const indiaVix = vixData?.closeValue ?? 13.5;  // Current VIX level
-    const advanceDeclineRatio = 1.2;   // Advance-decline ratio
+    // Fetch authentic data from market indices table
+    const dmaData = await pool.query(`
+      SELECT close_value FROM market_indices 
+      WHERE index_name = 'STOCKS ABOVE 200DMA' 
+      ORDER BY index_date DESC LIMIT 1`);
+    
+    const vixData = await pool.query(`
+      SELECT close_value FROM market_indices 
+      WHERE index_name = 'INDIA VIX' 
+      ORDER BY index_date DESC LIMIT 1`);
+    
+    const adRatioData = await pool.query(`
+      SELECT close_value FROM market_indices 
+      WHERE index_name = 'ADVANCE DECLINE RATIO' 
+      ORDER BY index_date DESC LIMIT 1`);
+    
+    // Only use authentic data - reject synthetic values
+    if (dmaData.rows.length === 0 || vixData.rows.length === 0 || adRatioData.rows.length === 0) {
+      throw new Error("ELIVATE Framework requires authentic market data. Missing trends and sentiments data from authorized sources.");
+    }
+    
+    const stocksAbove200dmaPct = parseFloat(dmaData.rows[0].close_value);
+    const indiaVix = parseFloat(vixData.rows[0].close_value);
+    const advanceDeclineRatio = parseFloat(adRatioData.rows[0].close_value);
     
     // Calculate component scores
     const dmaScore = this.scoreDmaPercent(stocksAbove200dmaPct, 4);
