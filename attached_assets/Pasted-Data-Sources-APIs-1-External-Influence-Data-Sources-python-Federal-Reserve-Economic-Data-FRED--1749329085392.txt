@@ -1,0 +1,188 @@
+Data Sources & APIs
+1. External Influence Data Sources
+python# Federal Reserve Economic Data (FRED) API - Free
+class FREDDataCollector:
+    def __init__(self):
+        self.api_key = "YOUR_FRED_API_KEY"  # Get free at https://fred.stlouisfed.org/docs/api/
+        self.base_url = "https://api.stlouisfed.org/fred/series/observations"
+    
+    async def get_us_indicators(self):
+        indicators = {
+            'DGS10': '10-Year Treasury Rate',
+            'DFF': 'Federal Funds Rate',
+            'GDPC1': 'US Real GDP',
+            'DEXINUS': 'India/US Exchange Rate',
+            'DXY': 'US Dollar Index',
+            'VIXCLS': 'VIX Index'
+        }
+        
+        data = {}
+        for series_id, name in indicators.items():
+            params = {
+                'series_id': series_id,
+                'api_key': self.api_key,
+                'file_type': 'json',
+                'frequency': 'd',
+                'limit': 100
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(self.base_url, params=params) as response:
+                    result = await response.json()
+                    data[name] = self._parse_fred_data(result)
+        return data
+
+# World Bank API - Free
+class WorldBankCollector:
+    def __init__(self):
+        self.base_url = "https://api.worldbank.org/v2/country"
+    
+    async def get_global_indicators(self):
+        indicators = {
+            'NY.GDP.MKTP.KD.ZG': 'GDP Growth',
+            'FP.CPI.TOTL.ZG': 'Inflation Rate',
+            'BX.KLT.DINV.WD.GD.ZS': 'FDI Inflows'
+        }
+        
+        countries = ['US', 'CN', 'EU', 'JP']  # Key economies
+        data = {}
+        
+        for country in countries:
+            for indicator_code, name in indicators.items():
+                url = f"{self.base_url}/{country}/indicator/{indicator_code}"
+                params = {'format': 'json', 'date': '2020:2024'}
+                # Fetch and parse data
+                
+        return data
+2. Local (India) Data Sources
+python# RBI Data Warehouse - Free
+class RBIDataCollector:
+    def __init__(self):
+        self.base_url = "https://rbi.org.in/api"
+        # Note: RBI doesn't have official API, using web scraping approach
+        
+    async def get_india_indicators(self):
+        """Scrape RBI website for key indicators"""
+        indicators_urls = {
+            'repo_rate': 'https://rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx',
+            'forex_reserves': 'https://rbi.org.in/Scripts/WSSViewDetail.aspx?TYPE=Section&PARAM1=2',
+            'money_supply': 'https://rbi.org.in/Scripts/WSSViewDetail.aspx?TYPE=Section&PARAM1=1'
+        }
+        
+        # Implementation using BeautifulSoup
+        import aiohttp
+        from bs4 import BeautifulSoup
+        
+        data = {}
+        async with aiohttp.ClientSession() as session:
+            for indicator, url in indicators_urls.items():
+                async with session.get(url) as response:
+                    html = await response.text()
+                    soup = BeautifulSoup(html, 'html.parser')
+                    # Parse specific elements based on RBI's HTML structure
+                    
+        return data
+
+# NSE India API - Official (Requires registration)
+class NSEIndiaCollector:
+    def __init__(self):
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'application/json',
+        }
+        
+    async def get_market_indicators(self):
+        """Get NSE market indicators"""
+        endpoints = {
+            'indices': 'https://www.nseindia.com/api/allIndices',
+            'market_status': 'https://www.nseindia.com/api/marketStatus',
+            'fii_dii': 'https://www.nseindia.com/api/fiidiiTradeReact',
+            'sector_performance': 'https://www.nseindia.com/api/equity-stockIndices?index=SECTORAL'
+        }
+        
+        data = {}
+        async with aiohttp.ClientSession() as session:
+            # First get cookies by visiting main page
+            await session.get('https://www.nseindia.com', headers=self.headers)
+            
+            for name, url in endpoints.items():
+                async with session.get(url, headers=self.headers) as response:
+                    if response.status == 200:
+                        data[name] = await response.json()
+                        
+        return data
+
+# Alternative: Alpha Vantage for India data - Free tier available
+class AlphaVantageCollector:
+    def __init__(self):
+        self.api_key = "YOUR_ALPHA_VANTAGE_KEY"  # Free at alphavantage.co
+        self.base_url = "https://www.alphavantage.co/query"
+        
+    async def get_india_economic_data(self):
+        functions = {
+            'REAL_GDP': 'India GDP',
+            'INFLATION': 'India CPI',
+            'CURRENCY_EXCHANGE_RATE': 'INR/USD'
+        }
+        
+        data = {}
+        for function, name in functions.items():
+            params = {
+                'function': function,
+                'symbol': 'INR' if 'CURRENCY' in function else None,
+                'apikey': self.api_key
+            }
+            # Fetch and parse
+            
+        return data
+3. Inflation & Rates Data
+python# CEIC Data API - Paid but comprehensive
+class CEICDataCollector:
+    def __init__(self):
+        self.api_key = "YOUR_CEIC_API_KEY"
+        self.base_url = "https://api.ceicdata.com/v2"
+        
+    async def get_inflation_data(self):
+        """Get comprehensive inflation and rates data"""
+        series_ids = {
+            'IN.CPI': 'India CPI',
+            'IN.WPI': 'India WPI',  
+            'IN.10Y_YIELD': 'India 10Y Bond',
+            'IN.CALL_RATE': 'India Call Money Rate'
+        }
+        # Implementation
+        
+# Free Alternative: OECD Data
+class OECDDataCollector:
+    def __init__(self):
+        self.base_url = "https://stats.oecd.org/SDMX-JSON/data"
+        
+    async def get_global_rates(self):
+        """Get global interest rates and inflation"""
+        dataset = "MEI_FIN/IRLT.IND+USA+CHN+GBR+JPN.M"
+        url = f"{self.base_url}/{dataset}/all"
+        # Fetch and parse SDMX-JSON format
+4. Flow Data Sources
+python# EPFR Global - Premium data for fund flows
+class EPFRDataCollector:
+    def __init__(self):
+        self.api_key = "YOUR_EPFR_KEY"
+        self.base_url = "https://api.epfrglobal.com/v2"
+        
+    async def get_flow_data(self):
+        """Get global fund flow data"""
+        endpoints = {
+            'country_flows': '/flows/country/IN',
+            'asset_class_flows': '/flows/equity/emergingmarkets',
+            'sector_rotation': '/flows/sector/weekly'
+        }
+        # Premium API implementation
+
+# Free Alternative: Parse from public reports
+class FlowDataScraper:
+    async def scrape_flow_reports(self):
+        """Scrape flow data from public sources"""
+        sources = {
+            'sebi_fpi': 'https://www.sebi.gov.in/statistics/fpi-statistics.html',
+            'amfi_flows': 'https://www.amfiindia.com/research-information/other-data/mf-scheme-performance-data'
+        }
+        # Web scraping implementation
