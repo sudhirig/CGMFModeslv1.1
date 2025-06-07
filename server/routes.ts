@@ -1101,6 +1101,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/elivate/calculate-pure-authentic", async (req, res) => {
+    try {
+      const { PureAuthenticElivate } = await import('./services/pure-authentic-elivate.js');
+      const result = await PureAuthenticElivate.calculatePureAuthenticScore();
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating pure authentic ELIVATE score:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ 
+        message: "Failed to calculate pure authentic ELIVATE score", 
+        error: errorMessage
+      });
+    }
+  });
+
   app.post("/api/elivate/populate-demo-data", async (req, res) => {
     try {
       const { ElivateDemoDataCollector } = await import('./services/elivate-demo-data-collector.js');
