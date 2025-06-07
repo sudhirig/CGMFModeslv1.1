@@ -16,9 +16,9 @@ export default function ElivateFramework() {
     calculateElivateScore();
   };
 
-  // Format score as percentage
+  // Format score as points (authentic point-based system)
   const formatScore = (score: number, maxScore: number) => {
-    return `${Math.round((score / maxScore) * 100)}%`;
+    return `${score.toFixed(1)}/${maxScore} pts`;
   };
 
   // Render the score bars
@@ -27,7 +27,7 @@ export default function ElivateFramework() {
       <div className="bg-neutral-50 rounded-lg p-3">
         <div className="flex justify-between items-center">
           <div className="text-xs font-medium text-neutral-500 uppercase">{label}</div>
-          <div className="text-xs text-neutral-500">{score} / {maxScore}</div>
+          <div className="text-xs text-neutral-500">{score.toFixed(1)} / {maxScore} pts</div>
         </div>
         <div className="mt-2 w-full bg-neutral-200 rounded-full h-2">
           <div 

@@ -1013,11 +1013,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/elivate/score", async (req, res) => {
     try {
       console.log('Fetching ELIVATE score from database...');
-      // Get ENHANCED COMPLETE ELIVATE score (all 6 components with authentic data)
+      // Get AUTHENTIC CORRECTED ELIVATE score (correct point-based structure)
       const result = await executeRawQuery(`
         SELECT index_name, close_value as score, index_date as score_date
         FROM market_indices 
-        WHERE index_name = 'ELIVATE_ENHANCED_COMPLETE'
+        WHERE index_name = 'ELIVATE_AUTHENTIC_CORRECTED'
         ORDER BY index_date DESC
         LIMIT 1
       `);
