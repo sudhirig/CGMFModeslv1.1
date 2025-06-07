@@ -18,6 +18,14 @@ export class ElivateFramework {
   // Calculate ELIVATE score
   async calculateElivateScore(): Promise<{ id: number; totalElivateScore: number; marketStance: string }> {
     try {
+      // First validate data integrity - reject calculation if synthetic data detected
+      const { ElivateDataIntegrityValidator } = await import('./elivate-data-integrity-validator.js');
+      const integrityReport = await ElivateDataIntegrityValidator.validateDataIntegrity();
+      
+      if (!integrityReport.isValid) {
+        throw new Error(`ELIVATE Framework requires authentic market data. Issues detected: ${integrityReport.recommendations.join(', ')}`);
+      }
+      
       // Fetch latest market data from our database
       const latestIndices = await storage.getLatestMarketIndices();
       
