@@ -1056,6 +1056,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/elivate/populate-demo-data", async (req, res) => {
+    try {
+      const { ElivateDemoDataCollector } = await import('./services/elivate-demo-data-collector.js');
+      const result = await ElivateDemoDataCollector.collectDemoMarketData();
+      res.json(result);
+    } catch (error) {
+      console.error("Error populating ELIVATE demo data:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ 
+        message: "Failed to populate ELIVATE demo data", 
+        error: errorMessage
+      });
+    }
+  });
+
   app.get("/api/elivate/data-integrity", async (req, res) => {
     try {
       const { ElivateDataIntegrityValidator } = await import('./services/elivate-data-integrity-validator.js');
