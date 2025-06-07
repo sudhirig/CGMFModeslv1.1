@@ -12,10 +12,10 @@ export default function MarketOverview() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
-  // Find specific indices
-  const nifty50 = marketIndices?.find((index: any) => index.indexName === "NIFTY 50");
-  const niftyMidCap = marketIndices?.find((index: any) => index.indexName === "NIFTY MIDCAP 100");
-  const indiaVix = marketIndices?.find((index: any) => index.indexName === "INDIA VIX");
+  // Find specific indices with proper typing
+  const nifty50 = Array.isArray(marketIndices) ? marketIndices.find((index: any) => index.indexName === "NIFTY 50") : null;
+  const niftyMidCap = Array.isArray(marketIndices) ? marketIndices.find((index: any) => index.indexName === "NIFTY MIDCAP 100") : null;
+  const indiaVix = Array.isArray(marketIndices) ? marketIndices.find((index: any) => index.indexName === "INDIA VIX") : null;
   
   return (
     <div className="px-4 sm:px-6 lg:px-8 mb-6">
@@ -88,10 +88,16 @@ export default function MarketOverview() {
                       <div className="text-xl font-semibold text-neutral-900">
                         {nifty50?.closeValue?.toLocaleString('en-IN', { maximumFractionDigits: 2 }) || 'N/A'}
                       </div>
-                      <div className="ml-2 flex items-center text-success">
-                        <span className="material-icons text-sm">arrow_upward</span>
-                        <span className="text-xs">1.25%</span>
-                      </div>
+                      {nifty50?.changePercent && (
+                        <div className={`ml-2 flex items-center ${nifty50.changePercent >= 0 ? 'text-success' : 'text-danger'}`}>
+                          <span className="material-icons text-sm">
+                            {nifty50.changePercent >= 0 ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                          <span className="text-xs">
+                            {nifty50.changePercent >= 0 ? '+' : ''}{nifty50.changePercent.toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -106,10 +112,16 @@ export default function MarketOverview() {
                       <div className="text-xl font-semibold text-neutral-900">
                         {niftyMidCap?.closeValue?.toLocaleString('en-IN', { maximumFractionDigits: 2 }) || 'N/A'}
                       </div>
-                      <div className="ml-2 flex items-center text-success">
-                        <span className="material-icons text-sm">arrow_upward</span>
-                        <span className="text-xs">0.82%</span>
-                      </div>
+                      {niftyMidCap?.changePercent && (
+                        <div className={`ml-2 flex items-center ${niftyMidCap.changePercent >= 0 ? 'text-success' : 'text-danger'}`}>
+                          <span className="material-icons text-sm">
+                            {niftyMidCap.changePercent >= 0 ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                          <span className="text-xs">
+                            {niftyMidCap.changePercent >= 0 ? '+' : ''}{niftyMidCap.changePercent.toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -124,10 +136,16 @@ export default function MarketOverview() {
                       <div className="text-xl font-semibold text-neutral-900">
                         {indiaVix?.closeValue?.toLocaleString('en-IN', { maximumFractionDigits: 2 }) || 'N/A'}
                       </div>
-                      <div className="ml-2 flex items-center text-danger">
-                        <span className="material-icons text-sm">arrow_downward</span>
-                        <span className="text-xs">2.14%</span>
-                      </div>
+                      {indiaVix?.changePercent && (
+                        <div className={`ml-2 flex items-center ${indiaVix.changePercent >= 0 ? 'text-success' : 'text-danger'}`}>
+                          <span className="material-icons text-sm">
+                            {indiaVix.changePercent >= 0 ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                          <span className="text-xs">
+                            {indiaVix.changePercent >= 0 ? '+' : ''}{indiaVix.changePercent.toFixed(2)}%
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

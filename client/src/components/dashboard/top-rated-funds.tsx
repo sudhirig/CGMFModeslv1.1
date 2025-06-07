@@ -100,8 +100,12 @@ export default function TopRatedFunds() {
                           <div className="text-sm font-medium text-neutral-900">{fund.totalScore.toFixed(1)}</div>
                           <div className="text-xs text-neutral-500">Quartile {fund.quartile}</div>
                         </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm text-success">
-                          {fund.return1yScore ? `+${((fund.return1yScore / 10) * 20).toFixed(1)}%` : "N/A"}
+                        <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
+                          {fund.return1y ? (
+                            <span className={fund.return1y >= 0 ? 'text-success' : 'text-danger'}>
+                              {fund.return1y >= 0 ? '+' : ''}{fund.return1y.toFixed(1)}%
+                            </span>
+                          ) : "N/A"}
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap text-right">
                           <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${riskGrade.class}`}>

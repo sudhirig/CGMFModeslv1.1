@@ -558,11 +558,17 @@ export default function ElivateFramework() {
                         </tr>
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">FII Flows</td>
-                          <td className="px-4 py-3 text-sm text-neutral-500">₹{elivateScore?.fiiFlowsCr.toLocaleString()} Cr</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">
+                            {elivateScore?.fiiFlowsCr ? `₹${elivateScore.fiiFlowsCr.toLocaleString()} Cr` : 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">NSE India</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Monthly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
-                                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.fiiFlowsCr) || 0) / 15000) * 100, 100)}%` }}></div>
+                                {elivateScore?.fiiFlowsCr && (
+                                  <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(Math.abs(elivateScore.fiiFlowsCr) / 15000 * 100, 100)}%` }}></div>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -570,11 +576,17 @@ export default function ElivateFramework() {
                         </tr>
                         <tr>
                           <td className="px-4 py-3 text-sm font-medium text-neutral-900">SIP Inflows</td>
-                          <td className="px-4 py-3 text-sm text-neutral-500">₹{elivateScore?.sipInflowsCr.toLocaleString()} Cr</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">
+                            {elivateScore?.sipInflowsCr ? `₹${elivateScore.sipInflowsCr.toLocaleString()} Cr` : 'N/A'}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">AMFI</td>
+                          <td className="px-4 py-3 text-sm text-neutral-500">Monthly</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center">
                               <div className="w-16 bg-neutral-200 rounded-full h-2">
-                                <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(((Number(elivateScore?.sipInflowsCr) || 0) / 18000) * 100, 100)}%` }}></div>
+                                {elivateScore?.sipInflowsCr && (
+                                  <div className="bg-indigo-500 h-2 rounded-full" style={{ width: `${Math.min(elivateScore.sipInflowsCr / 18000 * 100, 100)}%` }}></div>
+                                )}
                               </div>
                             </div>
                           </td>
