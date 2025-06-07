@@ -76,8 +76,8 @@ export default function ElivateGauge({ score, size = 120 }: ElivateGaugeProps) {
       
       {/* Score text */}
       <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
-        <div className="text-2xl font-bold" style={{ color: getColor() }}>{score}</div>
-        <div className="text-xs text-neutral-500">/ 100</div>
+        <div className="text-2xl font-bold" style={{ color: getColor() }}>{score.toFixed(1)}</div>
+        <div className="text-xs text-neutral-500">/ 100 pts</div>
       </div>
     </div>
   );
