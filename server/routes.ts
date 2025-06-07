@@ -1042,8 +1042,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/elivate/collect-authentic-data", async (req, res) => {
     try {
-      const { AuthenticMarketDataCollector } = await import('./services/authentic-market-data-collector.js');
-      const result = await AuthenticMarketDataCollector.collectAllAuthenticData();
+      const { ComprehensiveDataCollector } = await import('./services/comprehensive-data-collector.js');
+      const result = await ComprehensiveDataCollector.collectAllAuthenticData();
       res.json(result);
     } catch (error) {
       console.error("Error collecting authentic market data:", error);
