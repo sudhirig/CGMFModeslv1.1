@@ -742,7 +742,7 @@ export class FundScoringEngine {
         await pool.query(`
           INSERT INTO fund_performance_metrics (
             fund_id, scoring_date, return_3m_score, return_1y_score, return_3y_score,
-            volatility_1y_percent, expense_ratio_score, data_quality_score,
+            volatility, expense_ratio_score, data_quality_score,
             total_score, recommendation, subcategory, created_at
           )
           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
