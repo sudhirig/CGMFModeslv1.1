@@ -1,7 +1,7 @@
 // Script to verify the quality of NAV data, ensuring proper variation across dates
-import pg from 'pg';
+import pkg from 'pg';
 
-const { Pool } = pg;
+const { Pool } = pkg;
 
 async function verifyNavDataQuality() {
   try {

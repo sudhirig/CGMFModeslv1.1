@@ -1,8 +1,8 @@
 // Script to monitor NAV data import and trigger quartile rescoring when complete
-import pg from 'pg';
+import pkg from 'pg';
 import axios from 'axios';
 
-const { Pool } = pg;
+const { Pool } = pkg;
 
 async function monitorAndTriggerRescoring() {
   try {

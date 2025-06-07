@@ -4,11 +4,7 @@
  * Preserves existing scoring system - only adds missing subcategory rankings
  */
 
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
+import { pool } from '../db';
 
 export class SubcategoryAnalysis {
 

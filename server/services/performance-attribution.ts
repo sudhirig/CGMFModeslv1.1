@@ -4,11 +4,7 @@
  * Preserves existing scoring system - only adds attribution analysis
  */
 
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL
-});
+import { pool } from '../db';
 
 export class PerformanceAttribution {
 
