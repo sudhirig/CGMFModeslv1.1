@@ -162,12 +162,12 @@ class AuthenticDataValidator {
     console.log('\n💰 Validating Fund Data...');
     
     const funds = await executeRawQuery(`
-      SELECT scheme_code, fund_name, category, sub_category, 
+      SELECT scheme_code, fund_name, category, subcategory, 
              inception_date, expense_ratio, exit_load,
              COUNT(*) as records_count
       FROM funds 
       WHERE scheme_code IS NOT NULL
-      GROUP BY scheme_code, fund_name, category, sub_category, 
+      GROUP BY scheme_code, fund_name, category, subcategory, 
                inception_date, expense_ratio, exit_load
       LIMIT 100
     `);
@@ -183,7 +183,7 @@ class AuthenticDataValidator {
     funds.rows.forEach(row => {
       if (this.isContaminated(row.fund_name) || 
           this.isContaminated(row.category) ||
-          this.isContaminated(row.sub_category)) {
+          this.isContaminated(row.subcategory)) {
         validation.status = 'CONTAMINATED';
         validation.issues.push(`Synthetic fund data: ${row.scheme_code}`);
       }
@@ -217,13 +217,13 @@ class AuthenticDataValidator {
         AVG(nav_value) as avg_nav,
         MIN(nav_value) as min_nav,
         MAX(nav_value) as max_nav
-      FROM fund_nav_history 
+      FROM nav_data 
       WHERE nav_value > 0
     `);
 
     const suspiciousNavs = await executeRawQuery(`
       SELECT fund_id, nav_date, nav_value
-      FROM fund_nav_history 
+      FROM nav_data 
       WHERE nav_value < 1 OR nav_value > 10000
       ORDER BY nav_date DESC
       LIMIT 50
