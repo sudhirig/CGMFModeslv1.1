@@ -76,7 +76,7 @@ export class EnhancedDataAggregator {
     for (const indicator of missingIndicators) {
       // Check if authentic data exists
       const existingQuery = await pool.query(
-        'SELECT id FROM market_indices WHERE index_name = $1 AND index_date = $2',
+        'SELECT index_name FROM market_indices WHERE index_name = $1 AND index_date = $2',
         [indicator.name, today]
       );
       

@@ -56,7 +56,6 @@ export class FREDIndiaCollector {
             series_id: seriesId,
             api_key: this.apiKey,
             file_type: 'json',
-            frequency: 'd', // Will get the most recent available regardless of frequency
             limit: 1,
             sort_order: 'desc'
           };
@@ -202,7 +201,7 @@ export class FREDIndiaCollector {
       try {
         // Check if data already exists for today
         const existingQuery = await pool.query(
-          'SELECT id FROM market_indices WHERE index_name = $1 AND index_date = $2',
+          'SELECT index_name FROM market_indices WHERE index_name = $1 AND index_date = $2',
           [data.indexName, data.date || today]
         );
         

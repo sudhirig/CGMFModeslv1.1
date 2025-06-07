@@ -34,7 +34,6 @@ export class ComprehensiveDataCollector {
           series_id: seriesId,
           api_key: apiKey,
           file_type: 'json',
-          frequency: 'd',
           limit: 1,
           sort_order: 'desc'
         };
