@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { quartileScheduler } from "./services/automated-quartile-scheduler";
 import { backgroundHistoricalImporter } from "./services/background-historical-importer";
+import { checkDatabaseHealth, closeDatabase } from "./db";
 
 const app = express();
 app.use(express.json());
@@ -38,6 +39,33 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add health check endpoint
+app.get("/api/health", async (req, res) => {
+  try {
+    const dbHealth = await checkDatabaseHealth();
+    const health = {
+      status: "ok",
+      timestamp: new Date().toISOString(),
+      database: dbHealth ? "connected" : "disconnected",
+      uptime: process.uptime()
+    };
+    
+    if (dbHealth) {
+      res.json(health);
+    } else {
+      res.status(503).json({ ...health, status: "degraded" });
+    }
+  } catch (error) {
+    res.status(503).json({
+      status: "error",
+      timestamp: new Date().toISOString(),
+      database: "error",
+      uptime: process.uptime(),
+      error: "Health check failed"
+    });
+  }
+});
+
 // Add quartile API routes BEFORE Vite middleware to prevent conflicts
 app.get("/api/quartile/distribution", async (req, res) => {
   console.log("✓ DIRECT QUARTILE DISTRIBUTION ROUTE HIT!");
@@ -49,7 +77,7 @@ app.get("/api/quartile/distribution", async (req, res) => {
     res.json(distribution);
   } catch (error) {
     console.error("Error in direct quartile distribution:", error);
-    res.status(500).json({ error: "Failed to fetch quartile distribution" });
+    res.status(500).json({ error: "Failed to fetch quartile distribution", details: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 
@@ -62,7 +90,7 @@ app.get("/api/quartile/metrics", async (req, res) => {
     res.json(metrics);
   } catch (error) {
     console.error("Error in direct quartile metrics:", error);
-    res.status(500).json({ error: "Failed to fetch quartile metrics" });
+    res.status(500).json({ error: "Failed to fetch quartile metrics", details: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 
@@ -82,7 +110,7 @@ app.get("/api/quartile/funds/:quartile", async (req, res) => {
     res.json(funds);
   } catch (error) {
     console.error("Error in direct quartile funds:", error);
-    res.status(500).json({ error: "Failed to fetch funds by quartile" });
+    res.status(500).json({ error: "Failed to fetch funds by quartile", details: error instanceof Error ? error.message : "Unknown error" });
   }
 });
 
@@ -110,11 +138,62 @@ app.get("/api/quartile/funds/:quartile", async (req, res) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
   const port = 5000;
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
+  
+  // Enhanced server startup with error handling
+  try {
+    server.listen({
+      port,
+      host: "0.0.0.0",
+      reusePort: true,
+    }, async () => {
+      log(`serving on port ${port}`);
+      
+      // Perform initial database health check
+      const dbHealth = await checkDatabaseHealth();
+      if (dbHealth) {
+        log('Database connection verified');
+      } else {
+        log('Warning: Database connection issues detected, but server will continue running');
+      }
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+
+  // Graceful shutdown handling
+  const gracefulShutdown = async (signal: string) => {
+    console.log(`Received ${signal}. Gracefully shutting down...`);
+    
+    server.close(async () => {
+      console.log('HTTP server closed');
+      
+      // Close database connections
+      await closeDatabase();
+      
+      console.log('Graceful shutdown completed');
+      process.exit(0);
+    });
+    
+    // Force shutdown after 10 seconds
+    setTimeout(() => {
+      console.error('Could not close connections in time, forcefully shutting down');
+      process.exit(1);
+    }, 10000);
+  };
+
+  // Handle different shutdown signals
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  
+  // Handle uncaught exceptions and rejections
+  process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    gracefulShutdown('uncaughtException');
+  });
+  
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    gracefulShutdown('unhandledRejection');
   });
 })();
