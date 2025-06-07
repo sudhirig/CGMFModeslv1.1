@@ -4,7 +4,7 @@
  * Zero synthetic data tolerance - only authentic API sources
  */
 
-import { fredIndiaCollector } from './fred-india-collector.js';
+import { FREDIndiaCollector } from './fred-india-collector.js';
 import { yahooFinanceCollector } from './yahoo-finance-collector.js';
 import { executeRawQuery } from '../db.js';
 
@@ -36,7 +36,8 @@ export class EnhancedELIVATECalculator {
     console.log('🚀 Starting Enhanced ELIVATE calculation with all components...');
     
     // Collect authentic data from all sources
-    const fredData = await fredIndiaCollector.collectComprehensiveIndicators();
+    const fredCollector = new FREDIndiaCollector();
+    const fredData = await fredCollector.collectComprehensiveIndicators();
     const yahooData = await yahooFinanceCollector.collectCompleteMarketData();
     
     // Calculate each component using authentic data
