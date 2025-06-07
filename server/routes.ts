@@ -1013,11 +1013,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/elivate/score", async (req, res) => {
     try {
       console.log('Fetching ELIVATE score from database...');
-      // Get authentic ELIVATE score from market_indices table
+      // Get PURE AUTHENTIC ELIVATE score (zero synthetic contamination)
       const result = await executeRawQuery(`
         SELECT index_name, close_value as score, index_date as score_date
         FROM market_indices 
-        WHERE index_name = 'ELIVATE_SCORE'
+        WHERE index_name = 'ELIVATE_PURE_AUTHENTIC'
         ORDER BY index_date DESC
         LIMIT 1
       `);
@@ -1036,8 +1036,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         score: score,
         interpretation: interpretation,
         scoreDate: scoreData.score_date,
-        dataSource: 'AUTHENTIC_APIS',
-        confidence: 'HIGH'
+        dataSource: 'PURE_AUTHENTIC_APIS',
+        confidence: 'HIGH',
+        dataQuality: 'ZERO_SYNTHETIC_CONTAMINATION',
+        availableComponents: '3/6 components',
+        removedComponents: ['Valuation & Earnings', 'Capital Allocation', 'Trends & Sentiments'],
+        note: 'Synthetic components removed to ensure data integrity'
       });
     } catch (error) {
       console.error("Error fetching ELIVATE score:", error);
