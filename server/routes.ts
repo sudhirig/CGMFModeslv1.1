@@ -1071,6 +1071,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/elivate/calculate-authentic", async (req, res) => {
+    try {
+      const { AuthenticElivateCalculator } = await import('./services/authentic-elivate-calculator.js');
+      const result = await AuthenticElivateCalculator.calculateAuthenticElivateScore();
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating authentic ELIVATE score:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ 
+        message: "Failed to calculate authentic ELIVATE score", 
+        error: errorMessage
+      });
+    }
+  });
+
   app.post("/api/elivate/populate-demo-data", async (req, res) => {
     try {
       const { ElivateDemoDataCollector } = await import('./services/elivate-demo-data-collector.js');
