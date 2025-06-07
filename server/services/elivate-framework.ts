@@ -193,11 +193,15 @@ export class ElivateFramework {
       WHERE index_name = 'CHINA PMI' 
       ORDER BY index_date DESC LIMIT 1`);
     
-    // Use actual data if available, otherwise use latest reported values
-    const usGdpGrowth = usGdpData.rows.length > 0 ? parseFloat(usGdpData.rows[0].close_value) : 2.1;
-    const fedFundsRate = fedData.rows.length > 0 ? parseFloat(fedData.rows[0].close_value) : 5.25;
-    const dxyIndex = dxyData.rows.length > 0 ? parseFloat(dxyData.rows[0].close_value) : 102.5;
-    const chinaPmi = chinaPmiData.rows.length > 0 ? parseFloat(chinaPmiData.rows[0].close_value) : 50.2;
+    // Only use authentic data - reject synthetic values
+    if (usGdpData.rows.length === 0 || fedData.rows.length === 0 || dxyData.rows.length === 0 || chinaPmiData.rows.length === 0) {
+      throw new Error("ELIVATE Framework requires authentic market data. Missing external influence data from authorized sources.");
+    }
+    
+    const usGdpGrowth = parseFloat(usGdpData.rows[0].close_value);
+    const fedFundsRate = parseFloat(fedData.rows[0].close_value);
+    const dxyIndex = parseFloat(dxyData.rows[0].close_value);
+    const chinaPmi = parseFloat(chinaPmiData.rows[0].close_value);
     
     // Calculate component scores (each out of their proportion of 20 points)
     const usGdpScore = this.scoreGdpGrowth(usGdpGrowth, 5);
@@ -248,11 +252,15 @@ export class ElivateFramework {
       WHERE index_name = 'INDIA PMI' 
       ORDER BY index_date DESC LIMIT 1`);
     
-    // Use actual data if available, otherwise use latest reported values
-    const indiaGdpGrowth = gdpData.rows.length > 0 ? parseFloat(gdpData.rows[0].close_value) : 6.8;
-    const gstCollectionCr = gstData.rows.length > 0 ? parseFloat(gstData.rows[0].close_value) : 175000;
-    const iipGrowth = iipData.rows.length > 0 ? parseFloat(iipData.rows[0].close_value) : 4.2;
-    const indiaPmi = pmiData.rows.length > 0 ? parseFloat(pmiData.rows[0].close_value) : 57.5;
+    // Only use authentic data - reject synthetic values
+    if (gdpData.rows.length === 0 || gstData.rows.length === 0 || iipData.rows.length === 0 || pmiData.rows.length === 0) {
+      throw new Error("ELIVATE Framework requires authentic market data. Missing local story data from authorized sources.");
+    }
+    
+    const indiaGdpGrowth = parseFloat(gdpData.rows[0].close_value);
+    const gstCollectionCr = parseFloat(gstData.rows[0].close_value);
+    const iipGrowth = parseFloat(iipData.rows[0].close_value);
+    const indiaPmi = parseFloat(pmiData.rows[0].close_value);
     
     // Calculate component scores
     const gdpScore = this.scoreGdpGrowth(indiaGdpGrowth, 7);
@@ -303,11 +311,15 @@ export class ElivateFramework {
       WHERE index_name = '10Y GSEC YIELD' 
       ORDER BY index_date DESC LIMIT 1`);
     
-    // Use actual data if available, otherwise use latest reported values
-    const cpiInflation = cpiData.rows.length > 0 ? parseFloat(cpiData.rows[0].close_value) : 4.7;
-    const wpiInflation = wpiData.rows.length > 0 ? parseFloat(wpiData.rows[0].close_value) : 3.1;
-    const repoRate = repoData.rows.length > 0 ? parseFloat(repoData.rows[0].close_value) : 6.5;
-    const tenYearYield = yieldData.rows.length > 0 ? parseFloat(yieldData.rows[0].close_value) : 7.1;
+    // Only use authentic data - reject synthetic values
+    if (cpiData.rows.length === 0 || wpiData.rows.length === 0 || repoData.rows.length === 0 || yieldData.rows.length === 0) {
+      throw new Error("ELIVATE Framework requires authentic market data. Missing inflation and rates data from authorized sources.");
+    }
+    
+    const cpiInflation = parseFloat(cpiData.rows[0].close_value);
+    const wpiInflation = parseFloat(wpiData.rows[0].close_value);
+    const repoRate = parseFloat(repoData.rows[0].close_value);
+    const tenYearYield = parseFloat(yieldData.rows[0].close_value);
     
     // Calculate component scores
     const cpiScore = this.scoreInflation(cpiInflation, 6);
@@ -337,10 +349,25 @@ export class ElivateFramework {
     // Extract Nifty 50 data if available
     const nifty50 = latestIndices.find(index => index.indexName === 'NIFTY 50');
     
-    // Use actual data if available, otherwise use simulated data
-    const niftyPe = nifty50?.peRatio ?? 20.5;  // Current P/E ratio
-    const niftyPb = nifty50?.pbRatio ?? 3.2;   // Current P/B ratio
-    const earningsGrowth = 15.3;              // YoY earnings growth
+    // Only use authentic data - reject synthetic values
+    if (!nifty50 || !nifty50.peRatio || !nifty50.pbRatio) {
+      throw new Error("ELIVATE Framework requires authentic market data. Missing Nifty 50 valuation data from authorized sources.");
+    }
+    
+    const niftyPe = nifty50.peRatio;
+    const niftyPb = nifty50.pbRatio;
+    
+    // Fetch earnings growth from market data
+    const earningsData = await pool.query(`
+      SELECT close_value FROM market_indices 
+      WHERE index_name = 'EARNINGS GROWTH' 
+      ORDER BY index_date DESC LIMIT 1`);
+    
+    if (earningsData.rows.length === 0) {
+      throw new Error("ELIVATE Framework requires authentic market data. Missing earnings growth data from authorized sources.");
+    }
+    
+    const earningsGrowth = parseFloat(earningsData.rows[0].close_value);
     
     // Calculate component scores
     const peScore = this.scorePeRatio(niftyPe, 8);
