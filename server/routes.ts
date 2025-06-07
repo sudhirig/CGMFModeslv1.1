@@ -1036,7 +1036,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(result);
     } catch (error) {
       console.error("Error calculating ELIVATE score:", error);
-      res.status(500).json({ message: "Failed to calculate ELIVATE score" });
+      res.status(500).json({ message: "Failed to calculate ELIVATE score", error: error.message });
+    }
+  });
+
+  app.post("/api/elivate/collect-authentic-data", async (req, res) => {
+    try {
+      const { AuthenticMarketDataCollector } = await import('./services/authentic-market-data-collector.js');
+      const result = await AuthenticMarketDataCollector.collectAllAuthenticData();
+      res.json(result);
+    } catch (error) {
+      console.error("Error collecting authentic market data:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ 
+        message: "Failed to collect authentic market data", 
+        error: errorMessage,
+        suggestion: "Please ensure API keys are configured for external data sources"
+      });
+    }
+  });
+
+  app.get("/api/elivate/data-integrity", async (req, res) => {
+    try {
+      const { ElivateDataIntegrityValidator } = await import('./services/elivate-data-integrity-validator.js');
+      const report = await ElivateDataIntegrityValidator.validateDataIntegrity();
+      res.json(report);
+    } catch (error) {
+      console.error("Error validating ELIVATE data integrity:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to validate data integrity", error: errorMessage });
+    }
+  });
+
+  app.post("/api/elivate/clean-synthetic-data", async (req, res) => {
+    try {
+      const { ElivateDataIntegrityValidator } = await import('./services/elivate-data-integrity-validator.js');
+      const result = await ElivateDataIntegrityValidator.cleanSyntheticData();
+      res.json(result);
+    } catch (error) {
+      console.error("Error cleaning synthetic data:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ message: "Failed to clean synthetic data", error: errorMessage });
     }
   });
 
