@@ -495,7 +495,7 @@ export class DatabaseStorage implements IStorage {
       const result = await executeRawQuery(query, params);
       
       if (result.rows.length === 0) {
-        throw new Error("No authentic quartile data found in fund_scores_corrected");
+        throw new Error("No authentic quartile data found in quartile_rankings");
       }
       
       const data = result.rows[0];
@@ -521,7 +521,7 @@ export class DatabaseStorage implements IStorage {
         q2Percent,
         q3Percent,
         q4Percent,
-        dataSource: 'fund_scores_corrected'
+        dataSource: 'quartile_rankings'
       };
     } catch (error) {
       console.error("Error getting authentic quartile distribution:", error);
