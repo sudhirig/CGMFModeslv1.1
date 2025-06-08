@@ -382,15 +382,15 @@ export class DatabaseStorage implements IStorage {
   // Quartile Analysis methods - using authentic fund_scores_corrected data
   async getFundsByQuartile(quartile: number, category?: string): Promise<any> {
     try {
-      // Use authentic fund_scores_corrected table with current date
+      // Use authentic quartile_rankings table with latest calculation date
       let whereClause = `
-        WHERE fsc.quartile = $1 
-        AND fsc.score_date = CURRENT_DATE
+        WHERE qr.quartile = $1 
+        AND qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
       `;
       const params: any[] = [quartile];
       
       if (category) {
-        whereClause += ` AND f.category = $${params.length + 1}`;
+        whereClause += ` AND qr.category = $${params.length + 1}`;
         params.push(category);
       }
       
@@ -401,14 +401,19 @@ export class DatabaseStorage implements IStorage {
           f.category,
           f.subcategory,
           f.amc_name as "amc",
-          fsc.total_score as "totalScore",
-          fsc.recommendation,
-          fsc.subcategory_rank as "rank",
-          fsc.subcategory_percentile as "percentile"
-        FROM fund_scores_corrected fsc
-        JOIN funds f ON fsc.fund_id = f.id
+          qr.composite_score as "totalScore",
+          CASE 
+            WHEN qr.quartile = 1 THEN 'STRONG_SELL'
+            WHEN qr.quartile = 2 THEN 'SELL'
+            WHEN qr.quartile = 3 THEN 'HOLD'
+            WHEN qr.quartile = 4 THEN 'BUY'
+          END as recommendation,
+          qr.rank,
+          qr.percentile
+        FROM quartile_rankings qr
+        JOIN funds f ON qr.fund_id = f.id
         ${whereClause}
-        ORDER BY fsc.total_score DESC
+        ORDER BY qr.composite_score DESC
         LIMIT 100
       `;
       
@@ -423,36 +428,34 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileMetrics(category?: string): Promise<any> {
     try {
-      let whereClause = "WHERE fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL";
+      let whereClause = "WHERE qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)";
       const params: any[] = [];
       
       if (category) {
-        whereClause += " AND fsc.category = $1";
+        whereClause += " AND qr.category = $1";
         params.push(category);
       }
       
-      // Query for authentic quartile performance data from fund_scores_corrected
+      // Query for authentic quartile performance data from quartile_rankings
       const performanceQuery = `
         SELECT 
-          fsc.quartile,
-          ROUND(AVG(fsc.return_1y_score * 20), 2) as avg_return_1y,
-          ROUND(AVG(fsc.return_3y_score * 12.5), 2) as avg_return_3y,
-          ROUND(AVG(fsc.total_score), 2) as avg_score,
+          qr.quartile,
+          ROUND(AVG(qr.composite_score), 2) as avg_score,
+          ROUND(AVG(qr.percentile), 2) as avg_percentile,
           COUNT(*) as fund_count
-        FROM fund_scores_corrected fsc
+        FROM quartile_rankings qr
         ${whereClause}
-        GROUP BY fsc.quartile
-        ORDER BY fsc.quartile
+        GROUP BY qr.quartile
+        ORDER BY qr.quartile
       `;
       
       const performanceResult = await executeRawQuery(performanceQuery, params);
       
-      // Transform authentic performance data from fund_scores_corrected
+      // Transform authentic performance data from quartile_rankings
       const returnsData = performanceResult.rows.map(row => ({
         name: `Q${row.quartile}`,
-        return1Y: parseFloat(row.avg_return_1y) || 0,
-        return3Y: parseFloat(row.avg_return_3y) || 0,
         avgScore: parseFloat(row.avg_score) || 0,
+        avgPercentile: parseFloat(row.avg_percentile) || 0,
         fundCount: parseInt(row.fund_count) || 0
       }));
 
@@ -467,25 +470,25 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileDistribution(category?: string): Promise<any> {
     try {
-      // Use authentic fund_scores_corrected data with current date
-      let whereClause = "WHERE fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL";
+      // Use authentic quartile_rankings data with latest calculation date
+      let whereClause = "WHERE qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)";
       const params: any[] = [];
       
       if (category) {
-        whereClause += " AND f.category = $1";
+        whereClause += " AND qr.category = $1";
         params.push(category);
       }
       
-      // Query authentic fund_scores_corrected table only (no synthetic data)
+      // Query authentic quartile_rankings table (proper quartile distribution)
       const query = `
         SELECT 
           COUNT(*) as total_count,
-          COUNT(CASE WHEN fsc.quartile = 1 THEN 1 END) as q1_count,
-          COUNT(CASE WHEN fsc.quartile = 2 THEN 1 END) as q2_count,
-          COUNT(CASE WHEN fsc.quartile = 3 THEN 1 END) as q3_count,
-          COUNT(CASE WHEN fsc.quartile = 4 THEN 1 END) as q4_count
-        FROM fund_scores_corrected fsc
-        JOIN funds f ON fsc.fund_id = f.id
+          COUNT(CASE WHEN qr.quartile = 1 THEN 1 END) as q1_count,
+          COUNT(CASE WHEN qr.quartile = 2 THEN 1 END) as q2_count,
+          COUNT(CASE WHEN qr.quartile = 3 THEN 1 END) as q3_count,
+          COUNT(CASE WHEN qr.quartile = 4 THEN 1 END) as q4_count
+        FROM quartile_rankings qr
+        JOIN funds f ON qr.fund_id = f.id
         ${whereClause}
       `;
       
