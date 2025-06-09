@@ -10,15 +10,13 @@ export class QuartileScheduler {
   }
   
   startScheduler(intervalDays: number = 7) {
-    // Run immediately on startup
-    this.runBatchProcess();
-    
-    // Then schedule at regular intervals
-    setInterval(() => {
-      this.runBatchProcess();
-    }, intervalDays * 24 * 60 * 60 * 1000);
-    
-    console.log(`Quartile scoring scheduler started with interval of ${intervalDays} days`);
+    console.log(`Quartile scoring scheduler DISABLED to prevent data corruption`);
+    console.log(`Manual triggering still available via API`);
+    // DISABLED: Automated batch processing stopped to preserve data integrity
+    // this.runBatchProcess();
+    // setInterval(() => {
+    //   this.runBatchProcess();
+    // }, intervalDays * 24 * 60 * 60 * 1000);
   }
   
   private async runBatchProcess() {

@@ -766,16 +766,21 @@ export class FundScoringEngine {
     }
   }
 
-  // Generate recommendation based on actual returns and volatility
+  // DISABLED: Generate recommendation based on actual returns and volatility
+  // This method was corrupting data with wrong thresholds
   private getRecommendationFromActualReturns(return3m: number | null, return1y: number | null, volatility: number | null): string {
-    const totalReturn = (return3m || 0) + (return1y || 0);
-    const riskAdjusted = volatility ? totalReturn / (volatility / 10) : totalReturn;
+    // DISABLED: Return neutral recommendation to prevent data corruption
+    console.log('WARNING: getRecommendationFromActualReturns disabled to prevent data corruption');
+    return 'HOLD'; // Safe default to prevent corruption
     
-    if (riskAdjusted >= 25) return 'STRONG_BUY';
-    if (riskAdjusted >= 15) return 'BUY';
-    if (riskAdjusted >= 5) return 'HOLD';
-    if (riskAdjusted >= -5) return 'SELL';
-    return 'STRONG_SELL';
+    // CORRUPTED LOGIC DISABLED:
+    // const totalReturn = (return3m || 0) + (return1y || 0);
+    // const riskAdjusted = volatility ? totalReturn / (volatility / 10) : totalReturn;
+    // if (riskAdjusted >= 25) return 'STRONG_BUY'; // WRONG - should be 70+
+    // if (riskAdjusted >= 15) return 'BUY';        // WRONG - should be 60+
+    // if (riskAdjusted >= 5) return 'HOLD';        // WRONG - should be 50+
+    // if (riskAdjusted >= -5) return 'SELL';       // WRONG - should be 35+
+    // return 'STRONG_SELL';
   }
 
   // Process a batch of funds
