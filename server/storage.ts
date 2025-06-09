@@ -431,30 +431,36 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileMetrics(category?: string): Promise<any> {
     try {
-      let whereClause = "WHERE qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)";
+      let whereClause = "WHERE fpm.total_score IS NOT NULL";
       const params: any[] = [];
       
       if (category) {
-        whereClause += " AND qr.category = $1";
+        whereClause += " AND f.category = $1";
         params.push(category);
       }
       
-      // Query for authentic quartile performance data from quartile_rankings
+      // Query for authentic quartile performance data from fund_performance_metrics with score-based quartiles
       const performanceQuery = `
         SELECT 
-          qr.quartile,
-          ROUND(AVG(qr.composite_score), 2) as avg_score,
-          ROUND(AVG(qr.percentile), 2) as avg_percentile,
+          CASE 
+            WHEN fpm.total_score >= 85 THEN 1
+            WHEN fpm.total_score >= 70 THEN 2
+            WHEN fpm.total_score >= 55 THEN 3
+            ELSE 4
+          END as quartile,
+          ROUND(AVG(fpm.total_score), 2) as avg_score,
+          ROUND(AVG(PERCENT_RANK() OVER (ORDER BY fpm.total_score DESC) * 100), 2) as avg_percentile,
           COUNT(*) as fund_count
-        FROM quartile_rankings qr
+        FROM fund_performance_metrics fpm
+        JOIN funds f ON fpm.fund_id = f.id
         ${whereClause}
-        GROUP BY qr.quartile
-        ORDER BY qr.quartile
+        GROUP BY 1
+        ORDER BY 1
       `;
       
       const performanceResult = await executeRawQuery(performanceQuery, params);
       
-      // Transform authentic performance data from quartile_rankings
+      // Transform authentic performance data from fund_performance_metrics
       const returnsData = performanceResult.rows.map(row => ({
         name: `Q${row.quartile}`,
         avgScore: parseFloat(row.avg_score) || 0,
