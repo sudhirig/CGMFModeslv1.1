@@ -696,8 +696,13 @@ export class FundScoringEngine {
         other_metrics_total: scores.otherMetricsTotal || 0,
         total_score: scores.totalScore || 0,
         
-        // Recommendation based on actual performance
-        recommendation: this.getRecommendationFromActualReturns(actual3mReturn, actual1yReturn, actualVolatility),
+        // Recommendation based on total score using documentation logic
+        recommendation: this.getRecommendationFromTotalScore(
+          scores.totalScore || 0,
+          scores.quartile || 3,
+          scores.riskGradeTotal || 0,
+          scores.fundamentalsTotal || 0
+        ),
         subcategory: fundInfo.subcategory,
         created_at: new Date()
       };
@@ -766,21 +771,10 @@ export class FundScoringEngine {
     }
   }
 
-  // DISABLED: Generate recommendation based on actual returns and volatility
-  // This method was corrupting data with wrong thresholds
-  private getRecommendationFromActualReturns(return3m: number | null, return1y: number | null, volatility: number | null): string {
-    // DISABLED: Return neutral recommendation to prevent data corruption
-    console.log('WARNING: getRecommendationFromActualReturns disabled to prevent data corruption');
-    return 'HOLD'; // Safe default to prevent corruption
-    
-    // CORRUPTED LOGIC DISABLED:
-    // const totalReturn = (return3m || 0) + (return1y || 0);
-    // const riskAdjusted = volatility ? totalReturn / (volatility / 10) : totalReturn;
-    // if (riskAdjusted >= 25) return 'STRONG_BUY'; // WRONG - should be 70+
-    // if (riskAdjusted >= 15) return 'BUY';        // WRONG - should be 60+
-    // if (riskAdjusted >= 5) return 'HOLD';        // WRONG - should be 50+
-    // if (riskAdjusted >= -5) return 'SELL';       // WRONG - should be 35+
-    // return 'STRONG_SELL';
+  // Use centralized recommendation engine for consistency
+  private getRecommendationFromTotalScore(totalScore: number, quartile: number = 3, riskGradeTotal: number = 0, fundamentalsTotal: number = 0): string {
+    const { RecommendationEngine } = require('./recommendation-engine');
+    return RecommendationEngine.calculateRecommendation(totalScore, quartile, riskGradeTotal, fundamentalsTotal);
   }
 
   // Process a batch of funds
