@@ -382,15 +382,23 @@ export class DatabaseStorage implements IStorage {
   // Quartile Analysis methods - using authentic fund_scores_corrected data
   async getFundsByQuartile(quartile: number, category?: string): Promise<any> {
     try {
-      // Use authentic quartile_rankings table with latest calculation date
-      let whereClause = `
-        WHERE qr.quartile = $1 
-        AND qr.calculation_date = (SELECT MAX(calculation_date) FROM quartile_rankings)
-      `;
-      const params: any[] = [quartile];
+      // Use authentic fund_performance_metrics with corrected score-based quartile logic
+      let whereClause = "WHERE fpm.total_score IS NOT NULL";
+      const params: any[] = [];
+      
+      // Apply documented score-based quartile thresholds
+      if (quartile === 1) {
+        whereClause += " AND fpm.total_score >= 85";
+      } else if (quartile === 2) {
+        whereClause += " AND fpm.total_score >= 70 AND fpm.total_score < 85";
+      } else if (quartile === 3) {
+        whereClause += " AND fpm.total_score >= 55 AND fpm.total_score < 70";
+      } else if (quartile === 4) {
+        whereClause += " AND fpm.total_score < 55";
+      }
       
       if (category) {
-        whereClause += ` AND qr.category = $${params.length + 1}`;
+        whereClause += ` AND f.category = $${params.length + 1}`;
         params.push(category);
       }
       
@@ -401,19 +409,14 @@ export class DatabaseStorage implements IStorage {
           f.category,
           f.subcategory,
           f.amc_name as "amc",
-          qr.composite_score as "totalScore",
-          CASE 
-            WHEN qr.quartile = 1 THEN 'STRONG_SELL'
-            WHEN qr.quartile = 2 THEN 'SELL'
-            WHEN qr.quartile = 3 THEN 'HOLD'
-            WHEN qr.quartile = 4 THEN 'BUY'
-          END as recommendation,
-          qr.rank,
-          qr.percentile
-        FROM quartile_rankings qr
-        JOIN funds f ON qr.fund_id = f.id
+          fpm.total_score as "totalScore",
+          fpm.recommendation,
+          ROW_NUMBER() OVER (PARTITION BY f.category ORDER BY fpm.total_score DESC) as rank,
+          PERCENT_RANK() OVER (PARTITION BY f.category ORDER BY fpm.total_score DESC) * 100 as percentile
+        FROM fund_performance_metrics fpm
+        JOIN funds f ON fpm.fund_id = f.id
         ${whereClause}
-        ORDER BY qr.composite_score DESC
+        ORDER BY fpm.total_score DESC
         LIMIT 100
       `;
       
@@ -470,8 +473,8 @@ export class DatabaseStorage implements IStorage {
 
   async getQuartileDistribution(category?: string): Promise<any> {
     try {
-      // Use authentic fund_scores_corrected with score-based quartile logic
-      let whereClause = "WHERE fsc.score_date = CURRENT_DATE AND fsc.quartile IS NOT NULL";
+      // Use authentic fund_performance_metrics with corrected score-based quartile logic
+      let whereClause = "WHERE fpm.total_score IS NOT NULL";
       const params: any[] = [];
       
       if (category) {
@@ -479,16 +482,16 @@ export class DatabaseStorage implements IStorage {
         params.push(category);
       }
       
-      // Query authentic fund_scores_corrected table (score-based quartile distribution)
+      // Apply documented score-based quartile logic to fund_performance_metrics
       const query = `
         SELECT 
           COUNT(*) as total_count,
-          COUNT(CASE WHEN fsc.quartile = 1 THEN 1 END) as q1_count,
-          COUNT(CASE WHEN fsc.quartile = 2 THEN 1 END) as q2_count,
-          COUNT(CASE WHEN fsc.quartile = 3 THEN 1 END) as q3_count,
-          COUNT(CASE WHEN fsc.quartile = 4 THEN 1 END) as q4_count
-        FROM fund_scores_corrected fsc
-        JOIN funds f ON fsc.fund_id = f.id
+          COUNT(CASE WHEN fpm.total_score >= 85 THEN 1 END) as q1_count,
+          COUNT(CASE WHEN fpm.total_score >= 70 AND fpm.total_score < 85 THEN 1 END) as q2_count,
+          COUNT(CASE WHEN fpm.total_score >= 55 AND fpm.total_score < 70 THEN 1 END) as q3_count,
+          COUNT(CASE WHEN fpm.total_score < 55 THEN 1 END) as q4_count
+        FROM fund_performance_metrics fpm
+        JOIN funds f ON fpm.fund_id = f.id
         ${whereClause}
       `;
       
@@ -521,7 +524,7 @@ export class DatabaseStorage implements IStorage {
         q2Percent,
         q3Percent,
         q4Percent,
-        dataSource: 'fund_scores_corrected'
+        dataSource: 'fund_performance_metrics'
       };
     } catch (error) {
       console.error("Error getting authentic quartile distribution:", error);
