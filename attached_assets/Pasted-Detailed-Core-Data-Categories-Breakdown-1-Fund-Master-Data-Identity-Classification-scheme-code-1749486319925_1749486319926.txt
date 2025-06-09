@@ -1,0 +1,184 @@
+Detailed Core Data Categories Breakdown
+1. Fund Master Data
+Identity & Classification:
+* scheme_code (text) - Unique AMFI identifier for each fund
+* isin_div_payout (text) - ISIN for dividend payout option
+* isin_div_reinvest (text) - ISIN for dividend reinvestment option
+* fund_name (text) - Complete fund name as per AMFI
+* amc_name (text) - Asset Management Company name
+Categorization:
+* category (text) - Primary fund category (Equity, Debt, Hybrid, etc.)
+* subcategory (text) - Detailed fund subcategory
+* benchmark_name (text) - Official benchmark index
+* benchmark_index (varchar 100) - Standardized benchmark reference
+Financial Parameters:
+* expense_ratio (numeric 4,2) - Annual management fee percentage
+* minimum_investment (integer) - Minimum initial investment amount
+* minimum_additional (integer) - Minimum additional investment amount
+* exit_load (numeric 4,2) - Exit fee percentage
+* lock_in_period (integer) - Lock-in period in days
+Fund Characteristics:
+* aum_crores (numeric 12,2) - Assets Under Management in crores
+* fund_age_years (numeric 6,2) - Fund age since inception
+* inception_date (date) - Fund launch date
+* fund_manager (text) - Fund manager name
+* status (text) - Fund status (ACTIVE/INACTIVE)
+2. Historical Performance
+Daily NAV Series (nav_data table):
+* nav_value (numeric 12,4) - Daily Net Asset Value with 4-decimal precision
+* nav_change (numeric 12,4) - Daily absolute NAV change
+* nav_change_pct (numeric 8,4) - Daily percentage NAV change
+* nav_date (date) - NAV record date
+* aum_cr (numeric 15,2) - Daily AUM in crores
+Absolute Return Values:
+* return_3m_absolute (numeric 10,4) - 3-month absolute return percentage
+* return_6m_absolute (numeric 10,4) - 6-month absolute return percentage
+* return_1y_absolute (numeric 10,4) - 1-year absolute return percentage
+* return_3y_absolute (numeric 10,4) - 3-year absolute return percentage
+* return_5y_absolute (numeric 10,4) - 5-year absolute return percentage
+Volatility Measurements:
+* volatility_1y_percent (numeric) - 1-year volatility percentage
+* volatility_3y_percent (numeric) - 3-year volatility percentage
+* rolling_volatility_3m (numeric) - 3-month rolling volatility
+* rolling_volatility_6m (numeric) - 6-month rolling volatility
+* rolling_volatility_12m (numeric) - 12-month rolling volatility
+* rolling_volatility_24m (numeric) - 24-month rolling volatility
+* rolling_volatility_36m (numeric) - 36-month rolling volatility
+3. Scoring Components (Your 100-Point Methodology)
+Historical Returns (40 points maximum):
+* return_3m_score (numeric 4,2) - 3-month return score component
+* return_6m_score (numeric 4,2) - 6-month return score component
+* return_1y_score (numeric 4,2) - 1-year return score component
+* return_3y_score (numeric 4,2) - 3-year return score component
+* return_5y_score (numeric 4,2) - 5-year return score component
+* return_ytd_score (numeric) - Year-to-date return score
+* historical_returns_total (numeric 5,2) - Sum of all return scores
+Risk Grade (30 points maximum):
+* std_dev_1y_score (numeric 4,2) - 1-year standard deviation score
+* std_dev_3y_score (numeric 4,2) - 3-year standard deviation score
+* updown_capture_1y_score (numeric 4,2) - 1-year up/down capture score
+* updown_capture_3y_score (numeric 4,2) - 3-year up/down capture score
+* max_drawdown_score (numeric 4,2) - Maximum drawdown score
+* risk_grade_total (numeric 5,2) - Sum of all risk scores
+Fundamentals (15 points maximum):
+* expense_ratio_score (numeric 4,2) - Expense ratio evaluation score
+* aum_size_score (numeric 4,2) - Fund size evaluation score
+* age_maturity_score (numeric 4,2) - Fund maturity evaluation score
+* fundamentals_total (numeric 5,2) - Sum of fundamental scores
+Other Metrics (15 points maximum):
+* sectoral_similarity_score (numeric 4,2) - Sector diversification score
+* forward_score (numeric 4,2) - Forward-looking indicators score
+* momentum_score (numeric 4,2) - Momentum analysis score
+* consistency_score (numeric 4,2) - Return consistency score
+* other_metrics_total (numeric 5,2) - Sum of other metric scores
+Final Results:
+* total_score (numeric 6,2) - Combined total score (25.80-76.00 range)
+* quartile (integer) - Performance quartile (1-4)
+* recommendation (text) - Investment recommendation (STRONG_BUY/BUY/HOLD/SELL/STRONG_SELL)
+4. Advanced Risk Analytics
+Risk-Adjusted Return Ratios:
+* calmar_ratio_1y (numeric) - Return/Maximum Drawdown ratio
+* sortino_ratio_1y (numeric) - Downside risk-adjusted return
+* sharpe_ratio (numeric) - Risk-adjusted return vs risk-free rate
+* information_ratio (numeric) - Active return per unit of tracking error
+Value-at-Risk Analysis:
+* var_95_1y (numeric) - 95% confidence Value-at-Risk
+* var_99_1y (numeric) - 99% confidence Value-at-Risk
+* cvar_95_1y (numeric) - Conditional Value-at-Risk
+* downside_deviation_1y (numeric) - Downside volatility measurement
+Drawdown Analysis:
+* max_drawdown (numeric) - Maximum peak-to-trough decline
+* max_drawdown_duration_days (integer) - Longest drawdown period
+* avg_drawdown_duration_days (numeric) - Average drawdown duration
+* drawdown_frequency_per_year (numeric) - Annual drawdown frequency
+* recovery_time_avg_days (numeric) - Average recovery time
+Market Correlation & Beta:
+* alpha (numeric) - Excess return over benchmark
+* beta (numeric) - Market sensitivity coefficient
+* correlation_1y (numeric) - 1-year correlation with benchmark
+* correlation_nifty50 (numeric) - Correlation with Nifty 50
+* tracking_error_1y (numeric) - Standard deviation of excess returns
+Performance Distribution:
+* positive_months_percentage (numeric) - Percentage of positive return months
+* negative_months_percentage (numeric) - Percentage of negative return months
+* consecutive_positive_months_max (integer) - Longest winning streak
+* consecutive_negative_months_max (integer) - Longest losing streak
+* skewness_1y (numeric) - Return distribution skewness
+* kurtosis_1y (numeric) - Return distribution kurtosis
+5. Category Analysis
+Quartile Rankings:
+* quartile (integer) - Overall performance quartile (1-4)
+* quartile_label (text) - Investment signal (BUY/HOLD/REVIEW/SELL)
+* rank (integer) - Absolute rank within category
+* total_funds (integer) - Total funds in comparison category
+* percentile (numeric 6,4) - Percentile position
+Subcategory Analysis:
+* subcategory_quartile (integer) - Subcategory-specific quartile
+* subcategory_rank (integer) - Rank within subcategory
+* subcategory_total (integer) - Total funds in subcategory
+* subcategory_percentile (numeric 5,2) - Subcategory percentile position
+Benchmark Attribution:
+* fund_return_1y (numeric 10,4) - Fund's 1-year return
+* category_avg_return_1y (numeric 10,4) - Category average return
+* category_outperformance_1y (numeric 10,4) - Outperformance vs category
+* attribution_score (numeric 5,2) - Attribution analysis score
+* attribution_grade (varchar 2) - Attribution grade (A-F)
+6. Validation Framework
+Historical Predictions:
+* historical_total_score (numeric 10,2) - Past total score
+* historical_recommendation (varchar 20) - Past recommendation
+* historical_quartile (integer) - Past quartile assignment
+Actual Performance Results:
+* actual_return_3m (numeric 10,4) - Realized 3-month return
+* actual_return_6m (numeric 10,4) - Realized 6-month return
+* actual_return_1y (numeric 10,4) - Realized 1-year return
+Accuracy Metrics:
+* prediction_accuracy (boolean) - Overall prediction correctness
+* quartile_maintained (boolean) - Quartile stability
+* score_accuracy_3m (numeric 5,2) - 3-month prediction accuracy
+* score_accuracy_6m (numeric 5,2) - 6-month prediction accuracy
+* score_accuracy_1y (numeric 5,2) - 1-year prediction accuracy
+System Validation:
+* strong_buy_accuracy (numeric 5,2) - STRONG_BUY recommendation accuracy
+* buy_accuracy (numeric 5,2) - BUY recommendation accuracy
+* hold_accuracy (numeric 5,2) - HOLD recommendation accuracy
+* sell_accuracy (numeric 5,2) - SELL recommendation accuracy
+* strong_sell_accuracy (numeric 5,2) - STRONG_SELL recommendation accuracy
+7. Market Intelligence (ELIVATE Framework)
+External Influence (20 points):
+* us_gdp_growth (numeric 5,2) - US GDP growth rate
+* fed_funds_rate (numeric 4,2) - Federal Reserve interest rate
+* dxy_index (numeric 6,2) - US Dollar strength index
+* china_pmi (numeric 4,1) - China PMI manufacturing index
+* external_influence_score (numeric 4,1) - Component score
+Local Story (20 points):
+* india_gdp_growth (numeric 5,2) - India GDP growth rate
+* gst_collection_cr (numeric 10,2) - GST collections in crores
+* iip_growth (numeric 5,2) - Industrial production growth
+* india_pmi (numeric 4,1) - India PMI manufacturing index
+* local_story_score (numeric 4,1) - Component score
+Inflation & Rates (20 points):
+* cpi_inflation (numeric 4,2) - Consumer Price Index inflation
+* wpi_inflation (numeric 4,2) - Wholesale Price Index inflation
+* repo_rate (numeric 4,2) - RBI repo rate
+* ten_year_yield (numeric 4,2) - 10-year government bond yield
+* inflation_rates_score (numeric 4,1) - Component score
+Valuation & Earnings (20 points):
+* nifty_pe (numeric 5,2) - Nifty 50 P/E ratio
+* nifty_pb (numeric 4,2) - Nifty 50 P/B ratio
+* earnings_growth (numeric 5,2) - Corporate earnings growth
+* valuation_earnings_score (numeric 4,1) - Component score
+Capital Allocation (10 points):
+* fii_flows_cr (numeric 8,2) - Foreign investment flows
+* dii_flows_cr (numeric 8,2) - Domestic investment flows
+* sip_inflows_cr (numeric 8,2) - SIP inflows in crores
+* allocation_capital_score (numeric 4,1) - Component score
+Market Sentiment (10 points):
+* stocks_above_200dma_pct (numeric 4,1) - Stocks above 200-day MA
+* india_vix (numeric 5,2) - India volatility index
+* advance_decline_ratio (numeric 4,2) - Market breadth indicator
+* trends_sentiments_score (numeric 4,1) - Component score
+Framework Results:
+* total_elivate_score (numeric 5,1) - Total framework score (0-100)
+* market_stance (text) - Market outlook (BULLISH/NEUTRAL/BEARISH)
+This comprehensive data capture enables sophisticated analysis of 11,800 funds using authentic market data across 334+ data fields with complete validation and quality assurance frameworks.
