@@ -448,8 +448,8 @@ export class DatabaseStorage implements IStorage {
             WHEN fpm.total_score >= 55 THEN 3
             ELSE 4
           END as quartile,
-          ROUND(AVG(fpm.total_score), 2) as avg_score,
-          ROUND(AVG(PERCENT_RANK() OVER (ORDER BY fpm.total_score DESC) * 100), 2) as avg_percentile,
+          ROUND(AVG(fpm.total_score)::numeric, 2) as avg_score,
+          ROUND(AVG(fpm.total_score)::numeric, 2) as avg_percentile,
           COUNT(*) as fund_count
         FROM fund_performance_metrics fpm
         JOIN funds f ON fpm.fund_id = f.id
