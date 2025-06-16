@@ -50,7 +50,7 @@ export class OptimizedBacktestingEngine {
       `, [riskProfile]);
       
       if (portfolioResult.rows.length === 0) {
-        console.log(`No model portfolio found for ${riskProfile}, creating default`);
+        console.log(`No valid model portfolio found for ${riskProfile}, creating default`);
         return this.createDefaultPortfolio(riskProfile);
       }
       
@@ -62,10 +62,29 @@ export class OptimizedBacktestingEngine {
         FROM model_portfolio_allocations mpa
         JOIN funds f ON mpa.fund_id = f.id
         WHERE mpa.portfolio_id = $1
+        ORDER BY mpa.allocation_percent DESC
       `, [portfolio.id]);
       
       if (allocationsResult.rows.length === 0) {
         console.log(`No allocations found for portfolio ${portfolio.id}, creating default`);
+        return this.createDefaultPortfolio(riskProfile);
+      }
+      
+      // Ensure all funds have recent NAV data
+      const fundIds = allocationsResult.rows.map(row => row.id);
+      const navCheckResult = await pool.query(`
+        SELECT fund_id, COUNT(*) as nav_count
+        FROM nav_data 
+        WHERE fund_id = ANY($1::int[])
+        AND nav_date >= '2024-01-01'
+        GROUP BY fund_id
+      `, [fundIds]);
+      
+      const fundsWithNav = navCheckResult.rows.map(row => row.fund_id);
+      const validAllocations = allocationsResult.rows.filter(row => fundsWithNav.includes(row.id));
+      
+      if (validAllocations.length === 0) {
+        console.log(`No funds with NAV data found for portfolio ${portfolio.id}, creating default`);
         return this.createDefaultPortfolio(riskProfile);
       }
       
