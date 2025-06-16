@@ -213,7 +213,7 @@ export class ComprehensiveBacktestingEngine {
         fsc.*,
         f.fund_name,
         f.category,
-        f.sub_category,
+        f.subcategory,
         f.fund_manager,
         f.expense_ratio
       FROM fund_scores_corrected fsc
@@ -732,7 +732,7 @@ export class ComprehensiveBacktestingEngine {
         fsc.*,
         f.fund_name,
         f.category,
-        f.sub_category,
+        f.subcategory,
         f.fund_manager,
         f.expense_ratio
       FROM fund_scores_corrected fsc
@@ -778,7 +778,7 @@ export class ComprehensiveBacktestingEngine {
         fsc.*,
         f.fund_name,
         f.category,
-        f.sub_category,
+        f.subcategory,
         f.fund_manager,
         f.expense_ratio
       FROM fund_scores_corrected fsc
@@ -1012,7 +1012,7 @@ export class ComprehensiveBacktestingEngine {
         fsc.*,
         f.fund_name,
         f.category,
-        f.sub_category,
+        f.subcategory,
         f.fund_manager,
         f.expense_ratio
       FROM model_portfolio_allocations mpa
