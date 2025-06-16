@@ -185,8 +185,8 @@ class Phase2BacktestingTester {
     
     // Test multiple scenarios to ensure authentic data only
     const scenarios = [
-      { fundId: 507 },
-      { elivateScoreRange: { min: 80, max: 95 } },
+      { fundId: 8319 },
+      { elivateScoreRange: { min: 50, max: 80 } },
       { quartile: 'Q1' }
     ];
     

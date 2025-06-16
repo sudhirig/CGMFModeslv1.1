@@ -738,16 +738,17 @@ export class ComprehensiveBacktestingEngine {
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
       WHERE fsc.fund_id = $1
-      AND fsc.score_date <= $2
+      AND fsc.score_date = (SELECT MAX(score_date) FROM fund_scores_corrected)
+      AND fsc.total_score IS NOT NULL
       AND EXISTS (
         SELECT 1 FROM nav_data nav 
         WHERE nav.fund_id = fsc.fund_id 
-        AND nav.nav_date BETWEEN $3 AND $4
+        AND nav.nav_date BETWEEN $2 AND $3
         AND nav.nav_value BETWEEN 10 AND 1000
       )
       ORDER BY fsc.score_date DESC
       LIMIT 1
-    `, [fundId, scoreDate, asOfDate, new Date()]);
+    `, [fundId, config.startDate, config.endDate]);
     
     if (fundData.rows.length === 0) {
       console.log(`No data found for fund ${fundId}, checking if fund exists...`);
