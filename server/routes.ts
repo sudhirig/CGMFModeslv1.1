@@ -6,7 +6,7 @@ import { dataCollector } from "./services/data-collector";
 import { elivateFramework } from "./services/elivate-framework";
 import { fundScoringEngine } from "./services/fund-scoring";
 import { portfolioBuilder } from "./services/portfolio-builder";
-import { backtestingEngine } from "./services/backtesting-engine";
+import { BacktestingEngine } from "./services/optimized-backtesting-engine.js";
 import { fundDetailsCollector } from "./services/fund-details-collector";
 import { quartileScheduler as automatedScheduler } from "./services/automated-quartile-scheduler";
 import { quartileScheduler } from "./services/quartile-scoring-scheduler";
@@ -1841,14 +1841,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const result = await backtestingEngine.runBacktest({
-        portfolioId: portfolioId ? parseInt(portfolioId as string) : undefined,
-        riskProfile,
-        startDate: parsedStartDate,
-        endDate: parsedEndDate,
-        initialAmount: parsedAmount,
-        rebalancePeriod
-      });
+      // Create optimized backtesting engine instance
+      const engine = new BacktestingEngine();
+      
+      let portfolio;
+      if (portfolioId) {
+        portfolio = await engine.getPortfolioById(parseInt(portfolioId as string));
+      } else if (riskProfile) {
+        portfolio = await engine.generatePortfolio(riskProfile);
+      }
+      
+      if (!portfolio) {
+        return res.status(404).json({ 
+          message: "Could not find or generate portfolio" 
+        });
+      }
+      
+      const result = await engine.runBacktest(
+        portfolio,
+        parsedStartDate,
+        parsedEndDate,
+        parsedAmount,
+        rebalancePeriod || 'quarterly'
+      );
       
       res.json(result);
     } catch (error) {
