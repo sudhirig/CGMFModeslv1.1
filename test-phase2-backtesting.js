@@ -46,7 +46,7 @@ class Phase2BacktestingTester {
    */
   async testIndividualFund() {
     const response = await axios.post(`${BASE_URL}/api/comprehensive-backtest`, {
-      fundId: 507, // Known fund with good data
+      fundId: 16627, // Valid fund ID from database
       startDate: '2024-01-01',
       endDate: '2024-12-31', 
       initialAmount: 100000,
@@ -72,7 +72,7 @@ class Phase2BacktestingTester {
    */
   async testMultipleFunds() {
     const response = await axios.post(`${BASE_URL}/api/comprehensive-backtest`, {
-      fundIds: [507, 1965, 13023], // Known funds with validated data
+      fundIds: [16627, 3477, 5662], // Valid fund IDs from database
       startDate: '2024-01-01',
       endDate: '2024-12-31',
       initialAmount: 100000,

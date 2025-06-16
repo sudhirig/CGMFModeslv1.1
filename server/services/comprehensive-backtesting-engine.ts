@@ -750,7 +750,18 @@ export class ComprehensiveBacktestingEngine {
     `, [fundId, scoreDate, asOfDate, new Date()]);
     
     if (fundData.rows.length === 0) {
-      throw new Error(`Fund ${fundId} not found or has insufficient data for backtesting period`);
+      console.log(`No data found for fund ${fundId}, checking if fund exists...`);
+      
+      // Check if fund exists at all
+      const fundExists = await pool.query(`
+        SELECT f.id, f.fund_name FROM funds f WHERE f.id = $1
+      `, [fundId]);
+      
+      if (fundExists.rows.length === 0) {
+        throw new Error(`Fund ${fundId} does not exist in the database`);
+      } else {
+        throw new Error(`Fund ${fundId} exists but has no scoring data or insufficient NAV data for backtesting period`);
+      }
     }
     
     return {
