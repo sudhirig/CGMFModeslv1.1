@@ -191,11 +191,26 @@ export class OptimizedBacktestingEngine {
       
       console.log(`Processing ${keyDates.length} key dates for performance`);
       
-      // Get NAV data for key dates only
+      // Get NAV data for the full date range to find closest values
       const navData = await this.getOptimizedNavData(fundIds, startDate, endDate);
       
-      // Calculate portfolio values
+      console.log(`Retrieved ${navData.length} NAV data points for ${fundIds.length} funds`);
+      
+      // Calculate portfolio values with proper NAV-based performance
       const returns: { date: Date; value: number }[] = [];
+      
+      // Get baseline NAV values at start date for each fund
+      const baselineNavs = new Map();
+      for (const allocation of portfolio.allocations) {
+        const fundId = allocation.fund.id;
+        const startNav = this.getClosestNavValue(navData, fundId, keyDates[0]);
+        if (startNav) {
+          baselineNavs.set(fundId, startNav.nav_value);
+          console.log(`Fund ${fundId}: baseline NAV = ${startNav.nav_value} on ${startNav.nav_date}`);
+        } else {
+          console.log(`Fund ${fundId}: No baseline NAV found for start date`);
+        }
+      }
       
       for (const date of keyDates) {
         let portfolioValue = 0;
@@ -203,14 +218,22 @@ export class OptimizedBacktestingEngine {
         for (const allocation of portfolio.allocations) {
           const fundId = allocation.fund.id;
           const weight = allocation.allocation / 100;
-          const nav = this.getClosestNavValue(navData, fundId, date);
+          const currentNav = this.getClosestNavValue(navData, fundId, date);
+          const baselineNav = baselineNavs.get(fundId);
           
-          if (nav) {
-            const fundValue = (initialAmount * weight) / nav.nav_value * nav.nav_value;
+          if (currentNav && baselineNav) {
+            // Calculate fund performance and apply to allocated amount
+            const fundPerformance = currentNav.nav_value / baselineNav;
+            const fundValue = (initialAmount * weight) * fundPerformance;
             portfolioValue += fundValue;
+            
+            if (date === keyDates[keyDates.length - 1]) {
+              console.log(`Fund ${fundId}: ${baselineNav} -> ${currentNav.nav_value} (${((fundPerformance - 1) * 100).toFixed(2)}%)`);
+            }
           } else {
             // Use allocation proportion as fallback
             portfolioValue += initialAmount * weight;
+            console.log(`Fund ${fundId}: Using fallback value (no NAV data)`);
           }
         }
         
@@ -292,6 +315,7 @@ export class OptimizedBacktestingEngine {
     const fundNavData = navData.filter(nav => nav.fund_id === fundId);
     
     if (fundNavData.length === 0) {
+      console.log(`No NAV data found for fund ${fundId}`);
       return null;
     }
     
@@ -306,6 +330,9 @@ export class OptimizedBacktestingEngine {
         closest = nav;
       }
     }
+    
+    const daysDiff = minDiff / (1000 * 60 * 60 * 24);
+    console.log(`Fund ${fundId}: closest NAV to ${targetDate.toISOString().split('T')[0]} is ${closest.nav_value} on ${closest.nav_date.toISOString().split('T')[0]} (${daysDiff.toFixed(1)} days diff)`);
     
     return closest;
   }
