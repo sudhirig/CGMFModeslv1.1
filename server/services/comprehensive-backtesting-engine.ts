@@ -145,7 +145,7 @@ export class ComprehensiveBacktestingEngine {
       return {
         portfolioId: portfolio.id,
         riskProfile: portfolio.riskProfile,
-        elivateValidation,
+        elivateScoreValidation: elivateValidation,
         performance,
         riskMetrics,
         attribution,
@@ -160,16 +160,45 @@ export class ComprehensiveBacktestingEngine {
   }
   
   /**
-   * Get portfolio with ELIVATE scores for each fund
+   * Get portfolio with ELIVATE scores for each fund - handles all backtesting types
    */
   private async getPortfolioWithScores(config: BacktestConfig) {
+    // Individual fund backtesting
+    if (config.fundId) {
+      return await this.createSingleFundPortfolio(config.fundId, config.startDate);
+    }
+    
+    // Multiple funds backtesting
+    if (config.fundIds && config.fundIds.length > 0) {
+      return await this.createMultiFundPortfolio(config.fundIds, config);
+    }
+    
+    // ELIVATE score-based backtesting
+    if (config.elivateScoreRange) {
+      return await this.createScoreBasedPortfolio(config.elivateScoreRange, config);
+    }
+    
+    // Quartile-based backtesting
+    if (config.quartile) {
+      return await this.createQuartileBasedPortfolio(config.quartile, config);
+    }
+    
+    // Recommendation-based backtesting
+    if (config.recommendation) {
+      return await this.createRecommendationBasedPortfolio(config.recommendation, config);
+    }
+    
+    // Existing portfolio backtesting
     if (config.portfolioId) {
       return await this.getExistingPortfolioWithScores(config.portfolioId);
-    } else if (config.riskProfile) {
-      return await this.createOptimalPortfolioForRisk(config.riskProfile, config.startDate);
-    } else {
-      throw new Error('Must specify either portfolioId or riskProfile');
     }
+    
+    // Risk profile-based portfolio
+    if (config.riskProfile) {
+      return await this.createOptimalPortfolioForRisk(config.riskProfile, config.startDate);
+    }
+    
+    throw new Error('Must specify at least one backtesting criteria (fundId, scoreRange, quartile, recommendation, portfolioId, or riskProfile)');
   }
   
   /**
@@ -229,7 +258,7 @@ export class ComprehensiveBacktestingEngine {
       'Aggressive': { equityMax: 95, debtMin: 0, hybridMax: 5 }
     };
     
-    const config = riskConfig[riskProfile] || riskConfig['Balanced'];
+    const config = riskConfig[riskProfile as keyof typeof riskConfig] || riskConfig['Balanced'];
     
     // Categorize funds by type
     const equity = funds.filter(f => f.category?.includes('Equity'));
@@ -672,9 +701,316 @@ export class ComprehensiveBacktestingEngine {
     return []; // Implementation would generate monthly data points
   }
   
+  /**
+   * Create single fund portfolio for individual fund backtesting
+   */
+  private async createSingleFundPortfolio(fundId: number, asOfDate: Date) {
+    const scoreDate = asOfDate.toISOString().split('T')[0];
+    
+    const fundData = await pool.query(`
+      SELECT 
+        fsc.*,
+        f.fund_name,
+        f.category,
+        f.sub_category,
+        f.fund_manager,
+        f.expense_ratio
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.fund_id = $1
+      AND fsc.score_date <= $2
+      AND EXISTS (
+        SELECT 1 FROM nav_data nav 
+        WHERE nav.fund_id = fsc.fund_id 
+        AND nav.nav_date BETWEEN $3 AND $4
+        AND nav.nav_value BETWEEN 10 AND 1000
+      )
+      ORDER BY fsc.score_date DESC
+      LIMIT 1
+    `, [fundId, scoreDate, asOfDate, new Date()]);
+    
+    if (fundData.rows.length === 0) {
+      throw new Error(`Fund ${fundId} not found or has insufficient data for backtesting period`);
+    }
+    
+    return {
+      id: 0,
+      name: `Individual Fund: ${fundData.rows[0].fund_name}`,
+      riskProfile: 'Individual',
+      funds: [{
+        ...fundData.rows[0],
+        allocation: 100
+      }]
+    };
+  }
+  
+  /**
+   * Create multi-fund portfolio with equal or score-based weighting
+   */
+  private async createMultiFundPortfolio(fundIds: number[], config: BacktestConfig) {
+    const scoreDate = config.startDate.toISOString().split('T')[0];
+    
+    const fundData = await pool.query(`
+      SELECT 
+        fsc.*,
+        f.fund_name,
+        f.category,
+        f.sub_category,
+        f.fund_manager,
+        f.expense_ratio
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.fund_id = ANY($1)
+      AND fsc.score_date <= $2
+      AND fsc.total_score IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM nav_data nav 
+        WHERE nav.fund_id = fsc.fund_id 
+        AND nav.nav_date BETWEEN $3 AND $4
+        AND nav.nav_value BETWEEN 10 AND 1000
+        GROUP BY nav.fund_id
+        HAVING COUNT(*) > 50
+      )
+      ORDER BY fsc.score_date DESC, fsc.total_score DESC
+    `, [fundIds, scoreDate, config.startDate, config.endDate]);
+    
+    if (fundData.rows.length === 0) {
+      throw new Error('No valid funds found for the specified fund IDs');
+    }
+    
+    // Apply weighting strategy
+    const allocations = config.scoreWeighting 
+      ? this.applyScoreWeighting(fundData.rows)
+      : this.applyEqualWeighting(fundData.rows);
+    
+    return {
+      id: 0,
+      name: `Multi-Fund Portfolio (${fundData.rows.length} funds)`,
+      riskProfile: 'Custom',
+      funds: allocations
+    };
+  }
+  
+  /**
+   * Create portfolio based on ELIVATE score range
+   */
+  private async createScoreBasedPortfolio(scoreRange: { min: number; max: number }, config: BacktestConfig) {
+    const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
+    const maxFunds = config.maxFunds || 20;
+    
+    const fundData = await pool.query(`
+      SELECT 
+        fsc.*,
+        f.fund_name,
+        f.category,
+        f.sub_category,
+        f.fund_manager,
+        f.expense_ratio
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.score_date <= $1
+      AND fsc.total_score BETWEEN $2 AND $3
+      AND fsc.total_score IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM nav_data nav 
+        WHERE nav.fund_id = fsc.fund_id 
+        AND nav.nav_date BETWEEN $4 AND $5
+        AND nav.nav_value BETWEEN 10 AND 1000
+        GROUP BY nav.fund_id
+        HAVING COUNT(*) > 50
+      )
+      ORDER BY fsc.score_date DESC, fsc.total_score DESC
+      LIMIT $6
+    `, [scoreDate, scoreRange.min, scoreRange.max, config.startDate, config.endDate, maxFunds]);
+    
+    if (fundData.rows.length === 0) {
+      throw new Error(`No funds found with ELIVATE scores between ${scoreRange.min}-${scoreRange.max}`);
+    }
+    
+    const allocations = config.equalWeighting 
+      ? this.applyEqualWeighting(fundData.rows)
+      : this.applyScoreWeighting(fundData.rows);
+    
+    return {
+      id: 0,
+      name: `ELIVATE Score ${scoreRange.min}-${scoreRange.max} Portfolio`,
+      riskProfile: 'Score-Based',
+      funds: allocations
+    };
+  }
+  
+  /**
+   * Create portfolio based on quartile ranking
+   */
+  private async createQuartileBasedPortfolio(quartile: 'Q1' | 'Q2' | 'Q3' | 'Q4', config: BacktestConfig) {
+    const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
+    const maxFunds = config.maxFunds || 15;
+    
+    // Calculate quartile boundaries
+    const quartileQuery = `
+      WITH ranked_funds AS (
+        SELECT 
+          fsc.*,
+          f.fund_name,
+          f.category,
+          f.sub_category,
+          f.fund_manager,
+          f.expense_ratio,
+          NTILE(4) OVER (
+            ${config.category ? 'PARTITION BY f.category' : ''}
+            ORDER BY fsc.total_score DESC
+          ) as quartile_rank
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE fsc.score_date <= $1
+        AND fsc.total_score IS NOT NULL
+        ${config.category ? 'AND f.category = $7' : ''}
+        ${config.subCategory ? 'AND f.sub_category = $8' : ''}
+        AND EXISTS (
+          SELECT 1 FROM nav_data nav 
+          WHERE nav.fund_id = fsc.fund_id 
+          AND nav.nav_date BETWEEN $2 AND $3
+          AND nav.nav_value BETWEEN 10 AND 1000
+          GROUP BY nav.fund_id
+          HAVING COUNT(*) > 50
+        )
+      )
+      SELECT * FROM ranked_funds 
+      WHERE quartile_rank = $4
+      ORDER BY total_score DESC
+      LIMIT $5
+    `;
+    
+    const quartileNum = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 }[quartile];
+    const params = [scoreDate, config.startDate, config.endDate, quartileNum, maxFunds];
+    
+    if (config.category) params.push(config.category);
+    if (config.subCategory) params.push(config.subCategory);
+    
+    const fundData = await pool.query(quartileQuery, params);
+    
+    if (fundData.rows.length === 0) {
+      throw new Error(`No funds found in ${quartile} quartile for the specified criteria`);
+    }
+    
+    const allocations = this.applyEqualWeighting(fundData.rows);
+    
+    return {
+      id: 0,
+      name: `${quartile} Quartile Portfolio${config.category ? ` - ${config.category}` : ''}`,
+      riskProfile: 'Quartile-Based',
+      funds: allocations
+    };
+  }
+  
+  /**
+   * Create portfolio based on recommendation status
+   */
+  private async createRecommendationBasedPortfolio(recommendation: 'BUY' | 'HOLD' | 'SELL', config: BacktestConfig) {
+    const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
+    const maxFunds = config.maxFunds || 20;
+    
+    const fundData = await pool.query(`
+      SELECT 
+        fsc.*,
+        f.fund_name,
+        f.category,
+        f.sub_category,
+        f.fund_manager,
+        f.expense_ratio
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.score_date <= $1
+      AND fsc.recommendation = $2
+      AND fsc.total_score IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM nav_data nav 
+        WHERE nav.fund_id = fsc.fund_id 
+        AND nav.nav_date BETWEEN $3 AND $4
+        AND nav.nav_value BETWEEN 10 AND 1000
+        GROUP BY nav.fund_id
+        HAVING COUNT(*) > 50
+      )
+      ORDER BY fsc.score_date DESC, fsc.total_score DESC
+      LIMIT $5
+    `, [scoreDate, recommendation, config.startDate, config.endDate, maxFunds]);
+    
+    if (fundData.rows.length === 0) {
+      throw new Error(`No funds found with ${recommendation} recommendation`);
+    }
+    
+    const allocations = this.applyEqualWeighting(fundData.rows);
+    
+    return {
+      id: 0,
+      name: `${recommendation} Recommendation Portfolio`,
+      riskProfile: 'Recommendation-Based',
+      funds: allocations
+    };
+  }
+  
+  /**
+   * Apply equal weighting to funds
+   */
+  private applyEqualWeighting(funds: any[]) {
+    const equalAllocation = 100 / funds.length;
+    return funds.map(fund => ({
+      ...fund,
+      allocation: equalAllocation
+    }));
+  }
+  
+  /**
+   * Apply score-based weighting to funds
+   */
+  private applyScoreWeighting(funds: any[]) {
+    const totalScore = funds.reduce((sum, fund) => sum + (fund.total_score || 0), 0);
+    
+    return funds.map(fund => ({
+      ...fund,
+      allocation: ((fund.total_score || 0) / totalScore) * 100
+    }));
+  }
+  
   private async getExistingPortfolioWithScores(portfolioId: number) {
-    // Implementation would fetch existing portfolio with ELIVATE scores
-    throw new Error('Method not implemented');
+    const portfolioData = await pool.query(`
+      SELECT id, name, risk_profile 
+      FROM model_portfolios 
+      WHERE id = $1
+    `, [portfolioId]);
+    
+    if (portfolioData.rows.length === 0) {
+      throw new Error(`Portfolio ${portfolioId} not found`);
+    }
+    
+    const allocationsData = await pool.query(`
+      SELECT 
+        mpa.allocation_percent,
+        fsc.*,
+        f.fund_name,
+        f.category,
+        f.sub_category,
+        f.fund_manager,
+        f.expense_ratio
+      FROM model_portfolio_allocations mpa
+      JOIN funds f ON mpa.fund_id = f.id
+      LEFT JOIN fund_scores_corrected fsc ON f.id = fsc.fund_id
+      WHERE mpa.portfolio_id = $1
+      ORDER BY fsc.score_date DESC
+    `, [portfolioId]);
+    
+    const portfolio = portfolioData.rows[0];
+    const funds = allocationsData.rows.map(row => ({
+      ...row,
+      allocation: parseFloat(row.allocation_percent)
+    }));
+    
+    return {
+      id: portfolio.id,
+      name: portfolio.name,
+      riskProfile: portfolio.risk_profile,
+      funds
+    };
   }
 }
 
