@@ -1294,21 +1294,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           f.amc_name,
           n.nav as latest_nav,
           n.nav_date as nav_date
-        FROM fund_scores fs
+        FROM fund_scores_corrected fs
         JOIN funds f ON fs.fund_id = f.id
         LEFT JOIN (
-          SELECT DISTINCT ON (fund_id) fund_id, nav, nav_date
+          SELECT DISTINCT ON (fund_id) fund_id, nav_value as nav, nav_date
           FROM nav_data
           ORDER BY fund_id, nav_date DESC
         ) n ON f.id = n.fund_id
+        WHERE fs.score_date = '2025-06-05'
       `;
       
       // Add optional category filter
       let params: (string | number)[] = [];
       let paramIndex = 1;
       
-      if (category && category !== 'undefined') {
-        query += ` WHERE f.category = $${paramIndex++} `;
+      if (category && category !== 'undefined' && category !== '') {
+        query += ` AND f.category = $${paramIndex++} `;
         params.push(category);
       }
       

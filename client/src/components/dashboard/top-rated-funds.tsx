@@ -9,8 +9,9 @@ export default function TopRatedFunds() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
   
   const categoryParam = selectedCategory === "All Categories" ? "" : selectedCategory;
+  const apiUrl = categoryParam ? `/api/funds/top-rated/${categoryParam}` : '/api/funds/top-rated';
   const { data: topFunds, isLoading, error } = useQuery({
-    queryKey: [`/api/funds/top-rated/${categoryParam}`],
+    queryKey: [apiUrl],
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
