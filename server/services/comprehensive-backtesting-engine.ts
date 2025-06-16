@@ -726,6 +726,8 @@ export class ComprehensiveBacktestingEngine {
    */
   private async createSingleFundPortfolio(fundId: number, asOfDate: Date) {
     const scoreDate = asOfDate.toISOString().split('T')[0];
+    const startDate = new Date(asOfDate.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const endDate = asOfDate.toISOString().split('T')[0];
     
     const fundData = await pool.query(`
       SELECT 
@@ -748,7 +750,7 @@ export class ComprehensiveBacktestingEngine {
       )
       ORDER BY fsc.score_date DESC
       LIMIT 1
-    `, [fundId, config.startDate, config.endDate]);
+    `, [fundId, startDate, endDate]);
     
     if (fundData.rows.length === 0) {
       console.log(`No data found for fund ${fundId}, checking if fund exists...`);
@@ -830,7 +832,8 @@ export class ComprehensiveBacktestingEngine {
    * Create portfolio based on ELIVATE score range
    */
   private async createScoreBasedPortfolio(scoreRange: { min: number; max: number }, config: BacktestConfig) {
-    const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
+    const startDate = config.startDate.toISOString().split('T')[0];
+    const endDate = config.endDate.toISOString().split('T')[0];
     const maxFunds = config.maxFunds || 20;
     
     const fundData = await pool.query(`
@@ -856,7 +859,7 @@ export class ComprehensiveBacktestingEngine {
       )
       ORDER BY fsc.score_date DESC, fsc.total_score DESC
       LIMIT $6
-    `, [scoreRange.min, scoreRange.max, config.startDate, config.endDate, maxFunds]);
+    `, [scoreDate, scoreRange.min, scoreRange.max, startDate, endDate, maxFunds]);
     
     if (fundData.rows.length === 0) {
       console.log(`No funds found with scores ${scoreRange.min}-${scoreRange.max}, checking available score ranges...`);
@@ -954,7 +957,8 @@ export class ComprehensiveBacktestingEngine {
    * Create portfolio based on recommendation status
    */
   private async createRecommendationBasedPortfolio(recommendation: 'BUY' | 'HOLD' | 'SELL', config: BacktestConfig) {
-    const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
+    const startDate = config.startDate.toISOString().split('T')[0];
+    const endDate = config.endDate.toISOString().split('T')[0];
     const maxFunds = config.maxFunds || 20;
     
     const fundData = await pool.query(`
@@ -980,7 +984,7 @@ export class ComprehensiveBacktestingEngine {
       )
       ORDER BY fsc.score_date DESC, fsc.total_score DESC
       LIMIT $5
-    `, [recommendation, config.startDate, config.endDate, maxFunds]);
+    `, [recommendation, startDate, endDate, maxFunds]);
     
     if (fundData.rows.length === 0) {
       console.log(`No funds found with ${recommendation} recommendation, checking available recommendations...`);
