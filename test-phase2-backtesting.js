@@ -46,7 +46,7 @@ class Phase2BacktestingTester {
    */
   async testIndividualFund() {
     const response = await axios.post(`${BASE_URL}/api/comprehensive-backtest`, {
-      fundId: 16627, // Valid fund ID from database
+      fundId: 8319, // Fund with comprehensive NAV data (349 records for 2024)
       startDate: '2024-01-01',
       endDate: '2024-12-31', 
       initialAmount: 100000,
@@ -72,7 +72,7 @@ class Phase2BacktestingTester {
    */
   async testMultipleFunds() {
     const response = await axios.post(`${BASE_URL}/api/comprehensive-backtest`, {
-      fundIds: [16627, 3477, 5662], // Valid fund IDs from database
+      fundIds: [8319, 7980, 3477], // Funds with good NAV data coverage
       startDate: '2024-01-01',
       endDate: '2024-12-31',
       initialAmount: 100000,
@@ -239,7 +239,7 @@ class Phase2BacktestingTester {
     
     // Run a comprehensive backtest
     await axios.post(`${BASE_URL}/api/comprehensive-backtest`, {
-      elivateScoreRange: { min: 60, max: 100 },
+      elivateScoreRange: { min: 70, max: 90 },
       startDate: '2024-01-01',
       endDate: '2024-12-31',
       initialAmount: 100000,

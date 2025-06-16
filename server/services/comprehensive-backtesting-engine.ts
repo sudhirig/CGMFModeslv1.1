@@ -858,7 +858,19 @@ export class ComprehensiveBacktestingEngine {
     `, [scoreDate, scoreRange.min, scoreRange.max, config.startDate, config.endDate, maxFunds]);
     
     if (fundData.rows.length === 0) {
-      throw new Error(`No funds found with ELIVATE scores between ${scoreRange.min}-${scoreRange.max}`);
+      console.log(`No funds found with scores ${scoreRange.min}-${scoreRange.max}, checking available score ranges...`);
+      
+      // Check what score ranges are actually available
+      const scoreStats = await pool.query(`
+        SELECT MIN(total_score) as min_score, MAX(total_score) as max_score,
+               COUNT(*) as total_funds
+        FROM fund_scores_corrected 
+        WHERE score_date = (SELECT MAX(score_date) FROM fund_scores_corrected)
+        AND total_score IS NOT NULL
+      `);
+      
+      const stats = scoreStats.rows[0];
+      throw new Error(`No funds found with ELIVATE scores between ${scoreRange.min}-${scoreRange.max}. Available range: ${stats.min_score}-${stats.max_score} (${stats.total_funds} funds total)`);
     }
     
     const allocations = config.equalWeighting 
@@ -970,7 +982,20 @@ export class ComprehensiveBacktestingEngine {
     `, [scoreDate, recommendation, config.startDate, config.endDate, maxFunds]);
     
     if (fundData.rows.length === 0) {
-      throw new Error(`No funds found with ${recommendation} recommendation`);
+      console.log(`No funds found with ${recommendation} recommendation, checking available recommendations...`);
+      
+      // Check what recommendations are actually available
+      const recStats = await pool.query(`
+        SELECT recommendation, COUNT(*) as count
+        FROM fund_scores_corrected 
+        WHERE score_date = (SELECT MAX(score_date) FROM fund_scores_corrected)
+        AND recommendation IS NOT NULL
+        GROUP BY recommendation
+        ORDER BY count DESC
+      `);
+      
+      const available = recStats.rows.map(r => `${r.recommendation}: ${r.count}`).join(', ');
+      throw new Error(`No funds found with ${recommendation} recommendation. Available: ${available}`);
     }
     
     const allocations = this.applyEqualWeighting(fundData.rows);
