@@ -606,7 +606,7 @@ export class ComprehensiveBacktestingEngine {
       // Return basic attribution based on portfolio funds
       const fundContributions: FundContribution[] = portfolio.funds.map((fund: any) => ({
         fundId: fund.fundId,
-        fundName: fund.fundName || 'Unknown Fund',
+        fundName: fund.fund_name || fund.fundName || 'Unknown Fund',
         elivateScore: fund.elivateScore || 0,
         allocation: fund.allocation || 0,
         absoluteReturn: 8.5,
@@ -826,7 +826,7 @@ export class ComprehensiveBacktestingEngine {
         fsc.*,
         f.fund_name,
         f.category,
-        f.sub_category,
+        f.subcategory,
         f.fund_manager,
         f.expense_ratio
       FROM fund_scores_corrected fsc
@@ -876,7 +876,7 @@ export class ComprehensiveBacktestingEngine {
           fsc.*,
           f.fund_name,
           f.category,
-          f.sub_category,
+          f.subcategory,
           f.fund_manager,
           f.expense_ratio,
           NTILE(4) OVER (
@@ -938,7 +938,7 @@ export class ComprehensiveBacktestingEngine {
         fsc.*,
         f.fund_name,
         f.category,
-        f.sub_category,
+        f.subcategory,
         f.fund_manager,
         f.expense_ratio
       FROM fund_scores_corrected fsc
