@@ -855,7 +855,7 @@ export class ComprehensiveBacktestingEngine {
       )
       ORDER BY fsc.score_date DESC, fsc.total_score DESC
       LIMIT $6
-    `, [scoreDate, scoreRange.min, scoreRange.max, config.startDate, config.endDate, maxFunds]);
+    `, [scoreRange.min, scoreRange.max, config.startDate, config.endDate, maxFunds]);
     
     if (fundData.rows.length === 0) {
       console.log(`No funds found with scores ${scoreRange.min}-${scoreRange.max}, checking available score ranges...`);
@@ -966,8 +966,8 @@ export class ComprehensiveBacktestingEngine {
         f.expense_ratio
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
-      WHERE fsc.score_date <= $1
-      AND fsc.recommendation = $2
+      WHERE fsc.score_date = (SELECT MAX(score_date) FROM fund_scores_corrected)
+      AND fsc.recommendation = $1
       AND fsc.total_score IS NOT NULL
       AND EXISTS (
         SELECT 1 FROM nav_data nav 
@@ -979,7 +979,7 @@ export class ComprehensiveBacktestingEngine {
       )
       ORDER BY fsc.score_date DESC, fsc.total_score DESC
       LIMIT $5
-    `, [scoreDate, recommendation, config.startDate, config.endDate, maxFunds]);
+    `, [recommendation, config.startDate, config.endDate, maxFunds]);
     
     if (fundData.rows.length === 0) {
       console.log(`No funds found with ${recommendation} recommendation, checking available recommendations...`);
