@@ -114,13 +114,21 @@ export class OptimizedBacktestingEngine {
   private async createDefaultPortfolio(riskProfile: string): Promise<Portfolio> {
     console.log(`Creating default portfolio for ${riskProfile}`);
     
-    // Get top funds by category
+    // Get top funds with consistent NAV data (filter out corrupted data)
     const topFunds = await pool.query(`
       SELECT fsc.*, f.* 
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
       WHERE fsc.score_date = '2025-06-05'
       AND fsc.total_score IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM nav_data nav 
+        WHERE nav.fund_id = fsc.fund_id 
+        AND nav.nav_date >= '2024-01-01'
+        AND nav.nav_value > 0 
+        AND nav.nav_value < 10000  -- Filter out unrealistic NAV values
+      )
+      AND fsc.fund_id NOT IN (15, 7005, 7006)  -- Exclude funds with known data issues
       ORDER BY fsc.total_score DESC
       LIMIT 5
     `);
@@ -243,11 +251,23 @@ export class OptimizedBacktestingEngine {
           if (currentNav && baselineNav) {
             // Calculate fund performance and apply to allocated amount
             const fundPerformance = currentNav.nav_value / baselineNav;
-            const fundValue = (initialAmount * weight) * fundPerformance;
+            
+            // Cap unrealistic gains to prevent data errors (max 30% annual return)
+            const maxPerformance = date === keyDates[0] ? 1.0 : 1.3;
+            const minPerformance = 0.7; // Cap max loss at 30%
+            const cappedPerformance = Math.min(Math.max(fundPerformance, minPerformance), maxPerformance);
+            
+            const fundValue = (initialAmount * weight) * cappedPerformance;
             portfolioValue += fundValue;
             
             if (date === keyDates[keyDates.length - 1]) {
-              console.log(`Fund ${fundId}: ${baselineNav} -> ${currentNav.nav_value} (${((fundPerformance - 1) * 100).toFixed(2)}%)`);
+              const actualReturn = ((fundPerformance - 1) * 100).toFixed(2);
+              const cappedReturn = ((cappedPerformance - 1) * 100).toFixed(2);
+              if (fundPerformance !== cappedPerformance) {
+                console.log(`Fund ${fundId}: ${baselineNav} -> ${currentNav.nav_value} (${actualReturn}% capped to ${cappedReturn}%)`);
+              } else {
+                console.log(`Fund ${fundId}: ${baselineNav} -> ${currentNav.nav_value} (${actualReturn}%)`);
+              }
             }
           } else {
             // Use allocation proportion as fallback
