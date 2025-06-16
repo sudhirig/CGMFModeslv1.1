@@ -789,6 +789,9 @@ export class ComprehensiveBacktestingEngine {
     const startDate = config.startDate.toISOString().split('T')[0];
     const endDate = config.endDate.toISOString().split('T')[0];
     
+    // Convert fund IDs to a format PostgreSQL can handle
+    const fundIdList = fundIds.map(id => parseInt(id.toString())).filter(id => !isNaN(id));
+    
     const fundData = await pool.query(`
       SELECT 
         fsc.*,
@@ -799,22 +802,33 @@ export class ComprehensiveBacktestingEngine {
         f.expense_ratio
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
-      WHERE fsc.fund_id = ANY($1)
-      AND fsc.score_date <= $2
+      WHERE fsc.fund_id = ANY($1::int[])
+      AND fsc.score_date = (SELECT MAX(score_date) FROM fund_scores_corrected)
       AND fsc.total_score IS NOT NULL
       AND EXISTS (
         SELECT 1 FROM nav_data nav 
         WHERE nav.fund_id = fsc.fund_id 
-        AND nav.nav_date BETWEEN $3 AND $4
+        AND nav.nav_date BETWEEN $2 AND $3
         AND nav.nav_value BETWEEN 10 AND 1000
         GROUP BY nav.fund_id
         HAVING COUNT(*) > 50
       )
-      ORDER BY fsc.score_date DESC, fsc.total_score DESC
-    `, [fundIds, scoreDate, startDate, endDate]);
+      ORDER BY fsc.total_score DESC
+    `, [fundIdList, startDate, endDate]);
     
     if (fundData.rows.length === 0) {
-      throw new Error('No valid funds found for the specified fund IDs');
+      console.log(`No funds found for IDs: ${fundIdList}. Checking database...`);
+      
+      const availableFunds = await pool.query(`
+        SELECT f.id, f.fund_name, COUNT(nav.id) as nav_count
+        FROM funds f
+        LEFT JOIN nav_data nav ON nav.fund_id = f.id
+        WHERE f.id = ANY($1::int[])
+        GROUP BY f.id, f.fund_name
+      `, [fundIdList]);
+      
+      console.log('Available funds:', availableFunds.rows);
+      throw new Error(`No valid funds found for the specified fund IDs: ${fundIdList}. Available: ${availableFunds.rows.length}`);
     }
     
     // Apply weighting strategy
