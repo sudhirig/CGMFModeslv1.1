@@ -957,6 +957,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Top-rated funds route - must come before generic :id route
+  app.get("/api/funds/top-rated/:category?", async (req, res) => {
+    try {
+      const { category } = req.params;
+      const { limit } = req.query;
+      
+      const parsedLimit = limit ? Number(limit as string) : 10;
+      if (isNaN(parsedLimit)) {
+        return res.status(400).json({ message: "Invalid limit parameter" });
+      }
+      
+      let query = `
+        SELECT 
+          fs.fund_id, 
+          fs.total_score, 
+          fs.recommendation, 
+          fs.quartile,
+          fs.historical_returns_total, 
+          fs.risk_grade_total,
+          fs.fundamentals_total,
+          fs.other_metrics_total,
+          f.fund_name, 
+          f.category, 
+          f.subcategory, 
+          f.amc_name,
+          fs.return_1y_absolute as return_1y
+        FROM fund_scores_corrected fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE fs.score_date = '2025-06-05'
+      `;
+      
+      let params: (string | number)[] = [];
+      let paramIndex = 1;
+      
+      if (category && category !== 'undefined' && category !== '') {
+        query += ` AND f.category = $${paramIndex++} `;
+        params.push(category);
+      }
+      
+      query += ` ORDER BY fs.total_score DESC LIMIT $${paramIndex}`;
+      params.push(parsedLimit);
+      
+      const result = await pool.query(query, params);
+      
+      const formattedFunds = result.rows.map(row => ({
+        fundId: row.fund_id,
+        fund: {
+          fundName: row.fund_name,
+          category: row.category,
+          subcategory: row.subcategory,
+          amcName: row.amc_name
+        },
+        totalScore: parseFloat(row.total_score),
+        quartile: row.quartile,
+        recommendation: row.recommendation,
+        historicalReturnsTotal: parseFloat(row.historical_returns_total || 0),
+        riskGradeTotal: parseFloat(row.risk_grade_total || 0),
+        fundamentalsTotal: parseFloat(row.fundamentals_total || 0),
+        otherMetricsTotal: parseFloat(row.other_metrics_total || 0),
+        return1y: row.return_1y ? parseFloat(row.return_1y) : null
+      }));
+      
+      res.json(formattedFunds);
+      
+    } catch (error) {
+      console.error("Error fetching top-rated funds:", error);
+      res.status(500).json({ message: "Failed to fetch top-rated funds" });
+    }
+  });
+
   app.get("/api/funds/:id", async (req, res) => {
     try {
       // Validate that the ID is actually a number
@@ -1264,83 +1334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // API routes for top-rated funds - fixed to use real data
-  app.get("/api/funds/top-rated/:category?", async (req, res) => {
-    try {
-      const { category } = req.params;
-      const { limit } = req.query;
-      
-      // Make sure we have a valid limit
-      const parsedLimit = limit ? Number(limit as string) : 5;
-      if (isNaN(parsedLimit)) {
-        return res.status(400).json({ message: "Invalid limit parameter" });
-      }
-      
-      // Get the fund scores from the database with optimized single query
-      // This avoids the need for additional database calls that could fail
-      let query = `
-        SELECT 
-          fs.fund_id, 
-          fs.score_date, 
-          fs.total_score, 
-          fs.recommendation, 
-          fs.historical_returns_total, 
-          fs.risk_grade_total,
-          fs.other_metrics_total,
-          f.id as fund_db_id,
-          f.fund_name, 
-          f.category, 
-          f.subcategory, 
-          f.amc_name,
-          n.nav as latest_nav,
-          n.nav_date as nav_date
-        FROM fund_scores_corrected fs
-        JOIN funds f ON fs.fund_id = f.id
-        LEFT JOIN (
-          SELECT DISTINCT ON (fund_id) fund_id, nav_value as nav, nav_date
-          FROM nav_data
-          ORDER BY fund_id, nav_date DESC
-        ) n ON f.id = n.fund_id
-        WHERE fs.score_date = '2025-06-05'
-      `;
-      
-      // Add optional category filter
-      let params: (string | number)[] = [];
-      let paramIndex = 1;
-      
-      if (category && category !== 'undefined' && category !== '') {
-        query += ` AND f.category = $${paramIndex++} `;
-        params.push(category);
-      }
-      
-      // Add ordering and limit
-      query += ` ORDER BY fs.total_score DESC LIMIT $${paramIndex}`;
-      params.push(parsedLimit);
-      
-      const result = await pool.query(query, params);
-      
-      // Format the response data for the client
-      const mappedResults = result.rows.map((row: any) => ({
-        id: row.fund_id,
-        name: row.fund_name,
-        amcName: row.amc_name,
-        category: row.category,
-        subcategory: row.subcategory,
-        totalScore: row.total_score,
-        recommendation: row.recommendation,
-        historicalReturns: row.historical_returns_total,
-        riskGrade: row.risk_grade_total,
-        otherMetrics: row.other_metrics_total,
-        latestNav: row.latest_nav,
-        navDate: row.nav_date
-      }));
-      
-      res.json(mappedResults);
-    } catch (error) {
-      console.error("Error fetching top-rated funds:", error);
-      res.status(500).json({ message: "Failed to fetch top-rated funds" });
-    }
-  });
+
 
   // API routes for market indices
   app.get("/api/market/indices", async (req, res) => {
