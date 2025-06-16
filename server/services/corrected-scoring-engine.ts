@@ -49,13 +49,9 @@ interface AdvancedScores {
   other_metrics_total: number;
 }
 
-interface CompleteScore {
+interface CompleteScore extends ReturnScores, RiskScores, FundamentalsScores, AdvancedScores {
   fund_id: number;
   score_date: string;
-  ...ReturnScores;
-  ...RiskScores;
-  ...FundamentalsScores;
-  ...AdvancedScores;
   total_score: number;
   quartile?: number;
   recommendation?: string;
