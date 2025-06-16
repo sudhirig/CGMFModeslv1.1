@@ -902,7 +902,9 @@ export class ComprehensiveBacktestingEngine {
     const maxFunds = config.maxFunds || 15;
     
     // Calculate quartile boundaries
-    const quartileQuery = `
+    const quartileNum = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 }[quartile];
+    
+    const fundData = await pool.query(`
       WITH ranked_funds AS (
         SELECT 
           fsc.*,
@@ -911,35 +913,25 @@ export class ComprehensiveBacktestingEngine {
           f.subcategory,
           f.fund_manager,
           f.expense_ratio,
-          NTILE(4) OVER (
-            ${config.category ? 'PARTITION BY f.category' : ''}
-            ORDER BY fsc.total_score DESC
-          ) as quartile_rank
+          NTILE(4) OVER (ORDER BY fsc.total_score DESC) as quartile_rank
         FROM fund_scores_corrected fsc
         JOIN funds f ON fsc.fund_id = f.id
-        WHERE fsc.score_date <= $1
+        WHERE fsc.score_date = (SELECT MAX(score_date) FROM fund_scores_corrected)
         AND fsc.total_score IS NOT NULL
-        ${config.category ? 'AND f.category = $7' : ''}
-        ${config.subCategory ? 'AND f.subcategory = $8' : ''}
         AND EXISTS (
           SELECT 1 FROM nav_data nav 
           WHERE nav.fund_id = fsc.fund_id 
-          AND nav.nav_date BETWEEN $2 AND $3
+          AND nav.nav_date BETWEEN $1 AND $2
           AND nav.nav_value BETWEEN 10 AND 1000
           GROUP BY nav.fund_id
           HAVING COUNT(*) > 50
         )
       )
       SELECT * FROM ranked_funds 
-      WHERE quartile_rank = $4
+      WHERE quartile_rank = $3
       ORDER BY total_score DESC
-      LIMIT $5
-    `;
-    
-    const quartileNum = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 }[quartile];
-    const params = [scoreDate, startDate, endDate, quartileNum, maxFunds];
-    
-
+      LIMIT $4
+    `, [startDate, endDate, quartileNum, maxFunds]);
     
     if (fundData.rows.length === 0) {
       throw new Error(`No funds found in ${quartile} quartile for the specified criteria`);
