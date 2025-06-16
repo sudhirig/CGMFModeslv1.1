@@ -3,7 +3,7 @@
  * Streamlined for fast processing with authentic data only
  */
 
-import { pool } from '../db';
+import { pool } from '../db.js';
 
 interface BacktestResults {
   portfolioId: number;
