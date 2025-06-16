@@ -809,7 +809,7 @@ export class ComprehensiveBacktestingEngine {
         HAVING COUNT(*) > 50
       )
       ORDER BY fsc.score_date DESC, fsc.total_score DESC
-    `, [fundIds, scoreDate, config.startDate, config.endDate]);
+    `, [fundIds, scoreDate, startDate, endDate]);
     
     if (fundData.rows.length === 0) {
       throw new Error('No valid funds found for the specified fund IDs');
@@ -832,6 +832,7 @@ export class ComprehensiveBacktestingEngine {
    * Create portfolio based on ELIVATE score range
    */
   private async createScoreBasedPortfolio(scoreRange: { min: number; max: number }, config: BacktestConfig) {
+    const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
     const startDate = config.startDate.toISOString().split('T')[0];
     const endDate = config.endDate.toISOString().split('T')[0];
     const maxFunds = config.maxFunds || 20;
@@ -977,13 +978,13 @@ export class ComprehensiveBacktestingEngine {
       AND EXISTS (
         SELECT 1 FROM nav_data nav 
         WHERE nav.fund_id = fsc.fund_id 
-        AND nav.nav_date BETWEEN $3 AND $4
+        AND nav.nav_date BETWEEN $2 AND $3
         AND nav.nav_value BETWEEN 10 AND 1000
         GROUP BY nav.fund_id
         HAVING COUNT(*) > 50
       )
       ORDER BY fsc.score_date DESC, fsc.total_score DESC
-      LIMIT $5
+      LIMIT $4
     `, [recommendation, startDate, endDate, maxFunds]);
     
     if (fundData.rows.length === 0) {
