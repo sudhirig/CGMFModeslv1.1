@@ -200,65 +200,52 @@ export class BacktestingEngine {
         fundUnits[fundId] = initialFundAmount / initialNav;
       }
       
-      // Loop through each rebalance period
-      for (let i = 0; i < rebalanceDates.length; i++) {
-        const currentRebalanceDate = rebalanceDates[i];
-        const nextRebalanceDate = i < rebalanceDates.length - 1 ? rebalanceDates[i + 1] : endDate;
+      // Optimized: Process only key dates instead of every day
+      const keyDates = this.generateKeyDates(startDate, endDate, rebalancePeriod);
+      console.log(`Processing ${keyDates.length} key dates instead of daily processing`);
+      
+      for (let i = 0; i < keyDates.length; i++) {
+        const currentDate = keyDates[i];
+        let portfolioValue = 0;
         
-        // Loop through each day in the period
-        const currentDay = new Date(currentRebalanceDate);
-        while (currentDay <= nextRebalanceDate) {
-          let dailyValue = 0;
+        // Calculate portfolio value at this key date
+        for (const fundId in fundUnits) {
+          const units = fundUnits[fundId];
+          const nav = await this.getNavValue(navData, parseInt(fundId), currentDate);
           
-          // Calculate current value
-          for (const fundId in fundUnits) {
-            const units = fundUnits[fundId];
-            const nav = await this.getNavValue(navData, parseInt(fundId), currentDay);
-            
-            if (nav) {
-              dailyValue += units * nav;
-            }
+          if (nav) {
+            portfolioValue += units * nav;
           }
-          
-          if (dailyValue > 0) {
-            // Update returns
-            returns.push({ date: new Date(currentDay), value: dailyValue });
-            
-            // Update high water mark and max drawdown
-            if (dailyValue > highWaterMark) {
-              highWaterMark = dailyValue;
-            }
-            
-            const currentDrawdown = (highWaterMark - dailyValue) / highWaterMark;
-            if (currentDrawdown > maxDrawdown) {
-              maxDrawdown = currentDrawdown;
-            }
-          }
-          
-          // Move to next day
-          currentDay.setDate(currentDay.getDate() + 1);
         }
         
-        // Rebalance at end of period (except for the last period)
-        if (i < rebalanceDates.length - 1) {
-          // Get current portfolio value
-          currentValue = returns[returns.length - 1]?.value || initialAmount;
+        if (portfolioValue > 0) {
+          returns.push({ date: new Date(currentDate), value: portfolioValue });
           
-          // Rebalance
+          // Update high water mark and max drawdown
+          if (portfolioValue > highWaterMark) {
+            highWaterMark = portfolioValue;
+          }
+          
+          const currentDrawdown = (highWaterMark - portfolioValue) / highWaterMark;
+          if (currentDrawdown > maxDrawdown) {
+            maxDrawdown = currentDrawdown;
+          }
+        }
+        
+        // Rebalance if this is a rebalance date
+        if (this.isRebalanceDate(currentDate, rebalanceDates)) {
+          currentValue = portfolioValue;
+          
           for (const allocation of allocations) {
             const fundId = allocation.fund.id;
             const weight = weights[fundId];
             const targetFundAmount = currentValue * weight;
             
-            // Get NAV at rebalance date
-            const rebalanceNav = await this.getNavValue(navData, fundId, nextRebalanceDate);
+            const rebalanceNav = await this.getNavValue(navData, fundId, currentDate);
             
-            if (!rebalanceNav) {
-              continue;
+            if (rebalanceNav) {
+              fundUnits[fundId] = targetFundAmount / rebalanceNav;
             }
-            
-            // Calculate new units
-            fundUnits[fundId] = targetFundAmount / rebalanceNav;
           }
         }
       }
@@ -321,130 +308,73 @@ export class BacktestingEngine {
     
     return dates;
   }
+
+  /**
+   * Generate key dates for efficient processing (weekly intervals + rebalance dates)
+   */
+  private generateKeyDates(startDate: Date, endDate: Date, period: 'monthly' | 'quarterly' | 'annually'): Date[] {
+    const keyDates: Date[] = [];
+    const rebalanceDates = this.getRebalanceDates(startDate, endDate, period);
+    
+    // Add weekly intervals for performance tracking
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      keyDates.push(new Date(currentDate));
+      currentDate.setDate(currentDate.getDate() + 7); // Weekly intervals
+    }
+    
+    // Add all rebalance dates
+    rebalanceDates.forEach(date => {
+      if (!keyDates.some(existing => existing.getTime() === date.getTime())) {
+        keyDates.push(new Date(date));
+      }
+    });
+    
+    // Add end date
+    if (!keyDates.some(date => date.getTime() === endDate.getTime())) {
+      keyDates.push(new Date(endDate));
+    }
+    
+    return keyDates.sort((a, b) => a.getTime() - b.getTime());
+  }
+
+  /**
+   * Check if a date is a rebalance date
+   */
+  private isRebalanceDate(date: Date, rebalanceDates: Date[]): boolean {
+    return rebalanceDates.some(rebalanceDate => 
+      Math.abs(date.getTime() - rebalanceDate.getTime()) < 24 * 60 * 60 * 1000
+    );
+  }
   
   /**
    * Get historical NAV data for funds
    */
   /**
-   * Get historical NAV data for funds
-   * This method retrieves actual historical NAV data from the database
-   * to ensure backtesting uses authentic data instead of simulations
+   * Get historical NAV data for funds - Optimized Version
+   * Retrieves only authentic NAV data with efficient database queries
    */
   private async getHistoricalNavData(fundIds: number[], startDate: Date, endDate: Date): Promise<any[]> {
     try {
-      console.log(`Fetching historical NAV data for ${fundIds.length} funds from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      console.log(`Fetching NAV data for ${fundIds.length} funds from ${startDate.toISOString()} to ${endDate.toISOString()}`);
       
-      // First, get any real NAV data available
+      // Single optimized query with proper indexing
       const navData = await pool.query(`
-        SELECT * FROM nav_data
+        SELECT fund_id, nav_date, nav_value 
+        FROM nav_data
         WHERE fund_id = ANY($1)
         AND nav_date BETWEEN $2 AND $3
         ORDER BY fund_id, nav_date
       `, [fundIds, startDate, endDate]);
       
-      const resultCount = navData.rows.length;
-      console.log(`Retrieved ${resultCount} NAV data points for backtesting`);
+      console.log(`Retrieved ${navData.rows.length} authentic NAV data points`);
       
-      let processedData = navData.rows.map(row => ({
-        ...row,
+      // Process and return only authentic data
+      return navData.rows.map(row => ({
         fund_id: typeof row.fund_id === 'string' ? parseInt(row.fund_id) : row.fund_id,
         nav_date: row.nav_date instanceof Date ? row.nav_date : new Date(row.nav_date),
         nav_value: typeof row.nav_value === 'string' ? parseFloat(row.nav_value) : row.nav_value
       }));
-      
-      // Get fund details for supplementing with historical data if needed
-      let fundsInfo: Record<number, any> = {};
-      
-      if (resultCount < fundIds.length * 25) {
-        console.warn("Limited NAV data available - enriching with additional data points");
-        
-        // Get fund details for each fund
-        const fundsQuery = await pool.query(`
-          SELECT id, fund_name, category, subcategory FROM funds 
-          WHERE id = ANY($1)
-        `, [fundIds]);
-        
-        // Create a map of fund details by ID
-        fundsInfo = fundsQuery.rows.reduce((map: Record<number, any>, fund: any) => {
-          const fundId = typeof fund.id === 'string' ? parseInt(fund.id) : fund.id;
-          map[fundId] = fund;
-          return map;
-        }, {});
-        
-        // Generate additional data points to ensure accurate backtesting
-        const startMillis = startDate.getTime();
-        const endMillis = endDate.getTime();
-        const dayInMillis = 24 * 60 * 60 * 1000;
-        
-        // For each fund, ensure we have data points at regular intervals
-        for (const fundId of fundIds) {
-          // Determine baseline NAV and growth characteristics based on fund category
-          let baselineNAV = 100;
-          let annualGrowthRate = 0.10; // Default 10% annual growth
-          let volatilityFactor = 0.05; // Default 5% volatility
-          
-          // Find any existing NAV values for this fund to use as baseline
-          const existingValues = processedData.filter(d => d.fund_id === fundId);
-          
-          if (existingValues.length > 0) {
-            // Use earliest NAV value as baseline if available
-            const sortedValues = [...existingValues].sort((a, b) => 
-              new Date(a.nav_date).getTime() - new Date(b.nav_date).getTime()
-            );
-            baselineNAV = sortedValues[0].nav_value;
-          }
-          
-          // Adjust growth rate based on fund category if available
-          const fundInfo = fundsInfo[fundId];
-          if (fundInfo) {
-            const category = fundInfo.category?.toLowerCase() || '';
-            
-            if (category.includes('equity') && category.includes('large')) {
-              annualGrowthRate = 0.12; // 12% for large cap equity
-              volatilityFactor = 0.06;
-            } else if (category.includes('equity') && category.includes('mid')) {
-              annualGrowthRate = 0.15; // 15% for mid cap equity
-              volatilityFactor = 0.08;
-            } else if (category.includes('equity') && category.includes('small')) {
-              annualGrowthRate = 0.18; // 18% for small cap equity
-              volatilityFactor = 0.10;
-            } else if (category.includes('debt') && category.includes('short')) {
-              annualGrowthRate = 0.06; // 6% for short-term debt
-              volatilityFactor = 0.02;
-            } else if (category.includes('debt')) {
-              annualGrowthRate = 0.07; // 7% for other debt
-              volatilityFactor = 0.03;
-            } else if (category.includes('hybrid')) {
-              annualGrowthRate = 0.09; // 9% for hybrid funds
-              volatilityFactor = 0.04;
-            }
-          }
-          
-          // Generate data points at regular intervals
-          const existingDates = new Set(existingValues.map(v => v.nav_date.toISOString().split('T')[0]));
-          let currentDate = new Date(startDate);
-          let currentNAV = baselineNAV;
-          
-          // Generate points at 15-day intervals
-          const interval = 15 * dayInMillis;
-          
-          while (currentDate.getTime() <= endMillis) {
-            const dateStr = currentDate.toISOString().split('T')[0];
-            
-            // Only use existing authentic data - no synthetic generation allowed
-            if (!existingDates.has(dateStr)) {
-              console.warn(`No authentic data available for ${dateStr} - skipping synthetic generation`);
-            }
-            
-            // Move to next interval
-            currentDate = new Date(currentDate.getTime() + interval);
-          }
-        }
-        
-        console.log(`Generated additional NAV data points, total available: ${processedData.length}`);
-      }
-      
-      return processedData;
     } catch (error) {
       console.error('Error getting historical NAV data:', error);
       return [];
@@ -562,112 +492,57 @@ export class BacktestingEngine {
    * Get NAV value for a specific date
    */
   /**
-   * Get NAV value for a specific fund on a specific date
-   * This uses actual historical NAV data with proper fallback mechanism when exact dates aren't available
+   * Get NAV value for a specific fund on a specific date - Optimized Version
+   * Uses authentic NAV data with efficient lookup and proper fallback
    */
   private async getNavValue(navData: any[], fundId: number, date: Date): Promise<number | null> {
     if (!navData || navData.length === 0) {
       console.warn(`No NAV data available for fund ID ${fundId}`);
-      // Return a reasonable NAV value as fallback for backtesting
-      return 100 + (Math.random() * 20); // Default NAV range 100-120
+      return null;
     }
     
     try {
-      // Ensure date is a proper Date object
       const targetDate = date instanceof Date ? date : new Date(date);
+      const targetDateStr = targetDate.toISOString().split('T')[0];
       
-      // Get data for this fund only
-      const fundNavData = navData.filter(nav => 
-        nav && nav.fund_id && nav.fund_id.toString() === fundId.toString()
-      );
+      // Find fund-specific data
+      const fundNavData = navData.filter(nav => nav.fund_id === fundId);
       
       if (fundNavData.length === 0) {
-        console.log(`No NAV data found specifically for fund ID ${fundId}, using defaults`);
-        // Generate synthetic data based on date for backtesting purposes
-        const daysSinceEpoch = Math.floor(targetDate.getTime() / (24 * 60 * 60 * 1000));
-        const trendFactor = 1 + ((daysSinceEpoch % 100) / 2000); // Small upward trend
-        return 100 * trendFactor; // Base value with slight trend
+        console.log(`No NAV data found for fund ID ${fundId}`);
+        return null;
       }
       
-      // Find exact match by date
+      // Try exact date match first
       const exactMatch = fundNavData.find(nav => {
-        // Convert nav_date to Date if it's not already
-        const navDate = nav.nav_date instanceof Date ? nav.nav_date : new Date(nav.nav_date);
-        return navDate.toISOString().split('T')[0] === targetDate.toISOString().split('T')[0];
+        const navDateStr = nav.nav_date.toISOString().split('T')[0];
+        return navDateStr === targetDateStr;
       });
       
-      if (exactMatch) {
-        // Parse value to number if it's a string
-        const navValue = typeof exactMatch.nav_value === 'string' 
-          ? parseFloat(exactMatch.nav_value) 
-          : exactMatch.nav_value;
-          
-        // Validate that we have a real number
-        if (!isNaN(navValue) && navValue > 0) {
-          return navValue;
-        }
+      if (exactMatch && exactMatch.nav_value > 0) {
+        return exactMatch.nav_value;
       }
       
-      // Find closest date before the target date
+      // Find closest date before target
       const beforeDates = fundNavData
-        .filter(nav => {
-          const navDate = nav.nav_date instanceof Date ? nav.nav_date : new Date(nav.nav_date);
-          return navDate < targetDate;
-        })
-        .sort((a, b) => {
-          const dateA = a.nav_date instanceof Date ? a.nav_date : new Date(a.nav_date);
-          const dateB = b.nav_date instanceof Date ? b.nav_date : new Date(b.nav_date);
-          return dateB.getTime() - dateA.getTime();
-        });
+        .filter(nav => nav.nav_date < targetDate)
+        .sort((a, b) => b.nav_date.getTime() - a.nav_date.getTime());
       
-      if (beforeDates.length > 0) {
-        const closestNav = beforeDates[0];
-        const navValue = typeof closestNav.nav_value === 'string' 
-          ? parseFloat(closestNav.nav_value) 
-          : closestNav.nav_value;
-          
-        if (!isNaN(navValue) && navValue > 0) {
-          return navValue;
-        }
+      if (beforeDates.length > 0 && beforeDates[0].nav_value > 0) {
+        return beforeDates[0].nav_value;
       }
       
-      // If no suitable value found, check for any values after the target date as last resort
-      const afterDates = navData
-        .filter(nav => {
-          if (!nav || !nav.fund_id || nav.fund_id !== fundId) {
-            return false;
-          }
-          
-          const navDate = nav.nav_date instanceof Date ? nav.nav_date : new Date(nav.nav_date);
-          return navDate > targetDate;
-        })
-        .sort((a, b) => {
-          const dateA = a.nav_date instanceof Date ? a.nav_date : new Date(a.nav_date);
-          const dateB = b.nav_date instanceof Date ? b.nav_date : new Date(b.nav_date);
-          return dateA.getTime() - dateB.getTime();
-        });
+      // Find closest date after target as last resort
+      const afterDates = fundNavData
+        .filter(nav => nav.nav_date > targetDate)
+        .sort((a, b) => a.nav_date.getTime() - b.nav_date.getTime());
       
-      if (afterDates.length > 0) {
-        const closestNav = afterDates[0];
-        const navValue = typeof closestNav.nav_value === 'string' 
-          ? parseFloat(closestNav.nav_value) 
-          : closestNav.nav_value;
-          
-        if (!isNaN(navValue) && navValue > 0) {
-          return navValue;
-        }
+      if (afterDates.length > 0 && afterDates[0].nav_value > 0) {
+        return afterDates[0].nav_value;
       }
       
-      console.warn(`No valid NAV data found for fund ID ${fundId} around date ${targetDate.toISOString()}, using synthetic data for backtesting`);
-      
-      // Generate a realistic NAV value that changes based on the date
-      // This ensures we see proper returns in backtesting demonstration
-      const daysSinceEpoch = Math.floor(targetDate.getTime() / (24 * 60 * 60 * 1000));
-      const baseValue = 100;
-      const trendFactor = 1 + ((daysSinceEpoch % 365) / 3650); // Approximately 10% annual return
-      const volatilityFactor = 1 + ((Math.sin(daysSinceEpoch / 30) * 0.05)); // Monthly cycle
-      
-      return baseValue * trendFactor * volatilityFactor;
+      console.warn(`No valid NAV data found for fund ID ${fundId} around date ${targetDateStr}`);
+      return null;
     } catch (error) {
       console.error(`Error getting NAV value for fund ${fundId}:`, error);
       return null;
