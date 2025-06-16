@@ -773,8 +773,20 @@ export class FundScoringEngine {
 
   // Use centralized recommendation engine for consistency
   private getRecommendationFromTotalScore(totalScore: number, quartile: number = 3, riskGradeTotal: number = 0, fundamentalsTotal: number = 0): string {
-    const { RecommendationEngine } = require('./recommendation-engine');
-    return RecommendationEngine.calculateRecommendation(totalScore, quartile, riskGradeTotal, fundamentalsTotal);
+    // Apply original documentation logic for recommendations
+    if (totalScore >= 70 || (totalScore >= 65 && quartile === 1 && riskGradeTotal >= 25)) {
+      return 'STRONG_BUY';
+    }
+    if (totalScore >= 60 || (totalScore >= 55 && [1,2].includes(quartile) && fundamentalsTotal >= 20)) {
+      return 'BUY';
+    }
+    if (totalScore >= 50 || (totalScore >= 45 && [1,2,3].includes(quartile) && riskGradeTotal >= 20)) {
+      return 'HOLD';
+    }
+    if (totalScore >= 35 || (totalScore >= 30 && riskGradeTotal >= 15)) {
+      return 'SELL';
+    }
+    return 'STRONG_SELL';
   }
 
   // Process a batch of funds
