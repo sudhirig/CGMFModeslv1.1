@@ -785,7 +785,9 @@ export class ComprehensiveBacktestingEngine {
    * Create multi-fund portfolio with equal or score-based weighting
    */
   private async createMultiFundPortfolio(fundIds: number[], config: BacktestConfig) {
-    const scoreDate = config.startDate.toISOString().split('T')[0];
+    const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
+    const startDate = config.startDate.toISOString().split('T')[0];
+    const endDate = config.endDate.toISOString().split('T')[0];
     
     const fundData = await pool.query(`
       SELECT 
@@ -895,6 +897,8 @@ export class ComprehensiveBacktestingEngine {
    */
   private async createQuartileBasedPortfolio(quartile: 'Q1' | 'Q2' | 'Q3' | 'Q4', config: BacktestConfig) {
     const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
+    const startDate = config.startDate.toISOString().split('T')[0];
+    const endDate = config.endDate.toISOString().split('T')[0];
     const maxFunds = config.maxFunds || 15;
     
     // Calculate quartile boundaries
@@ -933,7 +937,7 @@ export class ComprehensiveBacktestingEngine {
     `;
     
     const quartileNum = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 }[quartile];
-    const params = [scoreDate, config.startDate, config.endDate, quartileNum, maxFunds];
+    const params = [scoreDate, startDate, endDate, quartileNum, maxFunds];
     
     if (config.category) params.push(config.category);
     if (config.subCategory) params.push(config.subCategory);
@@ -958,6 +962,7 @@ export class ComprehensiveBacktestingEngine {
    * Create portfolio based on recommendation status
    */
   private async createRecommendationBasedPortfolio(recommendation: 'BUY' | 'HOLD' | 'SELL', config: BacktestConfig) {
+    const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
     const startDate = config.startDate.toISOString().split('T')[0];
     const endDate = config.endDate.toISOString().split('T')[0];
     const maxFunds = config.maxFunds || 20;
