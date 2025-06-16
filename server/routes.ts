@@ -25,8 +25,31 @@ import fundCountRoutes from "./api/fund-count";
 import mftoolTestRoutes from "./api/mftool-test";
 import mfapiHistoricalImportRoutes from "./api/mfapi-historical-import";
 import quartileCalculationRoutes from "./api/quartile-calculation";
+import unifiedScoringRoutes from "./api/unified-scoring";
+
+// Error handling middleware
+const errorHandler = (err: any, req: any, res: any, next: any) => {
+  console.error('API Error:', err);
+  
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: err.message
+    });
+  }
+  
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'An error occurred'
+  });
+};
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Register unified scoring routes (consolidated API)
+  app.use('/api/unified-scoring', unifiedScoringRoutes);
+  
   // Register AMFI data import routes
   app.use('/api/amfi', amfiImportRoutes);
   
@@ -2272,6 +2295,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add global error handler
+  app.use(errorHandler);
+  
   const httpServer = createServer(app);
   return httpServer;
 }
