@@ -42,30 +42,9 @@ class BackgroundHistoricalImporter {
   private readonly MAX_EMPTY_BATCHES = 20; // Stop after 20 consecutive empty batches
 
   async start() {
-    if (this.isRunning) {
-      console.log('📊 Background historical importer already running');
-      return;
-    }
-
-    // Reset state to start fresh and access different funds
-    this.processedFundIds.clear();
-    this.consecutiveEmptyBatches = 0;
-
-    this.isRunning = true;
-    this.currentProgress.isRunning = true;
-    
-    console.log('🚀 Starting background historical NAV data importer...');
-    console.log(`  Batch size: ${this.BATCH_SIZE} funds`);
-    console.log(`  Delay between batches: ${this.DELAY_BETWEEN_BATCHES / 1000}s`);
-    console.log(`  Max import range: ${this.MAX_MONTHS_BACK} months`);
-
-    try {
-      await this.runContinuousImport();
-    } catch (error) {
-      console.error('Background importer error:', error);
-      this.isRunning = false;
-      this.currentProgress.isRunning = false;
-    }
+    console.log('⚠️ Background historical importer DISABLED to prevent database corruption');
+    console.log('Manual import available via API endpoints for controlled execution');
+    return;
   }
 
   stop() {

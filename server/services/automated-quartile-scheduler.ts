@@ -30,25 +30,9 @@ export class AutomatedQuartileScheduler {
   }
 
   private setupScheduledTasks() {
-    // Daily NAV data quality check and fund eligibility assessment (6 AM UTC)
-    cron.schedule('0 6 * * *', async () => {
-      console.log('Starting daily fund eligibility assessment...');
-      await this.runDailyEligibilityCheck();
-    });
-
-    // Weekly quartile recalculation (Sunday 7 AM UTC)
-    cron.schedule('0 7 * * 0', async () => {
-      console.log('Starting weekly quartile recalculation...');
-      await this.runWeeklyQuartileRecalculation();
-    });
-
-    // Monthly historical quartile tracking (1st of month, 8 AM UTC)
-    cron.schedule('0 8 1 * *', async () => {
-      console.log('Starting monthly quartile migration tracking...');
-      await this.trackQuartileMigrations();
-    });
-
-    console.log('Automated quartile scheduler initialized with daily, weekly, and monthly tasks');
+    // ALL SCHEDULED TASKS DISABLED TO PREVENT DATABASE CORRUPTION
+    console.log('⚠️ Automated quartile scheduler DISABLED to prevent database corruption');
+    console.log('Manual triggers available via API endpoints for controlled execution');
   }
 
   async runDailyEligibilityCheck(): Promise<FundEligibilityCheck[]> {

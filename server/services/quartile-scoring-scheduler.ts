@@ -10,18 +10,8 @@ export class QuartileScheduler {
   }
   
   startScheduler(intervalDays: number = 7) {
-    console.log(`Quartile scoring scheduler ENABLED with authentic recommendation logic`);
-    console.log(`Using original documentation thresholds: 70+/60+/50+/35+`);
-    
-    // Run immediately on startup with corrected logic
-    this.runBatchProcess();
-    
-    // Then schedule at regular intervals
-    setInterval(() => {
-      this.runBatchProcess();
-    }, intervalDays * 24 * 60 * 60 * 1000);
-    
-    console.log(`Quartile scoring scheduler started with interval of ${intervalDays} days`);
+    console.log(`⚠️ Quartile scoring scheduler DISABLED to prevent database corruption`);
+    console.log(`Manual triggers available via API endpoints for controlled execution`);
   }
   
   private async runBatchProcess() {
