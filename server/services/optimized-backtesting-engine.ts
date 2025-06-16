@@ -257,6 +257,8 @@ export class OptimizedBacktestingEngine {
       ];
       
       console.log(`Backtest completed: ${totalReturn.toFixed(2)}% return`);
+      console.log(`Start value: ${startValue}, End value: ${endValue}`);
+      console.log(`Portfolio returns data:`, returns);
       
       return {
         portfolioId: portfolio.id,
