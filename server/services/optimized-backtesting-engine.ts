@@ -114,21 +114,23 @@ export class OptimizedBacktestingEngine {
   private async createDefaultPortfolio(riskProfile: string): Promise<Portfolio> {
     console.log(`Creating default portfolio for ${riskProfile}`);
     
-    // Get top funds with consistent NAV data (filter out corrupted data)
+    // Get top funds with stable, validated NAV data
     const topFunds = await pool.query(`
       SELECT fsc.*, f.* 
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
       WHERE fsc.score_date = '2025-06-05'
       AND fsc.total_score IS NOT NULL
-      AND EXISTS (
-        SELECT 1 FROM nav_data nav 
-        WHERE nav.fund_id = fsc.fund_id 
-        AND nav.nav_date >= '2024-01-01'
-        AND nav.nav_value > 0 
-        AND nav.nav_value < 10000  -- Filter out unrealistic NAV values
+      AND fsc.fund_id IN (
+        SELECT nav.fund_id
+        FROM nav_data nav 
+        WHERE nav.nav_date >= '2024-01-01'
+        AND nav.nav_value > 10 AND nav.nav_value < 1000  -- Reasonable NAV range
+        GROUP BY nav.fund_id
+        HAVING COUNT(*) > 100  -- Sufficient data points
+        AND STDDEV(nav.nav_value) < MAX(nav.nav_value) * 0.15  -- Stable data
+        AND MAX(nav.nav_value) / MIN(nav.nav_value) < 1.8  -- Reasonable volatility
       )
-      AND fsc.fund_id NOT IN (15, 7005, 7006)  -- Exclude funds with known data issues
       ORDER BY fsc.total_score DESC
       LIMIT 5
     `);
@@ -332,6 +334,7 @@ export class OptimizedBacktestingEngine {
         FROM nav_data
         WHERE fund_id = ANY($1)
         AND nav_date BETWEEN $2 AND $3
+        AND nav_value > 10 AND nav_value < 1000  -- Filter realistic NAV values
         ORDER BY fund_id, nav_date
       `, [fundIds, startDate, endDate]);
       
