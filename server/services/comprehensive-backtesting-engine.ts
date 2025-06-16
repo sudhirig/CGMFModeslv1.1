@@ -143,8 +143,8 @@ export class ComprehensiveBacktestingEngine {
       const historicalData = await this.generateHistoricalTimeSeries(portfolio, config);
       
       return {
-        portfolioId: portfolio.id,
-        riskProfile: portfolio.riskProfile,
+        portfolioId: portfolio.id || 1,
+        riskProfile: portfolio.riskProfile || 'Unknown',
         elivateScoreValidation: elivateValidation,
         performance,
         riskMetrics,
@@ -754,12 +754,15 @@ export class ComprehensiveBacktestingEngine {
     }
     
     return {
-      id: 0,
+      id: fundId,
       name: `Individual Fund: ${fundData.rows[0].fund_name}`,
-      riskProfile: 'Individual',
+      riskProfile: 'Individual Fund Portfolio',
       funds: [{
         ...fundData.rows[0],
-        allocation: 100
+        fundId: fundData.rows[0].fund_id,
+        fundName: fundData.rows[0].fund_name,
+        allocation: 1.0,
+        elivateScore: parseFloat(fundData.rows[0].total_score) || 0
       }]
     };
   }
@@ -804,9 +807,9 @@ export class ComprehensiveBacktestingEngine {
       : this.applyEqualWeighting(fundData.rows);
     
     return {
-      id: 0,
+      id: 2,
       name: `Multi-Fund Portfolio (${fundData.rows.length} funds)`,
-      riskProfile: 'Custom',
+      riskProfile: 'Custom Multi-Fund Portfolio',
       funds: allocations
     };
   }
@@ -885,7 +888,7 @@ export class ComprehensiveBacktestingEngine {
         WHERE fsc.score_date <= $1
         AND fsc.total_score IS NOT NULL
         ${config.category ? 'AND f.category = $7' : ''}
-        ${config.subCategory ? 'AND f.sub_category = $8' : ''}
+        ${config.subCategory ? 'AND f.subcategory = $8' : ''}
         AND EXISTS (
           SELECT 1 FROM nav_data nav 
           WHERE nav.fund_id = fsc.fund_id 
@@ -962,9 +965,9 @@ export class ComprehensiveBacktestingEngine {
     const allocations = this.applyEqualWeighting(fundData.rows);
     
     return {
-      id: 0,
+      id: 5,
       name: `${recommendation} Recommendation Portfolio`,
-      riskProfile: 'Recommendation-Based',
+      riskProfile: 'Recommendation-Based Portfolio',
       funds: allocations
     };
   }

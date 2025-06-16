@@ -2378,11 +2378,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const stats = await pool.query(`
         SELECT 
           schemaname,
-          tablename,
+          relname as tablename,
           n_tup_ins + n_tup_upd + n_tup_del as total_operations
         FROM pg_stat_user_tables 
         WHERE schemaname = 'public'
-        ORDER BY tablename
+        ORDER BY relname
       `);
       
       const recordCounts: Record<string, number> = {};
