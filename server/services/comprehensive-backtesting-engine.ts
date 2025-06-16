@@ -837,7 +837,7 @@ export class ComprehensiveBacktestingEngine {
     const scoreDate = config.scoreDate?.toISOString().split('T')[0] || config.startDate.toISOString().split('T')[0];
     const startDate = config.startDate.toISOString().split('T')[0];
     const endDate = config.endDate.toISOString().split('T')[0];
-    const maxFunds = config.maxFunds || 20;
+    const maxFunds = config.maxFunds || 15;
     
     const fundData = await pool.query(`
       SELECT 
@@ -849,20 +849,20 @@ export class ComprehensiveBacktestingEngine {
         f.expense_ratio
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
-      WHERE fsc.score_date <= $1
-      AND fsc.total_score BETWEEN $2 AND $3
+      WHERE fsc.score_date = (SELECT MAX(score_date) FROM fund_scores_corrected)
+      AND fsc.total_score BETWEEN $1 AND $2
       AND fsc.total_score IS NOT NULL
       AND EXISTS (
         SELECT 1 FROM nav_data nav 
         WHERE nav.fund_id = fsc.fund_id 
-        AND nav.nav_date BETWEEN $4 AND $5
+        AND nav.nav_date BETWEEN $3 AND $4
         AND nav.nav_value BETWEEN 10 AND 1000
         GROUP BY nav.fund_id
         HAVING COUNT(*) > 50
       )
-      ORDER BY fsc.score_date DESC, fsc.total_score DESC
-      LIMIT $6
-    `, [scoreDate, scoreRange.min, scoreRange.max, startDate, endDate, maxFunds]);
+      ORDER BY fsc.total_score DESC
+      LIMIT $5
+    `, [scoreRange.min, scoreRange.max, startDate, endDate, maxFunds]);
     
     if (fundData.rows.length === 0) {
       console.log(`No funds found with scores ${scoreRange.min}-${scoreRange.max}, checking available score ranges...`);
@@ -939,10 +939,7 @@ export class ComprehensiveBacktestingEngine {
     const quartileNum = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 }[quartile];
     const params = [scoreDate, startDate, endDate, quartileNum, maxFunds];
     
-    if (config.category) params.push(config.category);
-    if (config.subCategory) params.push(config.subCategory);
-    
-    const fundData = await pool.query(quartileQuery, params);
+
     
     if (fundData.rows.length === 0) {
       throw new Error(`No funds found in ${quartile} quartile for the specified criteria`);
