@@ -812,53 +812,58 @@ export class BacktestingEngine {
         'Aggressive': []
       };
       
-      // Get top-rated funds for different categories
-      // These queries match our database structure more accurately
+      // Get top-rated funds for different categories using authentic fund_scores_corrected
       const topLargeCap = await pool.query(`
-        SELECT fs.*, f.* FROM fund_scores fs
-        JOIN funds f ON fs.fund_id = f.id
-        WHERE f.category LIKE 'Equity%Large Cap%'
-        ORDER BY fs.total_score DESC
+        SELECT fsc.*, f.* FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE f.category = 'Equity' AND f.subcategory LIKE '%Large Cap%'
+        AND fsc.score_date = '2025-06-05'
+        ORDER BY fsc.total_score DESC
         LIMIT 2
       `);
       
       const topMidCap = await pool.query(`
-        SELECT fs.*, f.* FROM fund_scores fs
-        JOIN funds f ON fs.fund_id = f.id
-        WHERE f.category LIKE 'Equity%Mid Cap%'
-        ORDER BY fs.total_score DESC
+        SELECT fsc.*, f.* FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE f.category = 'Equity' AND f.subcategory LIKE '%Mid Cap%'
+        AND fsc.score_date = '2025-06-05'
+        ORDER BY fsc.total_score DESC
         LIMIT 2
       `);
       
       const topSmallCap = await pool.query(`
-        SELECT fs.*, f.* FROM fund_scores fs
-        JOIN funds f ON fs.fund_id = f.id
-        WHERE f.category LIKE 'Equity%Small Cap%'
-        ORDER BY fs.total_score DESC
+        SELECT fsc.*, f.* FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE f.category = 'Equity' AND f.subcategory LIKE '%Small Cap%'
+        AND fsc.score_date = '2025-06-05'
+        ORDER BY fsc.total_score DESC
         LIMIT 2
       `);
       
       const topDebtShort = await pool.query(`
-        SELECT fs.*, f.* FROM fund_scores fs
-        JOIN funds f ON fs.fund_id = f.id
-        WHERE f.category LIKE 'Debt%Short%'
-        ORDER BY fs.total_score DESC
+        SELECT fsc.*, f.* FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE f.category = 'Debt' AND f.subcategory LIKE '%Short%'
+        AND fsc.score_date = '2025-06-05'
+        ORDER BY fsc.total_score DESC
         LIMIT 2
       `);
       
       const topDebtMedium = await pool.query(`
-        SELECT fs.*, f.* FROM fund_scores fs
-        JOIN funds f ON fs.fund_id = f.id
-        WHERE f.category LIKE 'Debt%Medium%'
-        ORDER BY fs.total_score DESC
+        SELECT fsc.*, f.* FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE f.category = 'Debt' AND f.subcategory LIKE '%Medium%'
+        AND fsc.score_date = '2025-06-05'
+        ORDER BY fsc.total_score DESC
         LIMIT 2
       `);
       
       const topHybrid = await pool.query(`
-        SELECT fs.*, f.* FROM fund_scores fs
-        JOIN funds f ON fs.fund_id = f.id
-        WHERE f.category LIKE 'Hybrid%'
-        ORDER BY fs.total_score DESC
+        SELECT fsc.*, f.* FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE f.category = 'Hybrid'
+        AND fsc.score_date = '2025-06-05'
+        ORDER BY fsc.total_score DESC
         LIMIT 2
       `);
       
