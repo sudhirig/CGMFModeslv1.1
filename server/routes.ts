@@ -2305,6 +2305,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Comprehensive backtesting endpoint
+  app.post('/api/comprehensive-backtest', async (req, res) => {
+    try {
+      const {
+        fundId,
+        fundIds,
+        elivateScoreRange,
+        quartile,
+        recommendation,
+        portfolioId,
+        riskProfile,
+        category,
+        subCategory,
+        startDate,
+        endDate,
+        initialAmount,
+        rebalancePeriod,
+        equalWeighting,
+        scoreWeighting,
+        maxFunds,
+        validateElivateScore
+      } = req.body;
+
+      const parsedStartDate = new Date(startDate);
+      const parsedEndDate = new Date(endDate);
+      const parsedAmount = parseFloat(initialAmount);
+
+      if (isNaN(parsedStartDate.getTime()) || isNaN(parsedEndDate.getTime()) || isNaN(parsedAmount)) {
+        return res.status(400).json({ 
+          message: "Invalid date format or amount" 
+        });
+      }
+
+      const { comprehensiveBacktestingEngine } = await import('./services/comprehensive-backtesting-engine.js');
+      
+      const config = {
+        fundId: fundId ? parseInt(fundId) : undefined,
+        fundIds: fundIds ? fundIds.map((id: string) => parseInt(id)) : undefined,
+        elivateScoreRange,
+        quartile,
+        recommendation,
+        portfolioId: portfolioId ? parseInt(portfolioId) : undefined,
+        riskProfile,
+        category,
+        subCategory,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+        initialAmount: parsedAmount,
+        rebalancePeriod: rebalancePeriod || 'quarterly',
+        equalWeighting: equalWeighting || false,
+        scoreWeighting: scoreWeighting || false,
+        maxFunds: maxFunds ? parseInt(maxFunds) : undefined,
+        validateElivateScore: validateElivateScore || false
+      };
+
+      const results = await comprehensiveBacktestingEngine.runComprehensiveBacktest(config);
+      
+      res.json(results);
+    } catch (error) {
+      console.error("Error running comprehensive backtest:", error);
+      res.status(500).json({ 
+        message: "Failed to run comprehensive backtest", 
+        error: (error as Error).message 
+      });
+    }
+  });
+
+  // Database stats endpoint for testing
+  app.get('/api/system/database-stats', async (req, res) => {
+    try {
+      const stats = await pool.query(`
+        SELECT 
+          schemaname,
+          tablename,
+          n_tup_ins + n_tup_upd + n_tup_del as total_operations
+        FROM pg_stat_user_tables 
+        WHERE schemaname = 'public'
+        ORDER BY tablename
+      `);
+      
+      const recordCounts: Record<string, number> = {};
+      
+      for (const table of stats.rows) {
+        const countResult = await pool.query(`SELECT COUNT(*) as count FROM ${table.tablename}`);
+        recordCounts[table.tablename] = parseInt(countResult.rows[0].count);
+      }
+      
+      res.json(recordCounts);
+    } catch (error) {
+      console.error("Error getting database stats:", error);
+      res.status(500).json({ message: "Failed to get database stats" });
+    }
+  });
+
   // Add global error handler
   app.use(errorHandler);
   

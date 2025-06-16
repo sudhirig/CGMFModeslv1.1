@@ -3,7 +3,7 @@
  * Tests all new backtesting capabilities with authentic data only
  */
 
-const axios = require('axios');
+import axios from 'axios';
 
 const BASE_URL = 'http://localhost:5000';
 
@@ -338,9 +338,7 @@ class Phase2BacktestingTester {
 }
 
 // Export for testing
-if (require.main === module) {
-  const tester = new Phase2BacktestingTester();
-  tester.runAllTests().catch(console.error);
-}
+const tester = new Phase2BacktestingTester();
+tester.runAllTests().catch(console.error);
 
-module.exports = { Phase2BacktestingTester };
+export { Phase2BacktestingTester };
