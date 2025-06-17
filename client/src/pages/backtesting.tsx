@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 import { format } from "date-fns";
@@ -51,7 +51,31 @@ export default function BacktestingPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("risk-profile");
   const [backtestResults, setBacktestResults] = useState<any>(null);
+  const [systemStatus, setSystemStatus] = useState<'checking' | 'operational' | 'degraded'>('checking');
   
+  // Check system status on mount
+  useEffect(() => {
+    const checkSystemStatus = async () => {
+      try {
+        const response = await fetch('/api/comprehensive-backtest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fundId: 8319,
+            startDate: '2024-01-01',
+            endDate: '2024-12-31',
+            initialAmount: 100000,
+            rebalancePeriod: 'quarterly'
+          }),
+        });
+        setSystemStatus(response.ok ? 'operational' : 'degraded');
+      } catch {
+        setSystemStatus('degraded');
+      }
+    };
+    checkSystemStatus();
+  }, []);
+
   // Get portfolios for selection
   const { data: portfolios, isLoading: isLoadingPortfolios } = useQuery({
     queryKey: ['/api/portfolios'],
@@ -79,7 +103,7 @@ export default function BacktestingPage() {
         endDate: data.endDate.toISOString(),
       };
       
-      const response = await fetch('/api/backtest', {
+      const response = await fetch('/api/comprehensive-backtest', {
         method: 'POST',
         body: JSON.stringify(formattedData),
         headers: {
@@ -393,43 +417,183 @@ export default function BacktestingPage() {
                       "Custom Portfolio"} Performance: {format(new Date(backtestResults.startDate), "dd MMM yyyy")} to {format(new Date(backtestResults.endDate), "dd MMM yyyy")}
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Initial Investment</div>
-                      <div className="text-2xl font-bold">{formatCurrency(backtestResults.initialAmount)}</div>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {backtestResults.performance?.totalReturn?.toFixed(2) || '0.00'}%
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Final Value</div>
-                      <div className="text-2xl font-bold">{formatCurrency(backtestResults.finalAmount)}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">Total Return</div>
+                  </div>
+                  
+                  <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                      {backtestResults.performance?.annualizedReturn?.toFixed(2) || '0.00'}%
                     </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Return</div>
-                      <div className={`text-2xl font-bold ${backtestResults.totalReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {formatPercentage(backtestResults.totalReturn)}
+                    <div className="text-sm text-gray-600 dark:text-gray-300">Annualized Return</div>
+                  </div>
+                  
+                  <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                      {backtestResults.riskMetrics?.volatility?.toFixed(2) || '0.00'}%
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">Volatility</div>
+                  </div>
+
+                  <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                      {backtestResults.riskMetrics?.sharpeRatio?.toFixed(2) || '0.00'}
+                    </div>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">Sharpe Ratio</div>
+                  </div>
+                </div>
+
+                {/* ELIVATE Score Validation */}
+                {backtestResults.elivateScoreValidation && (
+                  <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 p-4 rounded-lg mb-6">
+                    <h3 className="text-lg font-semibold mb-2">ELIVATE Score Analysis</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-xl font-bold text-indigo-600 dark:text-indigo-400">
+                          {backtestResults.elivateScoreValidation.averagePortfolioScore?.toFixed(1) || 'N/A'}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">Average Portfolio Score</div>
                       </div>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Annualized Return</div>
-                      <div className={`text-2xl font-bold ${backtestResults.annualizedReturn >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                        {formatPercentage(backtestResults.annualizedReturn)}
+                      <div>
+                        <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                          {backtestResults.elivateScoreValidation.scorePredictionAccuracy?.toFixed(1) || 'N/A'}%
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">Prediction Accuracy</div>
                       </div>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Maximum Drawdown</div>
-                      <div className="text-2xl font-bold text-red-500">
-                        {formatPercentage(backtestResults.maxDrawdown)}
-                      </div>
-                    </div>
-                    <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                      <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Sharpe Ratio</div>
-                      <div className="text-2xl font-bold">
-                        {backtestResults.sharpeRatio.toFixed(2)}
+                      <div>
+                        <div className="text-xl font-bold text-green-600 dark:text-green-400">
+                          {backtestResults.elivateScoreValidation.correlationAnalysis?.scoreToReturn?.toFixed(2) || 'N/A'}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-300">Score-Return Correlation</div>
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="h-[400px] w-full">
+                )}
+
+                {/* Performance Chart */}
+                {backtestResults.historicalData && backtestResults.historicalData.length > 0 && (
+                  <div className="h-64 mb-6">
+                    <h3 className="text-lg font-semibold mb-2">Portfolio Performance</h3>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={backtestResults.historicalData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis 
+                          dataKey="date" 
+                          tickFormatter={(value) => format(new Date(value), 'MMM yyyy')}
+                        />
+                        <YAxis tickFormatter={(value) => `$${value.toLocaleString()}`} />
+                        <Tooltip 
+                          labelFormatter={(value) => format(new Date(value), 'MMM dd, yyyy')}
+                          formatter={(value: number) => [`$${value.toLocaleString()}`, 'Portfolio Value']}
+                        />
+                        <Line 
+                          type="monotone" 
+                          dataKey="portfolioValue" 
+                          stroke="#3b82f6" 
+                          strokeWidth={2}
+                          dot={false}
+                          name="Portfolio"
+                        />
+                        {backtestResults.historicalData[0]?.benchmarkValue && (
+                          <Line 
+                            type="monotone" 
+                            dataKey="benchmarkValue" 
+                            stroke="#ef4444" 
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={false}
+                            name="Benchmark"
+                          />
+                        )}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Fund Attribution */}
+                {backtestResults.attribution?.fundContributions && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Fund Contributions</h3>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                        <thead className="bg-gray-50 dark:bg-gray-800">
+                          <tr>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              Fund
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              ELIVATE Score
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              Allocation
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              Return
+                            </th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                              Contribution
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                          {backtestResults.attribution.fundContributions.map((fund: any, index: number) => (
+                            <tr key={index}>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                {fund.fundName || `Fund ${fund.fundId}`}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                {fund.elivateScore?.toFixed(1) || 'N/A'}
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                {(fund.allocation * 100)?.toFixed(1) || '0.0'}%
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                {fund.absoluteReturn?.toFixed(2) || '0.00'}%
+                              </td>
+                              <td className="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                {fund.contribution?.toFixed(2) || '0.00'}%
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>Portfolio Backtesting</CardTitle>
+                <CardDescription>
+                  Test your investment strategy against historical market data to see how it would have performed
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12">
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    Configure your backtest parameters and run analysis to see comprehensive results with ELIVATE scoring.
+                  </p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500">
+                    System Status: <span className={systemStatus === 'operational' ? 'text-green-500' : 'text-red-500'}>
+                      {systemStatus === 'operational' ? 'Ready' : 'Checking...'}
+                    </span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart
                         data={chartData}
