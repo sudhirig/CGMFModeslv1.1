@@ -295,25 +295,31 @@ export class ComprehensiveBacktestingEngine {
   }
 
   private async createScoreBasedPortfolio(scoreRange: { min: number; max: number }, maxFunds: number) {
+    // Add randomization to prevent always selecting the same top funds
     const fundData = await pool.query(`
-      SELECT 
-        fsc.fund_id,
-        fsc.total_score,
-        f.fund_name,
-        f.category,
-        f.subcategory,
-        COUNT(nav.nav_value) as nav_data_points
-      FROM fund_scores_corrected fsc
-      JOIN funds f ON fsc.fund_id = f.id
-      LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
-        AND nav.nav_date >= '2024-01-01'
-        AND nav.nav_value > 0
-      WHERE fsc.total_score BETWEEN $1 AND $2
-      AND fsc.total_score IS NOT NULL
-      GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
-      HAVING COUNT(nav.nav_value) >= 50
-      ORDER BY fsc.total_score DESC
-      LIMIT $3
+      WITH score_range_funds AS (
+        SELECT 
+          fsc.fund_id,
+          fsc.total_score,
+          f.fund_name,
+          f.category,
+          f.subcategory,
+          COUNT(nav.nav_value) as nav_data_points,
+          ROW_NUMBER() OVER (ORDER BY fsc.total_score DESC, RANDOM()) as diversified_rank
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
+          AND nav.nav_date >= '2024-01-01'
+          AND nav.nav_value > 0
+        WHERE fsc.total_score BETWEEN $1 AND $2
+        AND fsc.total_score IS NOT NULL
+        GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
+        HAVING COUNT(nav.nav_value) >= 50
+      )
+      SELECT fund_id, total_score, fund_name, category, subcategory
+      FROM score_range_funds
+      WHERE diversified_rank <= $3
+      ORDER BY total_score DESC
     `, [scoreRange.min, scoreRange.max, maxFunds]);
 
     if (fundData.rows.length === 0) {
@@ -338,16 +344,16 @@ export class ComprehensiveBacktestingEngine {
     const quartileMap = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
     const quartileNum = quartileMap[quartile as keyof typeof quartileMap];
 
+    // First calculate quartiles across ALL eligible funds, then select from the specific quartile
     const fundData = await pool.query(`
-      WITH ranked_funds AS (
+      WITH all_eligible_funds AS (
         SELECT 
           fsc.fund_id,
           fsc.total_score,
           f.fund_name,
           f.category,
           f.subcategory,
-          COUNT(nav.nav_value) as nav_data_points,
-          NTILE(4) OVER (ORDER BY fsc.total_score DESC) as quartile_rank
+          COUNT(nav.nav_value) as nav_data_points
         FROM fund_scores_corrected fsc
         JOIN funds f ON fsc.fund_id = f.id
         LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
@@ -356,11 +362,17 @@ export class ComprehensiveBacktestingEngine {
         WHERE fsc.total_score IS NOT NULL
         GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
         HAVING COUNT(nav.nav_value) >= 50
+      ),
+      quartile_ranked_funds AS (
+        SELECT 
+          *,
+          NTILE(4) OVER (ORDER BY total_score DESC) as quartile_rank
+        FROM all_eligible_funds
       )
-      SELECT fund_id, total_score, fund_name, category, subcategory
-      FROM ranked_funds
+      SELECT fund_id, total_score, fund_name, category, subcategory, quartile_rank
+      FROM quartile_ranked_funds
       WHERE quartile_rank = $1
-      ORDER BY total_score DESC
+      ORDER BY RANDOM()  -- Add randomization within quartile
       LIMIT $2
     `, [quartileNum, maxFunds]);
 
@@ -383,25 +395,32 @@ export class ComprehensiveBacktestingEngine {
   }
 
   private async createRecommendationBasedPortfolio(recommendation: string, maxFunds: number) {
+    // Use broader fund selection with different score ranges for each recommendation
     const fundData = await pool.query(`
-      SELECT 
-        fsc.fund_id,
-        fsc.total_score,
-        fsc.recommendation,
-        f.fund_name,
-        f.category,
-        f.subcategory,
-        COUNT(nav.nav_value) as nav_data_points
-      FROM fund_scores_corrected fsc
-      JOIN funds f ON fsc.fund_id = f.id
-      LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
-        AND nav.nav_date >= '2024-01-01'
-        AND nav.nav_value > 0
-      WHERE fsc.recommendation = $1
-      AND fsc.total_score IS NOT NULL
-      GROUP BY fsc.fund_id, fsc.total_score, fsc.recommendation, f.fund_name, f.category, f.subcategory
-      HAVING COUNT(nav.nav_value) >= 50
-      ORDER BY fsc.total_score DESC
+      WITH recommendation_funds AS (
+        SELECT 
+          fsc.fund_id,
+          fsc.total_score,
+          fsc.recommendation,
+          f.fund_name,
+          f.category,
+          f.subcategory,
+          COUNT(nav.nav_value) as nav_data_points,
+          ROW_NUMBER() OVER (ORDER BY RANDOM()) as random_rank
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
+          AND nav.nav_date >= '2024-01-01'
+          AND nav.nav_value > 0
+        WHERE fsc.recommendation = $1
+        AND fsc.total_score IS NOT NULL
+        GROUP BY fsc.fund_id, fsc.total_score, fsc.recommendation, f.fund_name, f.category, f.subcategory
+        HAVING COUNT(nav.nav_value) >= 50
+      )
+      SELECT fund_id, total_score, recommendation, fund_name, category, subcategory
+      FROM recommendation_funds
+      WHERE random_rank <= $2 * 3  -- Get 3x more funds for diversity
+      ORDER BY total_score DESC
       LIMIT $2
     `, [recommendation, maxFunds]);
 

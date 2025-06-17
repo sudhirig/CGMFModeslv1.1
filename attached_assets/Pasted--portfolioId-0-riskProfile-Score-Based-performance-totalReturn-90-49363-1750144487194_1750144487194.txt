@@ -1,0 +1,141 @@
+{
+  "portfolioId": 0,
+  "riskProfile": "Score-Based",
+  "performance": {
+    "totalReturn": 90.49363668236414,
+    "annualizedReturn": 90.57773973471541,
+    "monthlyReturns": [
+      0.01900448510489752,
+      -0.008279946035954455,
+      0.014721816259694112,
+      0.0071632131154111605,
+      -0.010599066172269668,
+      0.011816525285087365,
+      0.003941473847668875,
+      0.00839481472293574,
+      0.004680421741570362,
+      0.06095992378156965,
+      0.6982435274327004,
+      0.005375874283766801
+    ],
+    "bestMonth": 69.82435274327004,
+    "worstMonth": -1.0599066172269669,
+    "positiveMonths": 10,
+    "winRate": 83.33333333333334
+  },
+  "riskMetrics": {
+    "volatility": 66.10121995739861,
+    "maxDrawdown": 1.0599066172269669,
+    "sharpeRatio": 1.8160056852969921,
+    "sortinoRatio": 36.43632094221466,
+    "calmarRatio": 113.31204966143238,
+    "valueAtRisk95": -1.0599066172269669,
+    "betaToMarket": 1
+  },
+  "attribution": {
+    "fundContributions": [
+      {
+        "fundId": 15,
+        "fundName": "Franklin India SHORT TERM INCOME PLAN - Direct - GROWTH",
+        "elivateScore": "90.50",
+        "allocation": 0.1,
+        "absoluteReturn": 0,
+        "contribution": 0,
+        "alpha": -10
+      },
+      {
+        "fundId": 507,
+        "fundName": "Invesco India Gilt Fund - Monthly IDCW (Reinvestment)",
+        "elivateScore": "89.00",
+        "allocation": 0.1,
+        "absoluteReturn": -0.0024753880246985993,
+        "contribution": -0.00024753880246985993,
+        "alpha": -10.002475388024699
+      },
+      {
+        "fundId": 7005,
+        "fundName": "Franklin India Short Term Income Plan -  Retail Plan - Direct - Monthly - IDCW",
+        "elivateScore": "88.88",
+        "allocation": 0.1,
+        "absoluteReturn": 0,
+        "contribution": 0,
+        "alpha": -10
+      },
+      {
+        "fundId": 7006,
+        "fundName": "Franklin India Short Term Income Plan -  Retail Plan - Direct - Quarterly - IDCW",
+        "elivateScore": "88.75",
+        "allocation": 0.1,
+        "absoluteReturn": 0,
+        "contribution": 0,
+        "alpha": -10
+      },
+      {
+        "fundId": 13023,
+        "fundName": "SBI Long Term Advantage Fund - Series V - Direct Plan - Income Distribution cum Capital Withdrawal Option (IDCW)",
+        "elivateScore": "88.50",
+        "allocation": 0.1,
+        "absoluteReturn": 0.005759750708794309,
+        "contribution": 0.000575975070879431,
+        "alpha": -9.994240249291206
+      },
+      {
+        "fundId": 7007,
+        "fundName": "Franklin India Short Term Income Plan -  Retail Plan - Direct - Weekly - IDCW",
+        "elivateScore": "87.42",
+        "allocation": 0.1,
+        "absoluteReturn": 0,
+        "contribution": 0,
+        "alpha": -10
+      },
+      {
+        "fundId": 1965,
+        "fundName": "Edelweiss Liquid Fund - Regular Plan Annual - IDCW Option",
+        "elivateScore": "87.00",
+        "allocation": 0.1,
+        "absoluteReturn": 0.0001791250082794349,
+        "contribution": 0.00001791250082794349,
+        "alpha": -9.99982087499172
+      },
+      {
+        "fundId": 11072,
+        "fundName": "Kotak Gold Fund Growth",
+        "elivateScore": "86.74",
+        "allocation": 0.1,
+        "absoluteReturn": 0.007224417495571567,
+        "contribution": 0.0007224417495571567,
+        "alpha": -9.992775582504429
+      },
+      {
+        "fundId": 10,
+        "fundName": "SBI Gold Fund - Direct Plan - Income Distribution cum Capital Withdrawal Option (IDCW)",
+        "elivateScore": "86.65",
+        "allocation": 0.1,
+        "absoluteReturn": -0.011507456465828292,
+        "contribution": -0.0011507456465828293,
+        "alpha": -10.011507456465829
+      },
+      {
+        "fundId": 2721,
+        "fundName": "Edelweiss Equity Savings Fund - Regular Plan - Growth Option",
+        "elivateScore": "86.57",
+        "allocation": 0.1,
+        "absoluteReturn": 0.00008070341092958344,
+        "contribution": 0.000008070341092958344,
+        "alpha": -9.99991929658907
+      }
+    ],
+    "sectorContributions": [],
+    "categoryContributions": []
+  },
+  "benchmark": {
+    "benchmarkReturn": 10,
+    "alpha": 2,
+    "beta": 1,
+    "trackingError": 5,
+    "informationRatio": 0.4,
+    "upCapture": 95,
+    "downCapture": 85
+  },
+  "historicalData": []
+}
