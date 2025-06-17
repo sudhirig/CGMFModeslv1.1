@@ -773,8 +773,8 @@ export class ComprehensiveBacktestingEngine {
     try {
       const benchmarkData = await pool.query(`
         SELECT 
-          index_value,
-          change_percent,
+          close_value,
+          ((close_value - open_value) / open_value * 100) as change_percent,
           index_date
         FROM market_indices 
         WHERE index_name = 'NIFTY 50'
@@ -786,8 +786,8 @@ export class ComprehensiveBacktestingEngine {
       let benchmarkReturn = 8.5; // Conservative default for Indian equity markets
       
       if (benchmarkData.rows.length >= 2) {
-        const latestValue = parseFloat(benchmarkData.rows[0].index_value);
-        const startValue = parseFloat(benchmarkData.rows[1].index_value);
+        const latestValue = parseFloat(benchmarkData.rows[0].close_value);
+        const startValue = parseFloat(benchmarkData.rows[1].close_value);
         if (startValue > 0) {
           benchmarkReturn = ((latestValue - startValue) / startValue) * 100;
         }
