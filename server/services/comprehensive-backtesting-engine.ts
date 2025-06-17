@@ -311,7 +311,7 @@ export class ComprehensiveBacktestingEngine {
       WHERE fsc.total_score BETWEEN $1 AND $2
       AND fsc.total_score IS NOT NULL
       GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
-      HAVING COUNT(nav.nav_value) >= 100
+      HAVING COUNT(nav.nav_value) >= 50
       ORDER BY fsc.total_score DESC
       LIMIT $3
     `, [scoreRange.min, scoreRange.max, maxFunds]);
@@ -355,7 +355,7 @@ export class ComprehensiveBacktestingEngine {
           AND nav.nav_value > 0
         WHERE fsc.total_score IS NOT NULL
         GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
-        HAVING COUNT(nav.nav_value) >= 100
+        HAVING COUNT(nav.nav_value) >= 50
       )
       SELECT fund_id, total_score, fund_name, category, subcategory
       FROM ranked_funds
@@ -400,7 +400,7 @@ export class ComprehensiveBacktestingEngine {
       WHERE fsc.recommendation = $1
       AND fsc.total_score IS NOT NULL
       GROUP BY fsc.fund_id, fsc.total_score, fsc.recommendation, f.fund_name, f.category, f.subcategory
-      HAVING COUNT(nav.nav_value) >= 100
+      HAVING COUNT(nav.nav_value) >= 50
       ORDER BY fsc.total_score DESC
       LIMIT $2
     `, [recommendation, maxFunds]);
@@ -719,7 +719,7 @@ export class ComprehensiveBacktestingEngine {
       GROUP BY fund_id
     `, [fundIds, startDate, endDate]);
     
-    const insufficientData = dataCheck.rows.filter(row => row.data_points < 30);
+    const insufficientData = dataCheck.rows.filter(row => row.data_points < 20);
     
     if (insufficientData.length > 0) {
       console.warn(`Insufficient data for funds: ${insufficientData.map(f => f.fund_id).join(', ')}`);
