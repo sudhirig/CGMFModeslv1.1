@@ -352,7 +352,7 @@ export class ComprehensiveBacktestingEngine {
         JOIN funds f ON fsc.fund_id = f.id
         LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
           AND nav.nav_date >= '2024-01-01'
-          AND nav.nav_value BETWEEN 10 AND 1000
+          AND nav.nav_value > 0
         WHERE fsc.total_score IS NOT NULL
         GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
         HAVING COUNT(nav.nav_value) >= 100
@@ -514,7 +514,7 @@ export class ComprehensiveBacktestingEngine {
       FROM nav_data 
       WHERE fund_id = $1
       AND nav_date BETWEEN $2 AND $3
-      AND nav_value BETWEEN 10 AND 1000
+      AND nav_value > 0
       ORDER BY nav_date ASC
     `, [fundId, startDate, endDate]);
     
