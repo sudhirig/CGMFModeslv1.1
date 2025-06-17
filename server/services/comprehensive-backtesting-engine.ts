@@ -210,29 +210,57 @@ export class ComprehensiveBacktestingEngine {
     // Get funds with highest ELIVATE scores for the given date
     const topFunds = await pool.query(`
       SELECT 
-        fsc.*,
+        fsc.fund_id,
+        fsc.total_score,
+        fsc.score_date,
         f.fund_name,
         f.category,
-        f.subcategory,
+        f.sub_category,
         f.fund_manager,
         f.expense_ratio
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
-      WHERE fsc.score_date <= $1
-      AND fsc.total_score IS NOT NULL
-      AND fsc.total_score > 60  -- Only quality funds
+      WHERE fsc.total_score IS NOT NULL
+      AND fsc.total_score > 50  -- Quality funds with scores
       AND EXISTS (
         SELECT 1 FROM nav_data nav 
         WHERE nav.fund_id = fsc.fund_id 
-        AND nav.nav_date BETWEEN $2 AND $3
+        AND nav.nav_date >= $1
         AND nav.nav_value BETWEEN 10 AND 1000
       )
-      ORDER BY fsc.score_date DESC, fsc.total_score DESC
-      LIMIT 20
-    `, [scoreDate, asOfDate, new Date()]);
+      ORDER BY fsc.total_score DESC, fsc.score_date DESC
+      LIMIT 15
+    `, [asOfDate]);
+    
+    console.log(`Found ${topFunds.rows.length} funds for risk profile: ${riskProfile}`);
     
     if (topFunds.rows.length === 0) {
-      throw new Error('No funds available with ELIVATE scores for the specified period');
+      // Fallback query with more relaxed criteria
+      const fallbackFunds = await pool.query(`
+        SELECT 
+          fsc.fund_id,
+          fsc.total_score,
+          fsc.score_date,
+          f.fund_name,
+          f.category,
+          f.sub_category
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        JOIN nav_data nd ON f.id = nd.fund_id
+        WHERE fsc.total_score IS NOT NULL
+        AND fsc.total_score > 40
+        AND nd.nav_value > 0
+        GROUP BY fsc.fund_id, fsc.total_score, fsc.score_date, f.fund_name, f.category, f.sub_category
+        ORDER BY fsc.total_score DESC
+        LIMIT 10
+      `);
+      
+      if (fallbackFunds.rows.length === 0) {
+        throw new Error('No funds available with ELIVATE scores and NAV data');
+      }
+      
+      console.log(`Using fallback: ${fallbackFunds.rows.length} funds found`);
+      topFunds.rows = fallbackFunds.rows;
     }
     
     // Apply risk-based allocation strategy

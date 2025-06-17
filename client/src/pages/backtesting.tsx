@@ -119,6 +119,7 @@ export default function BacktestingPage() {
       return response.json();
     },
     onSuccess: (data) => {
+      console.log('Backtest results received:', data);
       setBacktestResults(data);
       toast({
         title: "Backtest Complete",
@@ -126,6 +127,7 @@ export default function BacktestingPage() {
       });
     },
     onError: (error) => {
+      console.error('Backtest error:', error);
       toast({
         variant: "destructive",
         title: "Backtest Failed",
@@ -388,39 +390,39 @@ export default function BacktestingPage() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {backtestResults.performance?.totalReturn?.toFixed(2) || backtestResults.totalReturn?.toFixed(2) || '0.00'}%
+                        {(backtestResults.performance?.totalReturn || backtestResults.totalReturn || 0).toFixed(2)}%
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Total Return</div>
                     </div>
                     
                     <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                        {backtestResults.performance?.annualizedReturn?.toFixed(2) || backtestResults.annualizedReturn?.toFixed(2) || '0.00'}%
+                        {(backtestResults.performance?.annualizedReturn || backtestResults.annualizedReturn || 0).toFixed(2)}%
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Annualized Return</div>
                     </div>
                     
                     <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                        {backtestResults.riskMetrics?.volatility?.toFixed(2) || '0.00'}%
+                        {(backtestResults.riskMetrics?.volatility || backtestResults.volatility || 0).toFixed(2)}%
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Volatility</div>
                     </div>
 
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                        {backtestResults.riskMetrics?.sharpeRatio?.toFixed(2) || backtestResults.sharpeRatio?.toFixed(2) || '0.00'}
+                        {(backtestResults.riskMetrics?.sharpeRatio || backtestResults.sharpeRatio || 0).toFixed(2)}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Sharpe Ratio</div>
                     </div>
                   </div>
 
                   {/* Performance Chart */}
-                  {backtestResults.returns && backtestResults.returns.length > 0 && (
+                  {(backtestResults.returns || backtestResults.historicalData) && (backtestResults.returns?.length > 0 || backtestResults.historicalData?.length > 0) && (
                     <div className="h-64 mb-6">
                       <h3 className="text-lg font-semibold mb-2">Portfolio Performance</h3>
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={backtestResults.returns}>
+                        <LineChart data={backtestResults.returns || backtestResults.historicalData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis 
                             dataKey="date" 
@@ -433,7 +435,7 @@ export default function BacktestingPage() {
                           />
                           <Line 
                             type="monotone" 
-                            dataKey="value" 
+                            dataKey={backtestResults.returns ? "value" : "portfolioValue"}
                             stroke="#3b82f6" 
                             strokeWidth={2}
                             dot={false}
@@ -448,11 +450,11 @@ export default function BacktestingPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                       <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Initial Investment</div>
-                      <div className="text-xl font-bold">{formatCurrency(backtestResults.initialAmount)}</div>
+                      <div className="text-xl font-bold">{formatCurrency(backtestResults.initialAmount || 100000)}</div>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                       <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Final Value</div>
-                      <div className="text-xl font-bold">{formatCurrency(backtestResults.finalAmount)}</div>
+                      <div className="text-xl font-bold">{formatCurrency(backtestResults.finalAmount || backtestResults.initialAmount || 100000)}</div>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                       <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Max Drawdown</div>
@@ -462,14 +464,24 @@ export default function BacktestingPage() {
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                       <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Period</div>
-                      <div className="text-xl font-bold">
+                      <div className="text-sm font-bold">
                         {backtestResults.startDate && backtestResults.endDate ? 
                           `${format(new Date(backtestResults.startDate), "MMM yyyy")} - ${format(new Date(backtestResults.endDate), "MMM yyyy")}` : 
-                          'N/A'
+                          'Analysis Period'
                         }
                       </div>
                     </div>
                   </div>
+
+                  {/* Debug Information for Development */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer text-sm text-gray-500">Debug: Raw Results</summary>
+                      <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded mt-2 overflow-auto">
+                        {JSON.stringify(backtestResults, null, 2)}
+                      </pre>
+                    </details>
+                  )}
                 </CardContent>
               </Card>
             ) : (
