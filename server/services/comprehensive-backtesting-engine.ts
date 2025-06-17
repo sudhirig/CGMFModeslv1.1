@@ -416,6 +416,7 @@ export class ComprehensiveBacktestingEngine {
         AND fsc.total_score IS NOT NULL
         GROUP BY fsc.fund_id, fsc.total_score, fsc.recommendation, f.fund_name, f.category, f.subcategory
         HAVING COUNT(nav.nav_value) >= 50
+        AND AVG(nav.nav_value) BETWEEN 1 AND 5000
       )
       SELECT fund_id, total_score, recommendation, fund_name, category, subcategory
       FROM recommendation_funds
@@ -517,6 +518,10 @@ export class ComprehensiveBacktestingEngine {
         portfolioMonthlyReturn = portfolioMonthlyReturn / totalWeight;
       }
       
+      // Cap portfolio monthly returns to realistic range
+      if (portfolioMonthlyReturn > 0.30) portfolioMonthlyReturn = 0.30;
+      if (portfolioMonthlyReturn < -0.30) portfolioMonthlyReturn = -0.30;
+      
       monthlyReturns.push(portfolioMonthlyReturn);
       
       if (this.shouldRebalance(monthEnd, config.rebalancePeriod, startDate)) {
@@ -528,17 +533,27 @@ export class ComprehensiveBacktestingEngine {
   }
 
   private async calculateFundMonthlyReturn(fundId: number, startDate: Date, endDate: Date): Promise<number> {
+    // Get NAV data with outlier filtering
     const navData = await pool.query(`
+      WITH clean_nav AS (
+        SELECT nav_value, nav_date,
+               LAG(nav_value) OVER (ORDER BY nav_date) as prev_nav
+        FROM nav_data 
+        WHERE fund_id = $1
+        AND nav_date BETWEEN $2 AND $3
+        AND nav_value > 0
+        AND nav_value BETWEEN 1 AND 10000  -- Reasonable NAV range
+        ORDER BY nav_date ASC
+      )
       SELECT nav_value, nav_date
-      FROM nav_data 
-      WHERE fund_id = $1
-      AND nav_date BETWEEN $2 AND $3
-      AND nav_value > 0
+      FROM clean_nav
+      WHERE prev_nav IS NULL 
+        OR ABS((nav_value - prev_nav) / prev_nav) <= 0.20  -- Max 20% daily change
       ORDER BY nav_date ASC
     `, [fundId, startDate, endDate]);
     
     if (navData.rows.length < 2) {
-      return 0.0; // Return 0 instead of artificial 1% when insufficient data
+      return 0.0;
     }
     
     const startNav = parseFloat(navData.rows[0].nav_value);
@@ -548,7 +563,13 @@ export class ComprehensiveBacktestingEngine {
       return 0.0;
     }
     
-    return (endNav / startNav) - 1;
+    const return_pct = (endNav / startNav) - 1;
+    
+    // Cap monthly returns to realistic ranges (-50% to +50%)
+    if (return_pct > 0.50) return 0.50;
+    if (return_pct < -0.50) return -0.50;
+    
+    return return_pct;
   }
 
   private calculateAnnualizedReturn(totalReturn: number, startDate: Date, endDate: Date): number {
