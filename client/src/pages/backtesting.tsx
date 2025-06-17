@@ -139,6 +139,9 @@ export default function BacktestingPage() {
     },
     onSuccess: (data) => {
       console.log('Backtest results received:', data);
+      console.log('Performance data:', data.performance);
+      console.log('Risk metrics:', data.riskMetrics);
+      console.log('Total return value:', data.performance?.totalReturn);
       setBacktestResults(data);
       toast({
         title: "Backtest Complete",
@@ -609,7 +612,11 @@ export default function BacktestingPage() {
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                         {(() => {
-                          const totalReturn = backtestResults.performance?.totalReturn || backtestResults.totalReturn || 0;
+                          if (!backtestResults) return "0.00%";
+                          const performance = backtestResults.performance;
+                          if (!performance) return "0.00%";
+                          const totalReturn = performance.totalReturn;
+                          if (totalReturn === undefined || totalReturn === null) return "0.00%";
                           return `${Number(totalReturn).toFixed(2)}%`;
                         })()}
                       </div>
@@ -619,8 +626,8 @@ export default function BacktestingPage() {
                     <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                         {(() => {
-                          const annualizedReturn = backtestResults.performance?.annualizedReturn || backtestResults.annualizedReturn || 0;
-                          return `${Number(annualizedReturn).toFixed(2)}%`;
+                          if (!backtestResults?.performance?.annualizedReturn) return "0.00%";
+                          return `${Number(backtestResults.performance.annualizedReturn).toFixed(2)}%`;
                         })()}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Annualized Return</div>
@@ -629,8 +636,8 @@ export default function BacktestingPage() {
                     <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
                         {(() => {
-                          const volatility = backtestResults.riskMetrics?.volatility || backtestResults.volatility || 0;
-                          return `${Number(volatility).toFixed(2)}%`;
+                          if (!backtestResults?.riskMetrics?.volatility) return "0.00%";
+                          return `${Number(backtestResults.riskMetrics.volatility).toFixed(2)}%`;
                         })()}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Volatility</div>
@@ -639,8 +646,8 @@ export default function BacktestingPage() {
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
                         {(() => {
-                          const sharpeRatio = backtestResults.riskMetrics?.sharpeRatio || backtestResults.sharpeRatio || 0;
-                          return Number(sharpeRatio).toFixed(2);
+                          if (!backtestResults?.riskMetrics?.sharpeRatio) return "0.00";
+                          return Number(backtestResults.riskMetrics.sharpeRatio).toFixed(2);
                         })()}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Sharpe Ratio</div>
@@ -686,8 +693,9 @@ export default function BacktestingPage() {
                       <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Final Value</div>
                       <div className="text-xl font-bold">
                         {(() => {
+                          if (!backtestResults?.performance?.totalReturn) return formatCurrency(100000);
                           const initialAmount = Number(backtestResults.initialAmount || 100000);
-                          const totalReturn = backtestResults.performance?.totalReturn || backtestResults.totalReturn || 0;
+                          const totalReturn = backtestResults.performance.totalReturn;
                           const finalValue = initialAmount * (1 + totalReturn / 100);
                           return formatCurrency(finalValue);
                         })()}
@@ -697,8 +705,8 @@ export default function BacktestingPage() {
                       <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Max Drawdown</div>
                       <div className="text-xl font-bold text-red-500">
                         {(() => {
-                          const maxDrawdown = backtestResults.riskMetrics?.maxDrawdown || backtestResults.maxDrawdown || 0;
-                          return `${Number(maxDrawdown).toFixed(2)}%`;
+                          if (!backtestResults?.riskMetrics?.maxDrawdown) return "0.00%";
+                          return `${Number(backtestResults.riskMetrics.maxDrawdown).toFixed(2)}%`;
                         })()}
                       </div>
                     </div>
@@ -713,15 +721,13 @@ export default function BacktestingPage() {
                     </div>
                   </div>
 
-                  {/* Debug Information for Development */}
-                  {process.env.NODE_ENV === 'development' && (
-                    <details className="mt-4">
-                      <summary className="cursor-pointer text-sm text-gray-500">Debug: Raw Results</summary>
-                      <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded mt-2 overflow-auto">
-                        {JSON.stringify(backtestResults, null, 2)}
-                      </pre>
-                    </details>
-                  )}
+                  {/* Debug Information - Always show for now */}
+                  <details className="mt-4" open>
+                    <summary className="cursor-pointer text-sm text-gray-500">Debug: Raw Results</summary>
+                    <pre className="text-xs bg-gray-100 dark:bg-gray-800 p-2 rounded mt-2 overflow-auto max-h-64">
+                      {JSON.stringify(backtestResults, null, 2)}
+                    </pre>
+                  </details>
                 </CardContent>
               </Card>
             ) : (
