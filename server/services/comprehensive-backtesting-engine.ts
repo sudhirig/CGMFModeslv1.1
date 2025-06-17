@@ -126,20 +126,20 @@ export class ComprehensiveBacktestingEngine {
       // 1. Determine portfolio based on input parameters
       let portfolio;
       if (config.portfolioId) {
-        portfolio = await this.getExistingPortfolio(parseInt(config.portfolioId));
+        portfolio = await this.getExistingPortfolioWithScores(parseInt(config.portfolioId));
       } else if (config.riskProfile) {
-        portfolio = await this.getPortfolioWithScores(config.riskProfile, startDate);
+        portfolio = await this.getPortfolioWithScores(config);
       } else if (config.fundId) {
-        portfolio = await this.getIndividualFundPortfolio(parseInt(config.fundId));
+        portfolio = await this.createSingleFundPortfolio(parseInt(config.fundId), startDate);
       } else if (config.elivateScoreRange) {
         const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 10;
-        portfolio = await this.getScoreRangePortfolio(config.elivateScoreRange, maxFunds);
+        portfolio = await this.createScoreBasedPortfolio(config.elivateScoreRange, config);
       } else if (config.quartile) {
         const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 15;
-        portfolio = await this.getQuartilePortfolio(config.quartile, maxFunds);
+        portfolio = await this.createQuartileBasedPortfolio(config.quartile, config);
       } else if (config.recommendation) {
         const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 20;
-        portfolio = await this.getRecommendationPortfolio(config.recommendation, maxFunds);
+        portfolio = await this.createRecommendationBasedPortfolio(config.recommendation, config);
       } else {
         throw new Error('Please select a backtesting criteria: portfolio, risk profile, individual fund, score range, quartile, or recommendation');
       }
@@ -176,7 +176,7 @@ export class ComprehensiveBacktestingEngine {
       
     } catch (error) {
       console.error('Comprehensive backtest failed:', error);
-      throw new Error(`Backtest analysis failed: ${error.message}`);
+      throw new Error(`Backtest analysis failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
   
@@ -360,20 +360,54 @@ export class ComprehensiveBacktestingEngine {
    * Calculate comprehensive performance metrics
    */
   private async calculatePerformanceMetrics(portfolio: any, config: BacktestConfig): Promise<PerformanceMetrics> {
-    const monthlyReturns = await this.calculateMonthlyReturns(portfolio, config);
+    // Ensure portfolio has normalized allocations
+    const normalizedPortfolio = {
+      ...portfolio,
+      funds: this.normalizePortfolioAllocations(portfolio.funds)
+    };
     
-    const totalReturn = monthlyReturns.reduce((acc, ret) => (1 + acc) * (1 + ret) - 1, 0) * 100;
+    const monthlyReturns = await this.calculateMonthlyReturns(normalizedPortfolio, config);
+    
+    // Handle empty or invalid returns
+    if (!monthlyReturns || monthlyReturns.length === 0 || monthlyReturns.every(ret => ret === null || isNaN(ret))) {
+      return {
+        totalReturn: 0,
+        annualizedReturn: 0,
+        monthlyReturns: new Array(12).fill(0),
+        bestMonth: 0,
+        worstMonth: 0,
+        positiveMonths: 0,
+        winRate: 0
+      };
+    }
+
+    // Filter out null/NaN values for calculations
+    const validReturns = monthlyReturns.filter(ret => ret !== null && !isNaN(ret));
+    
+    if (validReturns.length === 0) {
+      return {
+        totalReturn: 0,
+        annualizedReturn: 0,
+        monthlyReturns: monthlyReturns,
+        bestMonth: 0,
+        worstMonth: 0,
+        positiveMonths: 0,
+        winRate: 0
+      };
+    }
+    
+    const totalReturn = validReturns.reduce((acc, ret) => (1 + acc) * (1 + ret) - 1, 0) * 100;
     const annualizedReturn = this.calculateAnnualizedReturn(totalReturn, config.startDate, config.endDate);
     
-    const positiveMonths = monthlyReturns.filter(ret => ret > 0).length;
-    const winRate = (positiveMonths / monthlyReturns.length) * 100;
+    const positiveMonths = validReturns.filter(ret => ret > 0).length;
+    const winRate = (positiveMonths / validReturns.length) * 100;
     
     return {
       totalReturn,
       annualizedReturn,
       monthlyReturns,
-      bestMonth: Math.max(...monthlyReturns) * 100,
-      worstMonth: Math.min(...monthlyReturns) * 100,
+      bestMonth: validReturns.length > 0 ? Math.max(...validReturns) * 100 : 0,
+      worstMonth: validReturns.length > 0 ? Math.min(...validReturns) * 100 : 0,
       positiveMonths,
       winRate
     };
@@ -384,33 +418,42 @@ export class ComprehensiveBacktestingEngine {
    */
   private async calculateMonthlyReturns(portfolio: any, config: BacktestConfig): Promise<number[]> {
     const monthlyReturns: number[] = [];
-    const currentDate = new Date(config.startDate);
+    const startDate = new Date(config.startDate);
     const endDate = new Date(config.endDate);
     
-    let portfolioValue = config.initialAmount;
-    let previousValue = portfolioValue;
+    // Ensure funds have proper allocations
+    const normalizedFunds = this.normalizePortfolioAllocations(portfolio.funds);
+    
+    let currentDate = new Date(startDate);
     
     while (currentDate < endDate) {
       const monthStart = new Date(currentDate);
       currentDate.setMonth(currentDate.getMonth() + 1);
       const monthEnd = new Date(Math.min(currentDate.getTime(), endDate.getTime()));
       
-      // Calculate portfolio value at month end
-      portfolioValue = await this.calculatePortfolioValue(
-        portfolio.funds, 
-        monthEnd, 
-        portfolioValue
-      );
+      // Calculate weighted monthly return
+      let portfolioMonthlyReturn = 0;
+      let totalWeight = 0;
       
-      // Calculate monthly return
-      const monthlyReturn = (portfolioValue - previousValue) / previousValue;
-      monthlyReturns.push(monthlyReturn);
+      for (const fund of normalizedFunds) {
+        const fundReturn = await this.getFundMonthlyReturn(fund.fund_id, monthStart, monthEnd);
+        const weight = (fund.allocation || 0) / 100;
+        
+        if (!isNaN(fundReturn) && !isNaN(weight) && weight > 0) {
+          portfolioMonthlyReturn += fundReturn * weight;
+          totalWeight += weight;
+        }
+      }
       
-      previousValue = portfolioValue;
+      // Normalize if weights don't sum to 1
+      if (totalWeight > 0 && Math.abs(totalWeight - 1) > 0.01) {
+        portfolioMonthlyReturn = portfolioMonthlyReturn / totalWeight;
+      }
+      
+      monthlyReturns.push(portfolioMonthlyReturn);
       
       // Rebalance if needed
-      if (this.shouldRebalance(monthEnd, config.rebalancePeriod, config.startDate)) {
-        // Portfolio value remains the same, but fund allocations reset
+      if (this.shouldRebalance(monthEnd, config.rebalancePeriod, startDate)) {
         console.log(`Rebalancing portfolio on ${monthEnd.toISOString().split('T')[0]}`);
       }
     }
@@ -805,6 +848,190 @@ export class ComprehensiveBacktestingEngine {
       console.log(`No data found for fund ${fundId}, checking if fund exists...`);
       
       // Check if fund exists at all
+      const fundCheck = await pool.query(`
+        SELECT id, fund_name, category, subcategory
+        FROM funds 
+        WHERE id = $1
+      `, [fundId]);
+      
+      if (fundCheck.rows.length === 0) {
+        throw new Error(`Fund with ID ${fundId} not found`);
+      }
+      
+      const fundInfo = fundCheck.rows[0];
+      return {
+        id: 0,
+        name: `Individual Fund: ${fundInfo.fund_name}`,
+        riskProfile: 'Individual',
+        funds: [{
+          fund_id: fundInfo.id,
+          fund_name: fundInfo.fund_name,
+          total_score: 50, // Default score if no ELIVATE data
+          allocation: 100,
+          category: fundInfo.category,
+          subcategory: fundInfo.subcategory
+        }]
+      };
+    }
+
+    const fund = fundData.rows[0];
+    return {
+      id: 0,
+      name: `Individual Fund: ${fund.fund_name}`,
+      riskProfile: 'Individual',
+      funds: [{
+        fund_id: fund.fund_id,
+        fund_name: fund.fund_name,
+        total_score: fund.total_score || 50,
+        allocation: 100,
+        category: fund.category,
+        subcategory: fund.subcategory
+      }]
+    };
+  }
+
+  /**
+   * Create portfolio based on ELIVATE score range
+   */
+  private async createScoreBasedPortfolio(scoreRange: { min: number; max: number }, config: BacktestConfig) {
+    const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 10;
+    
+    const fundData = await pool.query(`
+      SELECT 
+        fsc.fund_id,
+        fsc.total_score,
+        f.fund_name,
+        f.category,
+        f.subcategory
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.total_score BETWEEN $1 AND $2
+      AND fsc.total_score IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM nav_data nd 
+        WHERE nd.fund_id = fsc.fund_id 
+        AND nd.nav_value > 0
+        AND nd.nav_date >= CURRENT_DATE - INTERVAL '1 year'
+      )
+      ORDER BY fsc.total_score DESC
+      LIMIT $3
+    `, [scoreRange.min, scoreRange.max, maxFunds]);
+
+    if (fundData.rows.length === 0) {
+      throw new Error(`No funds found with ELIVATE scores between ${scoreRange.min} and ${scoreRange.max}`);
+    }
+
+    const equalAllocation = 100 / fundData.rows.length;
+    const funds = fundData.rows.map(fund => ({
+      ...fund,
+      allocation: equalAllocation
+    }));
+
+    return {
+      id: 0,
+      name: `ELIVATE Score Range ${scoreRange.min}-${scoreRange.max}`,
+      riskProfile: 'Score-Based',
+      funds
+    };
+  }
+
+  /**
+   * Create portfolio based on quartile ranking
+   */
+  private async createQuartileBasedPortfolio(quartile: string, config: BacktestConfig) {
+    const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 15;
+    const quartileMap = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
+    const quartileNum = quartileMap[quartile as keyof typeof quartileMap];
+
+    const fundData = await pool.query(`
+      WITH ranked_funds AS (
+        SELECT 
+          fsc.fund_id,
+          fsc.total_score,
+          f.fund_name,
+          f.category,
+          f.subcategory,
+          NTILE(4) OVER (ORDER BY fsc.total_score DESC) as quartile_rank
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE fsc.total_score IS NOT NULL
+        AND EXISTS (
+          SELECT 1 FROM nav_data nd 
+          WHERE nd.fund_id = fsc.fund_id 
+          AND nd.nav_value > 0
+          AND nd.nav_date >= CURRENT_DATE - INTERVAL '1 year'
+        )
+      )
+      SELECT fund_id, total_score, fund_name, category, subcategory
+      FROM ranked_funds
+      WHERE quartile_rank = $1
+      ORDER BY total_score DESC
+      LIMIT $2
+    `, [quartileNum, maxFunds]);
+
+    if (fundData.rows.length === 0) {
+      throw new Error(`No funds found in ${quartile} quartile`);
+    }
+
+    const equalAllocation = 100 / fundData.rows.length;
+    const funds = fundData.rows.map(fund => ({
+      ...fund,
+      allocation: equalAllocation
+    }));
+
+    return {
+      id: 0,
+      name: `${quartile} Quartile Portfolio`,
+      riskProfile: 'Quartile-Based',
+      funds
+    };
+  }
+
+  /**
+   * Create portfolio based on investment recommendations
+   */
+  private async createRecommendationBasedPortfolio(recommendation: string, config: BacktestConfig) {
+    const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 20;
+    
+    const fundData = await pool.query(`
+      SELECT 
+        fsc.fund_id,
+        fsc.total_score,
+        fsc.recommendation,
+        f.fund_name,
+        f.category,
+        f.subcategory
+      FROM fund_scores_corrected fsc
+      JOIN funds f ON fsc.fund_id = f.id
+      WHERE fsc.recommendation = $1
+      AND fsc.total_score IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM nav_data nd 
+        WHERE nd.fund_id = fsc.fund_id 
+        AND nd.nav_value > 0
+        AND nd.nav_date >= CURRENT_DATE - INTERVAL '1 year'
+      )
+      ORDER BY fsc.total_score DESC
+      LIMIT $2
+    `, [recommendation, maxFunds]);
+
+    if (fundData.rows.length === 0) {
+      throw new Error(`No funds found with ${recommendation} recommendation`);
+    }
+
+    const equalAllocation = 100 / fundData.rows.length;
+    const funds = fundData.rows.map(fund => ({
+      ...fund,
+      allocation: equalAllocation
+    }));
+
+    return {
+      id: 0,
+      name: `${recommendation} Recommendation Portfolio`,
+      riskProfile: 'Recommendation-Based',
+      funds
+    };
+  }
       const fundExists = await pool.query(`
         SELECT f.id, f.fund_name FROM funds f WHERE f.id = $1
       `, [fundId]);
