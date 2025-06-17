@@ -39,6 +39,16 @@ import {
 const backtestFormSchema = z.object({
   portfolioId: z.string().optional(),
   riskProfile: z.string().optional(),
+  fundId: z.string().optional(),
+  fundIds: z.array(z.string()).optional(),
+  elivateScoreRange: z.object({
+    min: z.number(),
+    max: z.number()
+  }).optional(),
+  quartile: z.enum(["Q1", "Q2", "Q3", "Q4"]).optional(),
+  recommendation: z.enum(["BUY", "HOLD", "SELL"]).optional(),
+  maxFunds: z.string().optional(),
+  scoreWeighting: z.boolean().optional(),
   startDate: z.date(),
   endDate: z.date(),
   initialAmount: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
@@ -81,6 +91,12 @@ export default function BacktestingPage() {
     queryKey: ['/api/portfolios'],
     retry: false,
   });
+
+  // Get top-rated funds for selection
+  const { data: topFunds, isLoading: isLoadingFunds } = useQuery({
+    queryKey: ['/api/funds/top-rated'],
+    retry: false,
+  });
   
   // Backtesting form
   const form = useForm<z.infer<typeof backtestFormSchema>>({
@@ -89,7 +105,10 @@ export default function BacktestingPage() {
       startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), // 1 year ago
       endDate: new Date(),
       initialAmount: "100000",
-      rebalancePeriod: "quarterly"
+      rebalancePeriod: "quarterly",
+      maxFunds: "10",
+      scoreWeighting: true,
+      elivateScoreRange: { min: 50, max: 100 }
     },
   });
   
@@ -137,12 +156,16 @@ export default function BacktestingPage() {
   });
   
   function onSubmit(data: z.infer<typeof backtestFormSchema>) {
-    // Validate that we have either portfolioId or riskProfile
-    if (!data.portfolioId && !data.riskProfile) {
+    // Validate that we have at least one selection criteria
+    const hasSelection = data.portfolioId || data.riskProfile || data.fundId || 
+                        (data.fundIds && data.fundIds.length > 0) || data.elivateScoreRange ||
+                        data.quartile || data.recommendation;
+    
+    if (!hasSelection) {
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: "Please select either a portfolio or a risk profile.",
+        description: "Please select at least one backtesting criteria.",
       });
       return;
     }
@@ -203,9 +226,15 @@ export default function BacktestingPage() {
               </CardHeader>
               <CardContent>
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="risk-profile">Risk Profile</TabsTrigger>
                     <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+                    <TabsTrigger value="individual">Individual</TabsTrigger>
+                  </TabsList>
+                  <TabsList className="grid w-full grid-cols-3 mt-2">
+                    <TabsTrigger value="score-range">Score Range</TabsTrigger>
+                    <TabsTrigger value="quartile">Quartile</TabsTrigger>
+                    <TabsTrigger value="recommendation">Recommendation</TabsTrigger>
                   </TabsList>
                   
                   <Form {...form}>
@@ -262,6 +291,170 @@ export default function BacktestingPage() {
                                   )}
                                 </SelectContent>
                               </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="individual" className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="fundId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Individual Fund</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select a fund" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {isLoadingFunds ? (
+                                    <SelectItem value="loading">Loading...</SelectItem>
+                                  ) : topFunds && Array.isArray(topFunds) && topFunds.length > 0 ? (
+                                    topFunds.map((fund: any) => (
+                                      <SelectItem key={fund.fundId} value={fund.fundId.toString()}>
+                                        {fund.fund.fundName || `Fund ${fund.fundId}`}
+                                      </SelectItem>
+                                    ))
+                                  ) : (
+                                    <SelectItem value="none">No funds available</SelectItem>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="score-range" className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="elivateScoreRange.min"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Min ELIVATE Score</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    placeholder="50" 
+                                    {...field} 
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="elivateScoreRange.max"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Max ELIVATE Score</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="number" 
+                                    placeholder="100" 
+                                    {...field}
+                                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="maxFunds"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Maximum Funds</FormLabel>
+                              <FormControl>
+                                <Input placeholder="10" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="quartile" className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="quartile"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>ELIVATE Quartile</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select quartile" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="Q1">Q1 - Top Performers</SelectItem>
+                                  <SelectItem value="Q2">Q2 - Above Average</SelectItem>
+                                  <SelectItem value="Q3">Q3 - Below Average</SelectItem>
+                                  <SelectItem value="Q4">Q4 - Bottom Performers</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="maxFunds"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Maximum Funds</FormLabel>
+                              <FormControl>
+                                <Input placeholder="15" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="recommendation" className="space-y-4">
+                        <FormField
+                          control={form.control}
+                          name="recommendation"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Investment Recommendation</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select recommendation" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="BUY">BUY - Recommended Funds</SelectItem>
+                                  <SelectItem value="HOLD">HOLD - Neutral Funds</SelectItem>
+                                  <SelectItem value="SELL">SELL - Underperforming Funds</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="maxFunds"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Maximum Funds</FormLabel>
+                              <FormControl>
+                                <Input placeholder="20" {...field} />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -343,6 +536,31 @@ export default function BacktestingPage() {
                             </FormItem>
                           )}
                         />
+
+                        {(activeTab === "score-range" || activeTab === "individual") && (
+                          <FormField
+                            control={form.control}
+                            name="scoreWeighting"
+                            render={({ field }) => (
+                              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                  <FormLabel className="text-base">Score-based Weighting</FormLabel>
+                                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                                    Weight allocations by ELIVATE scores
+                                  </div>
+                                </div>
+                                <FormControl>
+                                  <input
+                                    type="checkbox"
+                                    checked={field.value}
+                                    onChange={field.onChange}
+                                    className="h-4 w-4"
+                                  />
+                                </FormControl>
+                              </FormItem>
+                            )}
+                          />
+                        )}
                       </div>
                       
                       <Button 
