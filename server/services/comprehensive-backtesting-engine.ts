@@ -215,7 +215,7 @@ export class ComprehensiveBacktestingEngine {
         fsc.score_date,
         f.fund_name,
         f.category,
-        f.sub_category,
+        f.subcategory,
         f.fund_manager,
         f.expense_ratio
       FROM fund_scores_corrected fsc
@@ -243,14 +243,14 @@ export class ComprehensiveBacktestingEngine {
           fsc.score_date,
           f.fund_name,
           f.category,
-          f.sub_category
+          f.subcategory
         FROM fund_scores_corrected fsc
         JOIN funds f ON fsc.fund_id = f.id
         JOIN nav_data nd ON f.id = nd.fund_id
         WHERE fsc.total_score IS NOT NULL
         AND fsc.total_score > 40
         AND nd.nav_value > 0
-        GROUP BY fsc.fund_id, fsc.total_score, fsc.score_date, f.fund_name, f.category, f.sub_category
+        GROUP BY fsc.fund_id, fsc.total_score, fsc.score_date, f.fund_name, f.category, f.subcategory
         ORDER BY fsc.total_score DESC
         LIMIT 10
       `);
