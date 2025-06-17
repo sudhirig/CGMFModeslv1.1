@@ -301,11 +301,17 @@ export class ComprehensiveBacktestingEngine {
         fsc.total_score,
         f.fund_name,
         f.category,
-        f.subcategory
+        f.subcategory,
+        COUNT(nav.nav_value) as nav_data_points
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
+      LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
+        AND nav.nav_date >= '2024-01-01'
+        AND nav.nav_value BETWEEN 10 AND 1000
       WHERE fsc.total_score BETWEEN $1 AND $2
       AND fsc.total_score IS NOT NULL
+      GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
+      HAVING COUNT(nav.nav_value) >= 100
       ORDER BY fsc.total_score DESC
       LIMIT $3
     `, [scoreRange.min, scoreRange.max, maxFunds]);
@@ -340,10 +346,16 @@ export class ComprehensiveBacktestingEngine {
           f.fund_name,
           f.category,
           f.subcategory,
+          COUNT(nav.nav_value) as nav_data_points,
           NTILE(4) OVER (ORDER BY fsc.total_score DESC) as quartile_rank
         FROM fund_scores_corrected fsc
         JOIN funds f ON fsc.fund_id = f.id
+        LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
+          AND nav.nav_date >= '2024-01-01'
+          AND nav.nav_value BETWEEN 10 AND 1000
         WHERE fsc.total_score IS NOT NULL
+        GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
+        HAVING COUNT(nav.nav_value) >= 100
       )
       SELECT fund_id, total_score, fund_name, category, subcategory
       FROM ranked_funds
@@ -378,11 +390,17 @@ export class ComprehensiveBacktestingEngine {
         fsc.recommendation,
         f.fund_name,
         f.category,
-        f.subcategory
+        f.subcategory,
+        COUNT(nav.nav_value) as nav_data_points
       FROM fund_scores_corrected fsc
       JOIN funds f ON fsc.fund_id = f.id
+      LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
+        AND nav.nav_date >= '2024-01-01'
+        AND nav.nav_value BETWEEN 10 AND 1000
       WHERE fsc.recommendation = $1
       AND fsc.total_score IS NOT NULL
+      GROUP BY fsc.fund_id, fsc.total_score, fsc.recommendation, f.fund_name, f.category, f.subcategory
+      HAVING COUNT(nav.nav_value) >= 100
       ORDER BY fsc.total_score DESC
       LIMIT $2
     `, [recommendation, maxFunds]);
@@ -498,21 +516,10 @@ export class ComprehensiveBacktestingEngine {
       AND nav_date BETWEEN $2 AND $3
       AND nav_value BETWEEN 10 AND 1000
       ORDER BY nav_date ASC
-      LIMIT 2
     `, [fundId, startDate, endDate]);
     
     if (navData.rows.length < 2) {
-      const singleNav = await pool.query(`
-        SELECT nav_value 
-        FROM nav_data 
-        WHERE fund_id = $1 
-        AND nav_date <= $2
-        AND nav_value BETWEEN 10 AND 1000
-        ORDER BY nav_date DESC 
-        LIMIT 1
-      `, [fundId, endDate]);
-      
-      return singleNav.rows.length > 0 ? 0.01 : 0.0;
+      return 0.0; // Return 0 instead of artificial 1% when insufficient data
     }
     
     const startNav = parseFloat(navData.rows[0].nav_value);
