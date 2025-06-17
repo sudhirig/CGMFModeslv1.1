@@ -120,8 +120,29 @@ export class ComprehensiveBacktestingEngine {
     console.log('Starting comprehensive backtest analysis...');
     
     try {
-      // 1. Get or create portfolio with ELIVATE scores
-      const portfolio = await this.getPortfolioWithScores(config);
+      const startDate = new Date(config.startDate);
+      const endDate = new Date(config.endDate);
+
+      // 1. Determine portfolio based on input parameters
+      let portfolio;
+      if (config.portfolioId) {
+        portfolio = await this.getExistingPortfolio(parseInt(config.portfolioId));
+      } else if (config.riskProfile) {
+        portfolio = await this.getPortfolioWithScores(config.riskProfile, startDate);
+      } else if (config.fundId) {
+        portfolio = await this.getIndividualFundPortfolio(parseInt(config.fundId));
+      } else if (config.elivateScoreRange) {
+        const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 10;
+        portfolio = await this.getScoreRangePortfolio(config.elivateScoreRange, maxFunds);
+      } else if (config.quartile) {
+        const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 15;
+        portfolio = await this.getQuartilePortfolio(config.quartile, maxFunds);
+      } else if (config.recommendation) {
+        const maxFunds = config.maxFunds ? parseInt(config.maxFunds) : 20;
+        portfolio = await this.getRecommendationPortfolio(config.recommendation, maxFunds);
+      } else {
+        throw new Error('Please select a backtesting criteria: portfolio, risk profile, individual fund, score range, quartile, or recommendation');
+      }
       
       // 2. Validate historical data availability
       await this.validateDataAvailability(portfolio.funds, config.startDate, config.endDate);
