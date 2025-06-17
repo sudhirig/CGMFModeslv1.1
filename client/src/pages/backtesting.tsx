@@ -608,28 +608,40 @@ export default function BacktestingPage() {
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                        {(backtestResults.performance?.totalReturn || backtestResults.totalReturn || 0).toFixed(2)}%
+                        {(() => {
+                          const totalReturn = backtestResults.performance?.totalReturn || backtestResults.totalReturn || 0;
+                          return `${Number(totalReturn).toFixed(2)}%`;
+                        })()}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Total Return</div>
                     </div>
                     
                     <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                        {(backtestResults.performance?.annualizedReturn || backtestResults.annualizedReturn || 0).toFixed(2)}%
+                        {(() => {
+                          const annualizedReturn = backtestResults.performance?.annualizedReturn || backtestResults.annualizedReturn || 0;
+                          return `${Number(annualizedReturn).toFixed(2)}%`;
+                        })()}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Annualized Return</div>
                     </div>
                     
                     <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
-                        {(backtestResults.riskMetrics?.volatility || backtestResults.volatility || 0).toFixed(2)}%
+                        {(() => {
+                          const volatility = backtestResults.riskMetrics?.volatility || backtestResults.volatility || 0;
+                          return `${Number(volatility).toFixed(2)}%`;
+                        })()}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Volatility</div>
                     </div>
 
                     <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
                       <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">
-                        {(backtestResults.riskMetrics?.sharpeRatio || backtestResults.sharpeRatio || 0).toFixed(2)}
+                        {(() => {
+                          const sharpeRatio = backtestResults.riskMetrics?.sharpeRatio || backtestResults.sharpeRatio || 0;
+                          return Number(sharpeRatio).toFixed(2);
+                        })()}
                       </div>
                       <div className="text-sm text-gray-600 dark:text-gray-300">Sharpe Ratio</div>
                     </div>
@@ -672,12 +684,22 @@ export default function BacktestingPage() {
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                       <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Final Value</div>
-                      <div className="text-xl font-bold">{formatCurrency(backtestResults.finalAmount || backtestResults.initialAmount || 100000)}</div>
+                      <div className="text-xl font-bold">
+                        {(() => {
+                          const initialAmount = Number(backtestResults.initialAmount || 100000);
+                          const totalReturn = backtestResults.performance?.totalReturn || backtestResults.totalReturn || 0;
+                          const finalValue = initialAmount * (1 + totalReturn / 100);
+                          return formatCurrency(finalValue);
+                        })()}
+                      </div>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
                       <div className="text-sm font-medium text-slate-500 dark:text-slate-400">Max Drawdown</div>
                       <div className="text-xl font-bold text-red-500">
-                        {formatPercentage(backtestResults.maxDrawdown || 0)}
+                        {(() => {
+                          const maxDrawdown = backtestResults.riskMetrics?.maxDrawdown || backtestResults.maxDrawdown || 0;
+                          return `${Number(maxDrawdown).toFixed(2)}%`;
+                        })()}
                       </div>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
