@@ -315,6 +315,7 @@ export class ComprehensiveBacktestingEngine {
         AND fsc.total_score IS NOT NULL
         GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
         HAVING COUNT(nav.nav_value) >= 50
+        AND AVG(nav.nav_value) BETWEEN 1 AND 5000
       )
       SELECT fund_id, total_score, fund_name, category, subcategory
       FROM score_range_funds
@@ -362,6 +363,7 @@ export class ComprehensiveBacktestingEngine {
         WHERE fsc.total_score IS NOT NULL
         GROUP BY fsc.fund_id, fsc.total_score, f.fund_name, f.category, f.subcategory
         HAVING COUNT(nav.nav_value) >= 50
+        AND AVG(nav.nav_value) BETWEEN 1 AND 5000
       ),
       quartile_ranked_funds AS (
         SELECT 
