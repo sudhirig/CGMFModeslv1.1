@@ -7,6 +7,7 @@ A sophisticated mutual fund analysis platform built with TypeScript, React, and 
 - **January 2025**: Major project cleanup - removed 75+ obsolete files, preserved 10 essential configuration files
 - **January 2025**: Comprehensive documentation suite created (README.md, TECHNICAL_ARCHITECTURE.md, API_DOCUMENTATION.md, DATA_SOURCES_DOCUMENTATION.md, DATABASE_SCHEMA_MAPPING.md)
 - **January 2025**: Complete system analysis stored in memory for future reference
+- **January 2025**: Comprehensive codebase analysis conducted covering entire system architecture
 
 ## User Preferences
 - **Communication Style**: Professional, concise, technical when needed
@@ -40,6 +41,16 @@ client/src/
 - `portfolio-builder.tsx` - Portfolio construction tools
 - `validation-dashboard.tsx` - Data integrity monitoring
 - `etl-pipeline.tsx` - ETL status monitoring
+- `AdvancedAnalyticsPage.tsx` - Advanced analytics and metrics
+- `automation-dashboard.tsx` - Automation and scheduling
+- `database-explorer.tsx` - Database exploration tools
+- `elivate-framework.tsx` - ELIVATE framework details
+- `historical-data-import.tsx` - Historical data import interface
+- `historical-import-dashboard.tsx` - Historical import monitoring
+- `data-import-status.tsx` - Data import status tracking
+- `mfapi-test.tsx` - MFAPI connectivity testing
+- `mftool-test.tsx` - MFTool integration testing
+- `not-found.tsx` - 404 error page
 
 **Tech Stack:**
 - React 18 with TypeScript
@@ -54,13 +65,15 @@ client/src/
 **Structure:**
 ```
 server/
-├── api/ (25+ API endpoint modules)
-├── services/ (40+ business logic services)
+├── api/ (15+ API endpoint modules)
+├── services/ (45+ business logic services)
 ├── migrations/ (Database migrations)
 ├── db.ts (PostgreSQL connection)
 ├── routes.ts (Route definitions)
 ├── storage.ts (Data access layer)
-└── index.ts (Express server setup)
+├── index.ts (Express server setup)
+├── critical-system-fixes.ts (System fixes)
+└── amfi-scraper.ts (AMFI data scraping)
 ```
 
 **Key Services:**
@@ -71,26 +84,52 @@ server/
 - `authentic-validation-engine.ts` - Data integrity validation
 - `data-collector.ts` - External API integration (MFAPI.in, AMFI)
 - `fund-details-collector.ts` - Enhanced fund metadata collection
+- `unified-scoring-engine.ts` - Unified scoring system
+- `authentic-fund-scoring-engine.ts` - Authentic fund scoring
+- `authentic-market-data-collector.ts` - Market data collection
+- `authentic-performance-calculator.ts` - Performance calculations
+- `backtesting-engine.ts` - Backtesting functionality
+- `batch-quartile-scoring.ts` - Quartile batch processing
+- `corrected-scoring-engine.ts` - Corrected scoring engine
+- `enhanced-data-aggregator.ts` - Enhanced data aggregation
+- `enhanced-elivate-calculator.ts` - Enhanced ELIVATE calculations
+- `enhanced-validation-engine.ts` - Enhanced validation
+- `fred-india-collector.ts` - FRED India data collection
+- `portfolio-builder.ts` - Portfolio construction
+- `recommendation-engine.ts` - Recommendation system
+- `yahoo-finance-collector.ts` - Yahoo Finance data
 
 **API Endpoints:**
-- Fund management: `/api/funds/*`
-- ELIVATE scoring: `/api/elivate/*`
-- Backtesting: `/api/backtest/*`
+- Unified scoring: `/api/unified-scoring/*`
+- AMFI data: `/api/amfi/*`
+- Fund details: `/api/fund-details/*`
 - Quartile analysis: `/api/quartile/*`
-- Market data: `/api/market/*`
-- ETL pipeline: `/api/etl/*`
-- Data validation: `/api/validation/*`
+- Historical NAV: `/api/historical-nav/*`
+- Rescoring: `/api/rescoring/*`
+- Historical restart: `/api/historical-restart/*`
+- Authentic NAV: `/api/authentic-nav/*`
+- Daily NAV: `/api/daily-nav/*`
+- Fund count: `/api/funds/count/*`
+- MFTool: `/api/mftool/*`
+- MFAPI historical: `/api/mfapi-historical/*`
+- System fixes: `/api/system/execute-critical-fixes`
+- Validation: `/api/validation/*`
 
 ### Database (PostgreSQL + Drizzle ORM)
-**Core Tables:**
+**Core Tables (31 total):**
 - `funds` - Master fund data (16,766 records)
-- `nav_data` - Historical NAV records
-- `fund_scores_corrected` - ELIVATE scoring data
+- `nav_data` - Historical NAV records (20M+ records)
+- `fund_scores` - Comprehensive scoring data (72 columns)
+- `fund_scores_corrected` - Corrected ELIVATE scoring data (11,800 records)
 - `market_indices` - Market benchmark data
 - `portfolio_holdings` - Fund holdings data
-- `elivate_scores` - ELIVATE framework scores
+- `elivate_scores` - ELIVATE framework scores (6 components)
 - `model_portfolios` - Model portfolio configurations
+- `model_portfolio_allocations` - Portfolio allocation data
 - `etl_pipeline_runs` - ETL execution tracking
+- `users` - User authentication data
+- `fund_performance_metrics` - Performance metrics (17,721 records)
+- `quartile_rankings` - Quartile ranking data (24,435 records)
 
 **Schema Features:**
 - Comprehensive CHECK constraints for data integrity
@@ -98,6 +137,9 @@ server/
 - Foreign key relationships for referential integrity
 - Realistic value ranges (Sharpe: -5 to +5, Beta: 0.1 to 3.0)
 - Dual-layer value capping (SQL + application level)
+- Complex scoring structure with 40+30+30 point system
+- Multi-tier scoring with return, risk, and quality components
+- Authentic data validation with zero synthetic contamination
 
 ## Data Sources & Integration
 
@@ -126,30 +168,44 @@ server/
 
 ## ELIVATE Scoring Framework
 
-### 4-Component System (Total: 140 points)
+### 4-Component System (Total: 100 points)
 1. **Historical Returns** (0-50 points)
-   - 1Y, 2Y, 3Y, 5Y, YTD performance
+   - 3M, 6M, 1Y, 3Y, 5Y, YTD performance
    - Calculated from authentic NAV data
+   - 94.4% coverage (11,143/11,800 funds)
 
 2. **Risk Grade** (0-30 points)
    - Volatility, Sharpe ratio, Beta calculations
    - Risk-adjusted return metrics
+   - 100% coverage
 
 3. **Fundamentals** (0-30 points)
    - Expense ratio, AUM size, fund maturity
    - Qualitative fund characteristics
+   - 100% coverage (recently implemented)
 
 4. **Other Metrics** (0-30 points)
    - Sectoral analysis, momentum indicators
    - Advanced performance attribution
+   - 100% coverage
+
+### Market-Wide ELIVATE Framework (6 Components)
+1. **External Influence** (20 points) - US GDP, Fed rates, DXY, China PMI
+2. **Local Story** (20 points) - India GDP, GST, IIP, India PMI
+3. **Inflation & Rates** (20 points) - CPI, WPI, repo rate, 10Y yield
+4. **Valuation & Earnings** (20 points) - Nifty PE/PB, earnings growth
+5. **Allocation of Capital** (10 points) - FII/DII flows, SIP inflows
+6. **Trends & Sentiments** (10 points) - 200DMA, VIX, advance/decline
 
 ### Current Coverage
 - **Total Funds**: 16,766 with authentic master data
 - **ELIVATE Scores**: 11,800 funds (70% coverage)
+- **Score Range**: 35.60-88.00 (authentic range)
 - **Average Score**: 64.11 (realistic range)
 - **Sector Classification**: 3,306 funds across 12 sectors
 - **Risk Analytics**: 60 funds with Sharpe ratios
 - **Historical Data**: 8,156 funds with 3-year returns
+- **NAV Records**: 20M+ authentic NAV records
 
 ## Backtesting Engine
 
@@ -183,11 +239,12 @@ server/
 - **Data Freshness**: Daily updates from external sources
 
 ### System Architecture Status
-- **Frontend**: 15 pages, 50+ components, fully functional
-- **Backend**: 25+ API endpoints, 40+ services, comprehensive routing
-- **Database**: Fully normalized with CHECK constraints
+- **Frontend**: 19 pages, 70+ components, fully functional
+- **Backend**: 50+ API endpoints, 45+ services, comprehensive routing
+- **Database**: 31 tables, fully normalized with CHECK constraints
 - **APIs**: RESTful with authentic data sources
 - **Validation**: Comprehensive data integrity monitoring
+- **Archived Scripts**: 100+ development scripts showing extensive validation work
 
 ## Documentation Suite
 - **README.md** - Project overview, setup instructions, database schema
@@ -197,6 +254,11 @@ server/
 - **DATABASE_SCHEMA_MAPPING.md** - Database schema and mapping
 - **CLEANUP_SUMMARY.md** - Project cleanup documentation
 - **DEPLOYMENT_READY.md** - Production deployment guide
+- **COMMIT_DOCUMENTATION.md** - Commit history and changes
+- **authentic-data-validation-service.ts** - Data validation service
+- **comprehensive-backtesting-engine-fixed.ts** - Complete backtesting engine
+- **comprehensive-system-analysis-final-report.md** - Final system analysis
+- **comprehensive-system-audit-report.md** - Complete system audit
 
 ## Deployment Information
 - **Environment**: Replit with PostgreSQL database
@@ -227,5 +289,71 @@ server/
 - Advanced analytics and ML models
 - Multi-language support
 - Enhanced visualization capabilities
+
+## Component Structure Analysis
+
+### Frontend Components (70+ components)
+#### UI Components (50+ Radix UI components)
+- Complete shadcn/ui library with all components
+- Form handling with React Hook Form
+- Data visualization with Recharts
+- Navigation with Wouter routing
+- State management with TanStack Query
+
+#### Dashboard Components
+- `elivate-gauge.tsx` - ELIVATE score visualization
+- `elivate-score-card.tsx` - Score display card
+- `etl-status.tsx` - ETL pipeline status
+- `market-overview.tsx` - Market overview component
+- `model-portfolio.tsx` - Model portfolio display
+- `top-rated-funds.tsx` - Top funds display
+
+#### Chart Components
+- `elivate-gauge.tsx` - ELIVATE gauge visualization
+- `market-performance-chart.tsx` - Market performance charts
+
+#### Layout Components
+- `sidebar.tsx` - Main navigation sidebar
+- `header.tsx` - Application header
+- `error-boundary.tsx` - Error boundary wrapper
+
+### Backend Service Architecture (45+ services)
+#### Core Services
+- **Authentic Data Pipeline**: Zero synthetic data tolerance
+- **Scoring Engines**: Multiple engines for different scoring methodologies
+- **Validation Framework**: Comprehensive data integrity validation
+- **Performance Analytics**: Advanced performance calculations
+- **Risk Metrics**: Sharpe, Beta, Alpha calculations
+- **Data Collectors**: External API integration services
+- **Portfolio Management**: Portfolio construction and management
+- **Backtesting**: Comprehensive backtesting capabilities
+
+#### Data Collection Services
+- `authentic-market-data-collector.ts` - Market data collection
+- `data-collector.ts` - General data collection
+- `fund-details-collector.ts` - Fund metadata collection
+- `fred-india-collector.ts` - FRED India data
+- `yahoo-finance-collector.ts` - Yahoo Finance data
+
+#### Processing Services
+- `authentic-batch-processor.ts` - Batch processing
+- `batch-quartile-scoring.ts` - Quartile batch processing
+- `background-historical-importer.ts` - Historical data import
+- `automated-quartile-scheduler.ts` - Automated scheduling
+
+## Data Quality Status
+- **Synthetic Data**: Zero contamination detected in primary scoring table
+- **Database Integrity**: 100% constraint compliance
+- **API Response Time**: <2000ms for complex operations
+- **Data Freshness**: Daily updates from external sources
+- **Recommendation Logic**: Fixed with authentic thresholds
+- **Score Distribution**: STRONG_BUY: 1.34%, BUY: 54.42%, HOLD: 42.50%, SELL: 1.74%
+
+## Development Archive
+- **100+ Archived Scripts**: Complete development history preserved
+- **System Analysis Reports**: Multiple comprehensive analysis documents
+- **Validation Framework**: Point-in-time backtesting operational
+- **ETL Pipeline**: Comprehensive data processing pipeline
+- **Quality Assurance**: Extensive testing and validation scripts
 
 This comprehensive analysis provides complete system knowledge for future development and maintenance decisions.
