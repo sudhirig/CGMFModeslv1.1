@@ -21,6 +21,18 @@ export default function FundAnalysis() {
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   
+  // Helper function to safely format numbers
+  const safeToFixed = (value: number | null | undefined, decimals: number = 1): string => {
+    if (value === null || value === undefined || typeof value !== 'number') return 'N/A';
+    return value.toFixed(decimals);
+  };
+
+  // Helper function to safely format currency
+  const safeCurrency = (value: number | null | undefined): string => {
+    if (value === null || value === undefined || typeof value !== 'number') return 'N/A';
+    return `₹${value.toLocaleString()}`;
+  };
+  
   // Called when category is changed from dropdown
   const handleCategoryChange = (category: string) => {
     console.log(`Selected category: ${category}`);
@@ -348,7 +360,7 @@ export default function FundAnalysis() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-3 bg-gray-50 rounded-lg">
                       <div className="text-lg font-bold text-gray-900">
-                        ₹{fund.nav?.toFixed(2) || 'N/A'}
+                        ₹{safeToFixed(fund.nav, 2)}
                       </div>
                       <div className="text-xs text-gray-500">NAV</div>
                     </div>
@@ -376,13 +388,13 @@ export default function FundAnalysis() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Expense Ratio</span>
                       <span className="text-sm font-medium">
-                        {fund.expenseRatio?.toFixed(2) || 'N/A'}%
+                        {safeToFixed(fund.expenseRatio, 2)}%
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Min SIP</span>
                       <span className="text-sm font-medium">
-                        ₹{fund.minSip?.toLocaleString() || '500'}
+                        {safeCurrency(fund.minSip)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
