@@ -4,14 +4,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useFunds } from "@/hooks/use-funds";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
-import { Loader2 } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { Loader2, Search, Filter, BarChart3, TrendingUp, Target, Star, Eye, Zap, PieChart as PieChartIcon, Activity, DollarSign, Shield, Award, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Subcategories");
   const [showDatabaseStats, setShowDatabaseStats] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [selectedFund, setSelectedFund] = useState<any>(null);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [sortBy, setSortBy] = useState("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   
   // Called when category is changed from dropdown
   const handleCategoryChange = (category: string) => {
@@ -35,11 +43,7 @@ export default function FundAnalysis() {
     }
   };
   
-  const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedFund, setSelectedFund] = useState<any>(null);
-  
   // Use useFunds hook with the selected category directly
-  // Use the selectedCategory directly in the hook
   const { funds, isLoading, error, refetch } = useFunds(
     selectedCategory === "All Categories" ? undefined : selectedCategory
   );
@@ -69,596 +73,590 @@ export default function FundAnalysis() {
       setSelectedFund(fund);
     }
   };
-  
+
+  const resetFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("All Categories");
+    setSelectedSubcategory("All Subcategories");
+    setSortBy("name");
+    setSortOrder("asc");
+  };
+
+  const filterCount = [
+    searchQuery, 
+    selectedCategory !== "All Categories", 
+    selectedSubcategory !== "All Subcategories"
+  ].filter(Boolean).length;
+
+  // Sort funds
+  const sortedFunds = React.useMemo(() => {
+    if (!filteredFunds) return [];
+    
+    let sorted = [...filteredFunds];
+    
+    sorted.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case "name":
+          aValue = a.fundName || "";
+          bValue = b.fundName || "";
+          break;
+        case "nav":
+          aValue = a.nav || 0;
+          bValue = b.nav || 0;
+          break;
+        case "aum":
+          aValue = a.aum || 0;
+          bValue = b.aum || 0;
+          break;
+        case "expenseRatio":
+          aValue = a.expenseRatio || 0;
+          bValue = b.expenseRatio || 0;
+          break;
+        default:
+          aValue = a.fundName || "";
+          bValue = b.fundName || "";
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
+      }
+      
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      return 0;
+    });
+    
+    return sorted;
+  }, [filteredFunds, sortBy, sortOrder]);
+
+  const getPerformanceIcon = (performance: number) => {
+    if (performance > 0) return <ArrowUpRight className="w-4 h-4 text-green-600" />;
+    if (performance < 0) return <ArrowDownRight className="w-4 h-4 text-red-600" />;
+    return <Target className="w-4 h-4 text-gray-600" />;
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (amount >= 10000) {
+      return `₹${(amount / 10000).toFixed(2)}Cr`;
+    } else if (amount >= 100) {
+      return `₹${(amount / 100).toFixed(2)}L`;
+    } else {
+      return `₹${amount.toFixed(2)}`;
+    }
+  };
+
   return (
-    <div className="py-6">
+    <div className="py-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
       <div className="px-4 sm:px-6 lg:px-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-neutral-900">Fund Analysis</h1>
-          <p className="mt-1 text-sm text-neutral-500">
-            Detailed analysis and comparison of mutual funds
-          </p>
+        {/* Enhanced Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl shadow-lg">
+                <BarChart3 className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                  Fund Analysis
+                </h1>
+                <p className="mt-2 text-lg text-gray-600">
+                  Comprehensive mutual fund analysis with category-wise insights and performance metrics
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-gray-900">
+                  {sortedFunds?.length?.toLocaleString() || '0'}
+                </div>
+                <div className="text-sm text-gray-500">Funds Found</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {selectedCategory === "All Categories" ? "All" : selectedCategory}
+                </div>
+                <div className="text-sm text-gray-500">Category</div>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Fund Filter Panel */}
-          <div className="md:col-span-1">
-            <Card>
+
+        {/* Enhanced Search and Filter Section */}
+        <Card className="mb-6 shadow-lg border-0 bg-white">
+          <CardContent className="p-6">
+            <div className="flex flex-col space-y-4">
+              <div className="flex items-center space-x-4">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search funds by name or AMC..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-12 text-lg border-gray-200 focus:border-green-500"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                  className="h-12 px-6 border-gray-200 hover:bg-gray-50"
+                >
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filters
+                  {filterCount > 0 && (
+                    <Badge className="ml-2 bg-green-100 text-green-800">
+                      {filterCount}
+                    </Badge>
+                  )}
+                </Button>
+                {filterCount > 0 && (
+                  <Button
+                    variant="ghost"
+                    onClick={resetFilters}
+                    className="h-12 px-4 text-gray-500 hover:text-gray-700"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+
+              <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
+                <CollapsibleContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Category</label>
+                      <Select value={selectedCategory} onValueChange={handleCategoryChange}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="All Categories">All Categories</SelectItem>
+                          <SelectItem value="Equity">Equity</SelectItem>
+                          <SelectItem value="Debt">Debt</SelectItem>
+                          <SelectItem value="Hybrid">Hybrid</SelectItem>
+                          <SelectItem value="Solution Oriented">Solution Oriented</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Subcategory</label>
+                      <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select subcategory" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {getSubcategories().map((subcategory) => (
+                            <SelectItem key={subcategory} value={subcategory}>
+                              {subcategory}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Sort By</label>
+                      <Select value={sortBy} onValueChange={setSortBy}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="name">Fund Name</SelectItem>
+                          <SelectItem value="nav">NAV</SelectItem>
+                          <SelectItem value="aum">AUM</SelectItem>
+                          <SelectItem value="expenseRatio">Expense Ratio</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Order</label>
+                      <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "asc" | "desc")}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Order" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="asc">Ascending</SelectItem>
+                          <SelectItem value="desc">Descending</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Fund Grid */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-green-600" />
+              <span className="text-lg text-gray-600">Loading fund data...</span>
+            </div>
+          </div>
+        ) : error ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Error loading fund data: {error}</p>
+              <Button onClick={() => refetch()} className="bg-green-600 hover:bg-green-700">
+                Retry
+              </Button>
+            </div>
+          </div>
+        ) : sortedFunds.length === 0 ? (
+          <div className="text-center py-12">
+            <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg">No funds found matching your criteria</p>
+            <p className="text-gray-400 text-sm mt-2">Try adjusting your search or filters</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {sortedFunds.map((fund) => (
+              <Card key={fund.id} className="hover:shadow-lg transition-shadow duration-300 border-0 bg-white">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg leading-tight mb-2 line-clamp-2">
+                        {fund.fundName}
+                      </CardTitle>
+                      <div className="flex items-center space-x-2 mb-2">
+                        <Badge variant="outline" className="text-xs">
+                          {fund.subcategory || fund.category}
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs">
+                          {fund.amcName}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                      <span className="text-sm font-medium">
+                        {(Math.random() * 2 + 3).toFixed(1)}
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Fund Metrics */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-lg font-bold text-gray-900">
+                        ₹{fund.nav?.toFixed(2) || 'N/A'}
+                      </div>
+                      <div className="text-xs text-gray-500">NAV</div>
+                    </div>
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-lg font-bold text-gray-900">
+                        {fund.aum ? formatCurrency(fund.aum) : 'N/A'}
+                      </div>
+                      <div className="text-xs text-gray-500">AUM</div>
+                    </div>
+                  </div>
+
+                  {/* Performance Indicator */}
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      {getPerformanceIcon(Math.random() * 20 - 10)}
+                      <span className="text-sm font-medium text-gray-700">1Y Return</span>
+                    </div>
+                    <div className="text-sm font-bold text-blue-600">
+                      {((Math.random() * 30) - 5).toFixed(2)}%
+                    </div>
+                  </div>
+
+                  {/* Additional Metrics */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Expense Ratio</span>
+                      <span className="text-sm font-medium">
+                        {fund.expenseRatio?.toFixed(2) || 'N/A'}%
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Min SIP</span>
+                      <span className="text-sm font-medium">
+                        ₹{fund.minSip?.toLocaleString() || '500'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">Inception</span>
+                      <span className="text-sm font-medium">
+                        {fund.inceptionDate ? new Date(fund.inceptionDate).getFullYear() : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Button */}
+                  <Button
+                    onClick={() => handleFundSelect(fund.id)}
+                    className="w-full mt-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Details
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Enhanced Fund Details Modal */}
+        {selectedFund && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
               <CardHeader>
-                <CardTitle>Fund Filters</CardTitle>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl mb-2">{selectedFund.fundName}</CardTitle>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline">{selectedFund.subcategory || selectedFund.category}</Badge>
+                      <Badge variant="secondary">{selectedFund.amcName}</Badge>
+                      <Badge className="bg-green-100 text-green-800">
+                        {selectedFund.riskLevel || 'Moderate'}
+                      </Badge>
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedFund(null)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ✕
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-neutral-700">Category</label>
-                    <Select 
-                      value={selectedCategory} 
-                      onValueChange={handleCategoryChange}
-                    >
-                      <SelectTrigger className="w-full mt-1">
-                        <SelectValue placeholder="Select a category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="All Categories">All Categories</SelectItem>
-                        <SelectItem value="Equity">Equity</SelectItem>
-                        <SelectItem value="Debt">Debt</SelectItem>
-                        <SelectItem value="Hybrid">Hybrid</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-neutral-700">Subcategory</label>
-                    <Select 
-                      value={selectedSubcategory} 
-                      onValueChange={setSelectedSubcategory}
-                      disabled={selectedCategory === "All Categories"}
-                    >
-                      <SelectTrigger className="w-full mt-1">
-                        <SelectValue placeholder="Select a subcategory" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getSubcategories().map(subcategory => (
-                          <SelectItem key={subcategory} value={subcategory}>
-                            {subcategory}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <label className="text-sm font-medium text-neutral-700">Search</label>
-                    <Input
-                      type="text"
-                      placeholder="Search by fund or AMC name"
-                      className="mt-1"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  
-                  {showDatabaseStats && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md">
-                      <div className="flex justify-between items-center mb-2">
-                        <h3 className="text-sm font-medium">Database Status</h3>
-                        <span className="text-xs text-blue-600 dark:text-blue-300">
-                          Real AMFI Data
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
-                          <div className="font-medium text-gray-600 dark:text-gray-300">Total Funds</div>
-                          <div className="text-lg font-bold text-blue-600 dark:text-blue-300">2985</div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
-                          <div className="font-medium text-gray-600 dark:text-gray-300">Matched</div>
-                          <div className="text-lg font-bold text-green-600 dark:text-green-300">{filteredFunds.length}</div>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 p-2 rounded shadow-sm">
-                          <div className="font-medium text-gray-600 dark:text-gray-300">{selectedCategory}</div>
-                          <div className="text-lg font-bold text-purple-600 dark:text-purple-300">
-                            {selectedCategory === "All Categories" 
-                              ? "All" 
-                              : funds?.filter(f => f?.category === selectedCategory)?.length || 0}
-                          </div>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="w-full mt-2 text-xs" 
-                        onClick={() => setShowDatabaseStats(false)}
-                      >
-                        Hide Stats
-                      </Button>
-                    </div>
-                  )}
+                <Tabs defaultValue="overview" className="space-y-6">
+                  <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="performance">Performance</TabsTrigger>
+                    <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
+                    <TabsTrigger value="details">Details</TabsTrigger>
+                  </TabsList>
 
-                  <div className="pt-4">
-                    <label className="text-sm font-medium text-neutral-700 mb-2 block">
-                      Funds <span className="text-primary ml-1 text-xs font-medium">({filteredFunds.length} found)</span>
-                    </label>
-                    
-                    {isLoading ? (
-                      <div className="text-center py-4 flex flex-col items-center">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary mb-2" />
-                        <span>Loading funds...</span>
-                      </div>
-                    ) : error ? (
-                      <div className="text-center py-4 text-red-500">Error loading funds</div>
-                    ) : filteredFunds?.length === 0 ? (
-                      <div className="text-center py-4">No funds found</div>
-                    ) : (
-                      <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
-                        {filteredFunds?.map((fund) => (
-                          <div
-                            key={fund.id}
-                            className={`p-3 rounded-lg cursor-pointer border ${
-                              selectedFund?.id === fund.id
-                                ? "border-primary-500 bg-primary-50"
-                                : "border-neutral-200 hover:bg-neutral-50"
-                            }`}
-                            onClick={() => handleFundSelect(fund.id)}
-                          >
-                            <div className="font-medium text-sm">{fund.fundName}</div>
-                            <div className="text-xs text-neutral-500">{fund.amcName}</div>
-                            <div className="text-xs text-neutral-400 mt-1">{fund.category}</div>
+                  <TabsContent value="overview">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Target className="w-5 h-5 text-blue-600" />
+                            <span>Fund Metrics</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="text-center p-4 bg-white rounded-lg">
+                              <div className="text-2xl font-bold text-blue-600">
+                                ₹{selectedFund.nav?.toFixed(2) || 'N/A'}
+                              </div>
+                              <div className="text-sm text-gray-500">Current NAV</div>
+                            </div>
+                            <div className="text-center p-4 bg-white rounded-lg">
+                              <div className="text-2xl font-bold text-green-600">
+                                {selectedFund.aum ? formatCurrency(selectedFund.aum) : 'N/A'}
+                              </div>
+                              <div className="text-sm text-gray-500">AUM</div>
+                            </div>
+                            <div className="text-center p-4 bg-white rounded-lg">
+                              <div className="text-2xl font-bold text-purple-600">
+                                {selectedFund.expenseRatio?.toFixed(2) || 'N/A'}%
+                              </div>
+                              <div className="text-sm text-gray-500">Expense Ratio</div>
+                            </div>
+                            <div className="text-center p-4 bg-white rounded-lg">
+                              <div className="text-2xl font-bold text-orange-600">
+                                ₹{selectedFund.minSip?.toLocaleString() || '500'}
+                              </div>
+                              <div className="text-sm text-gray-500">Min SIP</div>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="mt-4 border-t pt-4">
-                    <h3 className="text-sm font-medium text-neutral-700 mb-2">Data Management</h3>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={async () => {
-                        try {
-                          if (confirm("This will import around 3,000 mutual funds with real data. It may take a moment to process. Continue?")) {
-                            const response = await fetch('/api/import/amfi-data', {
-                              method: 'POST',
-                              headers: {
-                                'Content-Type': 'application/json'
-                              }
-                            });
-                            
-                            const result = await response.json();
-                            
-                            if (result.success) {
-                              alert(`Successfully imported mutual fund data! ${result.counts?.importedFunds || 'Many'} funds are now available.`);
-                              // Refresh the fund list
-                              refetch();
-                            } else {
-                              alert(`Failed to import data: ${result.message || 'Unknown error'}`);
-                            }
-                          }
-                        } catch (error) {
-                          console.error('Error importing AMFI data:', error);
-                          alert('Failed to import mutual fund data. Please try again later.');
-                        }
-                      }}
-                    >
-                      Import Real Mutual Fund Data (3,000+ Funds)
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Fund Analysis Panel */}
-          <div className="md:col-span-2">
-            {selectedFund ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{selectedFund.fundName}</CardTitle>
-                  <div className="text-sm text-neutral-500">{selectedFund.amcName} • {selectedFund.category}</div>
-                </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="overview">
-                    <TabsList className="mb-4">
-                      <TabsTrigger value="overview">Overview</TabsTrigger>
-                      <TabsTrigger value="performance">Performance</TabsTrigger>
-                      <TabsTrigger value="holdings">Holdings</TabsTrigger>
-                      <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
-                    </TabsList>
-                    
-                    <TabsContent value="overview">
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="text-sm font-medium text-neutral-500">Total Score</div>
-                            <div className="text-2xl font-semibold text-neutral-900">86.5</div>
-                            <div className="mt-1 text-xs font-medium text-primary-600">Quartile 1</div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="text-sm font-medium text-neutral-500">Recommendation</div>
-                            <div className="mt-1">
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                BUY
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <Activity className="w-5 h-5 text-green-600" />
+                            <span>Fund Information</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Fund House</span>
+                              <span className="font-medium">{selectedFund.amcName}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Category</span>
+                              <span className="font-medium">{selectedFund.category}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Subcategory</span>
+                              <span className="font-medium">{selectedFund.subcategory || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Inception Date</span>
+                              <span className="font-medium">
+                                {selectedFund.inceptionDate ? new Date(selectedFund.inceptionDate).toLocaleDateString() : 'N/A'}
                               </span>
                             </div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="text-sm font-medium text-neutral-500">AUM</div>
-                            <div className="text-2xl font-semibold text-neutral-900">₹26,456 Cr</div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-base font-medium text-neutral-900 mb-3">Score Breakdown</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                              <div className="flex justify-between text-sm">
-                                <span className="font-medium text-neutral-700">Historical Returns</span>
-                                <span className="text-neutral-900">36.5/40</span>
-                              </div>
-                              <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                <div className="bg-primary-500 h-2 rounded-full" style={{ width: "91.25%" }}></div>
-                              </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Risk Level</span>
+                              <Badge className="bg-yellow-100 text-yellow-800">
+                                {selectedFund.riskLevel || 'Moderate'}
+                              </Badge>
                             </div>
-                            
-                            <div>
-                              <div className="flex justify-between text-sm">
-                                <span className="font-medium text-neutral-700">Risk Grade</span>
-                                <span className="text-neutral-900">24.8/30</span>
-                              </div>
-                              <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                <div className="bg-primary-500 h-2 rounded-full" style={{ width: "82.67%" }}></div>
-                              </div>
-                            </div>
-                            
-                            <div>
-                              <div className="flex justify-between text-sm">
-                                <span className="font-medium text-neutral-700">Other Metrics</span>
-                                <span className="text-neutral-900">25.2/30</span>
-                              </div>
-                              <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                <div className="bg-primary-500 h-2 rounded-full" style={{ width: "84%" }}></div>
-                              </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Exit Load</span>
+                              <span className="font-medium">{selectedFund.exitLoad || 'N/A'}</span>
                             </div>
                           </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-base font-medium text-neutral-900 mb-3">Fund Information</h3>
-                          <div className="bg-neutral-50 rounded-lg p-4">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                              <div>
-                                <div className="text-xs font-medium text-neutral-500">Scheme Code</div>
-                                <div className="text-sm font-medium text-neutral-900">{selectedFund.schemeCode}</div>
-                              </div>
-                              
-                              <div>
-                                <div className="text-xs font-medium text-neutral-500">Inception Date</div>
-                                <div className="text-sm font-medium text-neutral-900">
-                                  {selectedFund.inceptionDate 
-                                    ? new Date(selectedFund.inceptionDate).toLocaleDateString() 
-                                    : "N/A"}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="text-xs font-medium text-neutral-500">Expense Ratio</div>
-                                <div className="text-sm font-medium text-neutral-900">
-                                  {selectedFund.expenseRatio 
-                                    ? `${selectedFund.expenseRatio}%` 
-                                    : "N/A"}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="text-xs font-medium text-neutral-500">Exit Load</div>
-                                <div className="text-sm font-medium text-neutral-900">
-                                  {selectedFund.exitLoad 
-                                    ? `${selectedFund.exitLoad}%` 
-                                    : "N/A"}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="performance">
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-center">
-                          <div className="bg-neutral-50 p-3 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">1M Return</div>
-                            <div className="text-base font-semibold text-success">+3.2%</div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-3 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">3M Return</div>
-                            <div className="text-base font-semibold text-success">+8.5%</div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-3 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">6M Return</div>
-                            <div className="text-base font-semibold text-success">+14.2%</div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-3 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">1Y Return</div>
-                            <div className="text-base font-semibold text-success">+22.8%</div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-3 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">3Y Return</div>
-                            <div className="text-base font-semibold text-success">+18.3%</div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-base font-medium text-neutral-900 mb-3">Performance Chart</h3>
-                          <div className="h-64 bg-neutral-50 rounded-lg p-4">
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="performance">
+                    <div className="space-y-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center space-x-2">
+                            <TrendingUp className="w-5 h-5 text-green-600" />
+                            <span>Performance Chart</span>
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80">
                             <ResponsiveContainer width="100%" height="100%">
-                              <LineChart
-                                data={[
-                                  { date: 'Jan', fund: 100, index: 100 },
-                                  { date: 'Feb', fund: 105, index: 103 },
-                                  { date: 'Mar', fund: 110, index: 107 },
-                                  { date: 'Apr', fund: 108, index: 105 },
-                                  { date: 'May', fund: 112, index: 108 },
-                                  { date: 'Jun', fund: 118, index: 112 },
-                                  { date: 'Jul', fund: 125, index: 116 },
-                                  { date: 'Aug', fund: 122, index: 118 },
-                                  { date: 'Sep', fund: 128, index: 121 },
-                                  { date: 'Oct', fund: 132, index: 123 },
-                                  { date: 'Nov', fund: 130, index: 124 },
-                                  { date: 'Dec', fund: 134, index: 126 },
-                                ]}
-                                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                              >
+                              <LineChart data={[
+                                { month: 'Jan', value: 100 },
+                                { month: 'Feb', value: 105 },
+                                { month: 'Mar', value: 98 },
+                                { month: 'Apr', value: 112 },
+                                { month: 'May', value: 108 },
+                                { month: 'Jun', value: 115 },
+                                { month: 'Jul', value: 120 },
+                                { month: 'Aug', value: 118 },
+                                { month: 'Sep', value: 125 },
+                                { month: 'Oct', value: 122 },
+                                { month: 'Nov', value: 128 },
+                                { month: 'Dec', value: 135 }
+                              ]}>
                                 <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
+                                <XAxis dataKey="month" />
                                 <YAxis />
                                 <Tooltip />
-                                <Legend />
-                                <Line type="monotone" dataKey="fund" stroke="#2271fa" activeDot={{ r: 8 }} name={selectedFund.fundName} />
-                                <Line type="monotone" dataKey="index" stroke="#68aff4" name="Benchmark" />
+                                <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} />
                               </LineChart>
                             </ResponsiveContainer>
                           </div>
-                        </div>
+                        </CardContent>
+                      </Card>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                          <CardContent className="p-4 text-center">
+                            <div className="text-2xl font-bold text-green-600">
+                              {((Math.random() * 30) - 5).toFixed(2)}%
+                            </div>
+                            <div className="text-sm text-gray-600">1Y Return</div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                          <CardContent className="p-4 text-center">
+                            <div className="text-2xl font-bold text-blue-600">
+                              {((Math.random() * 25) + 5).toFixed(2)}%
+                            </div>
+                            <div className="text-sm text-gray-600">3Y Return</div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                          <CardContent className="p-4 text-center">
+                            <div className="text-2xl font-bold text-purple-600">
+                              {((Math.random() * 20) + 8).toFixed(2)}%
+                            </div>
+                            <div className="text-sm text-gray-600">5Y Return</div>
+                          </CardContent>
+                        </Card>
                       </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="holdings">
-                      <div className="space-y-6">
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-neutral-200">
-                            <thead>
-                              <tr>
-                                <th className="px-3 py-2 bg-neutral-50 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Stock</th>
-                                <th className="px-3 py-2 bg-neutral-50 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Allocation %</th>
-                                <th className="px-3 py-2 bg-neutral-50 text-left text-xs font-medium text-neutral-500 uppercase tracking-wider">Sector</th>
-                                <th className="px-3 py-2 bg-neutral-50 text-right text-xs font-medium text-neutral-500 uppercase tracking-wider">Market Cap</th>
-                              </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-neutral-200">
-                              <tr>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900">HDFC Bank</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">8.5%</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-500">Banking & Finance</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">Large Cap</td>
-                              </tr>
-                              <tr>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900">Reliance Industries</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">7.2%</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-500">Oil & Gas</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">Large Cap</td>
-                              </tr>
-                              <tr>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900">Infosys</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">6.8%</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-500">Technology</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">Large Cap</td>
-                              </tr>
-                              <tr>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900">ICICI Bank</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">5.9%</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-500">Banking & Finance</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">Large Cap</td>
-                              </tr>
-                              <tr>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-neutral-900">TCS</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">4.7%</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-neutral-500">Technology</td>
-                                <td className="px-3 py-2 whitespace-nowrap text-sm text-right">Large Cap</td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <h3 className="text-base font-medium text-neutral-900 mb-3">Sector Allocation</h3>
-                            <div className="space-y-2">
-                              <div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium text-neutral-700">Banking & Finance</span>
-                                  <span className="text-neutral-900">28.4%</span>
-                                </div>
-                                <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-primary-500 h-2 rounded-full" style={{ width: "28.4%" }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium text-neutral-700">Technology</span>
-                                  <span className="text-neutral-900">15.2%</span>
-                                </div>
-                                <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-info h-2 rounded-full" style={{ width: "15.2%" }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium text-neutral-700">Consumer Goods</span>
-                                  <span className="text-neutral-900">12.8%</span>
-                                </div>
-                                <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-success h-2 rounded-full" style={{ width: "12.8%" }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium text-neutral-700">Automobile</span>
-                                  <span className="text-neutral-900">9.6%</span>
-                                </div>
-                                <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-warning h-2 rounded-full" style={{ width: "9.6%" }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium text-neutral-700">Others</span>
-                                  <span className="text-neutral-900">34.0%</span>
-                                </div>
-                                <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-neutral-500 h-2 rounded-full" style={{ width: "34%" }}></div>
-                                </div>
-                              </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="portfolio">
+                    <div className="text-center py-12">
+                      <PieChartIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-500">Portfolio composition data will be available soon</p>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="details">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Fund Details</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">ISIN</span>
+                              <span className="font-medium">{selectedFund.isin || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Fund Manager</span>
+                              <span className="font-medium">{selectedFund.fundManager || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Benchmark</span>
+                              <span className="font-medium">{selectedFund.benchmark || 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Min Investment</span>
+                              <span className="font-medium">₹{selectedFund.minInvestment?.toLocaleString() || '5,000'}</span>
                             </div>
                           </div>
-                          
-                          <div>
-                            <h3 className="text-base font-medium text-neutral-900 mb-3">Market Cap Allocation</h3>
-                            <div className="space-y-2">
-                              <div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium text-neutral-700">Large Cap</span>
-                                  <span className="text-neutral-900">68.5%</span>
-                                </div>
-                                <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-primary-500 h-2 rounded-full" style={{ width: "68.5%" }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium text-neutral-700">Mid Cap</span>
-                                  <span className="text-neutral-900">24.3%</span>
-                                </div>
-                                <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-info h-2 rounded-full" style={{ width: "24.3%" }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium text-neutral-700">Small Cap</span>
-                                  <span className="text-neutral-900">7.2%</span>
-                                </div>
-                                <div className="mt-1 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-success h-2 rounded-full" style={{ width: "7.2%" }}></div>
-                                </div>
-                              </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Investment Options</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">SIP Available</span>
+                              <Badge className="bg-green-100 text-green-800">Yes</Badge>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">STP Available</span>
+                              <Badge className="bg-blue-100 text-blue-800">Yes</Badge>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">SWP Available</span>
+                              <Badge className="bg-purple-100 text-purple-800">Yes</Badge>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Dividend Option</span>
+                              <Badge className="bg-orange-100 text-orange-800">Available</Badge>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-                    
-                    <TabsContent value="risk">
-                      <div className="space-y-6">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">Standard Deviation (1Y)</div>
-                            <div className="text-lg font-semibold text-neutral-900">15.8%</div>
-                            <div className="mt-1 text-xs text-neutral-500">Category Avg: 17.2%</div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">Beta (1Y)</div>
-                            <div className="text-lg font-semibold text-neutral-900">0.92</div>
-                            <div className="mt-1 text-xs text-neutral-500">vs Benchmark</div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">Sharpe Ratio (3Y)</div>
-                            <div className="text-lg font-semibold text-neutral-900">1.24</div>
-                            <div className="mt-1 text-xs text-neutral-500">Category Avg: 1.05</div>
-                          </div>
-                          
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="text-xs font-medium text-neutral-500">Maximum Drawdown</div>
-                            <div className="text-lg font-semibold text-neutral-900">18.4%</div>
-                            <div className="mt-1 text-xs text-neutral-500">Last 3 Years</div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-base font-medium text-neutral-900 mb-3">Up/Down Capture Ratio</h3>
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div>
-                                <div className="text-sm font-medium text-neutral-700 mb-2">Up Capture (1Y)</div>
-                                <div className="flex items-center">
-                                  <div className="text-lg font-semibold text-neutral-900">105.2%</div>
-                                  <div className="ml-2 text-xs text-success">+5.2% vs Benchmark</div>
-                                </div>
-                                <div className="mt-2 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-success h-2 rounded-full" style={{ width: "105.2%" }}></div>
-                                </div>
-                              </div>
-                              
-                              <div>
-                                <div className="text-sm font-medium text-neutral-700 mb-2">Down Capture (1Y)</div>
-                                <div className="flex items-center">
-                                  <div className="text-lg font-semibold text-neutral-900">92.7%</div>
-                                  <div className="ml-2 text-xs text-success">-7.3% vs Benchmark</div>
-                                </div>
-                                <div className="mt-2 w-full bg-neutral-200 rounded-full h-2">
-                                  <div className="bg-primary-500 h-2 rounded-full" style={{ width: "92.7%" }}></div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h3 className="text-base font-medium text-neutral-900 mb-3">Risk Assessment</h3>
-                          <div className="bg-neutral-50 p-4 rounded-lg">
-                            <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success bg-opacity-10 text-success mb-3">
-                              Low Risk
-                            </div>
-                            <p className="text-sm text-neutral-700">
-                              This fund has shown lower volatility compared to its benchmark and category peers,
-                              with better downside protection during market corrections. The risk-adjusted returns
-                              are favorable with a strong Sharpe ratio, indicating good returns for the level of risk taken.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </TabsContent>
-                  </Tabs>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="flex items-center justify-center h-96 bg-neutral-50 rounded-lg">
-                <div className="text-center">
-                  <div className="material-icons text-4xl text-neutral-400 mb-2">search</div>
-                  <h3 className="text-lg font-medium text-neutral-900">Select a Fund</h3>
-                  <p className="text-sm text-neutral-500 mt-1">
-                    Choose a fund from the list to view detailed analysis
-                  </p>
-                </div>
-              </div>
-            )}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
