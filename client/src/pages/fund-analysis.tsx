@@ -467,7 +467,7 @@ export default function FundAnalysis() {
                           <div className="grid grid-cols-2 gap-4">
                             <div className="text-center p-4 bg-white rounded-lg">
                               <div className="text-2xl font-bold text-blue-600">
-                                ₹{selectedFund.nav?.toFixed(2) || 'N/A'}
+                                ₹{safeToFixed(selectedFund.nav, 2)}
                               </div>
                               <div className="text-sm text-gray-500">Current NAV</div>
                             </div>
@@ -479,13 +479,13 @@ export default function FundAnalysis() {
                             </div>
                             <div className="text-center p-4 bg-white rounded-lg">
                               <div className="text-2xl font-bold text-purple-600">
-                                {selectedFund.expenseRatio?.toFixed(2) || 'N/A'}%
+                                {safeToFixed(selectedFund.expenseRatio, 2)}%
                               </div>
                               <div className="text-sm text-gray-500">Expense Ratio</div>
                             </div>
                             <div className="text-center p-4 bg-white rounded-lg">
                               <div className="text-2xl font-bold text-orange-600">
-                                ₹{selectedFund.minSip?.toLocaleString() || '500'}
+                                {safeCurrency(selectedFund.minSip)}
                               </div>
                               <div className="text-sm text-gray-500">Min SIP</div>
                             </div>
@@ -631,7 +631,7 @@ export default function FundAnalysis() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Min Investment</span>
-                              <span className="font-medium">₹{selectedFund.minInvestment?.toLocaleString() || '5,000'}</span>
+                              <span className="font-medium">{safeCurrency(selectedFund.minInvestment)}</span>
                             </div>
                           </div>
                         </CardContent>
