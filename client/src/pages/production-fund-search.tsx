@@ -14,20 +14,20 @@ interface FundScore {
   fund_id: number;
   fund_name: string;
   subcategory: string;
-  total_score: number;
-  quartile: number;
-  subcategory_rank: number;
-  subcategory_total: number;
-  subcategory_percentile: number;
-  historical_returns_total: number;
-  risk_grade_total: number;
-  fundamentals_total: number;
-  other_metrics_total: number;
-  return_1y_score: number;
-  return_3y_score: number;
-  return_5y_score: number;
-  calmar_ratio_1y: number;
-  sortino_ratio_1y: number;
+  total_score: number | null;
+  quartile: number | null;
+  subcategory_rank: number | null;
+  subcategory_total: number | null;
+  subcategory_percentile: number | null;
+  historical_returns_total: number | null;
+  risk_grade_total: number | null;
+  fundamentals_total: number | null;
+  other_metrics_total: number | null;
+  return_1y_score: number | null;
+  return_3y_score: number | null;
+  return_5y_score: number | null;
+  calmar_ratio_1y: number | null;
+  sortino_ratio_1y: number | null;
   recommendation: string;
 }
 
@@ -52,7 +52,19 @@ export default function ProductionFundSearch() {
     enabled: true
   });
 
-  const getQuartileColor = (quartile: number) => {
+  // Helper function to safely format numbers
+  const safeToFixed = (value: number | null, decimals: number = 1): string => {
+    if (value === null || value === undefined) return 'N/A';
+    return typeof value === 'number' ? value.toFixed(decimals) : 'N/A';
+  };
+
+  // Helper function to safely get numeric values
+  const safeValue = (value: number | null): number => {
+    return value === null || value === undefined ? 0 : value;
+  };
+
+  const getQuartileColor = (quartile: number | null) => {
+    if (quartile === null || quartile === undefined) return "bg-gray-100 text-gray-800 border-gray-200";
     switch (quartile) {
       case 1: return "bg-green-100 text-green-800 border-green-200";
       case 2: return "bg-blue-100 text-blue-800 border-blue-200";
@@ -64,16 +76,17 @@ export default function ProductionFundSearch() {
 
   const getRecommendationColor = (recommendation: string) => {
     switch (recommendation?.toUpperCase()) {
-      case 'STRONG_BUY': return "bg-green-600 text-white";
-      case 'BUY': return "bg-green-500 text-white";
-      case 'HOLD': return "bg-yellow-500 text-white";
-      case 'SELL': return "bg-red-500 text-white";
-      case 'STRONG_SELL': return "bg-red-600 text-white";
-      default: return "bg-gray-500 text-white";
+      case 'STRONG_BUY': return "bg-green-500 text-white border-green-500";
+      case 'BUY': return "bg-green-100 text-green-800 border-green-200";
+      case 'HOLD': return "bg-blue-100 text-blue-800 border-blue-200";
+      case 'SELL': return "bg-red-100 text-red-800 border-red-200";
+      case 'STRONG_SELL': return "bg-red-500 text-white border-red-500";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
-  const getScoreGradient = (score: number) => {
+  const getScoreGradient = (score: number | null) => {
+    if (!score) return "from-gray-400 to-gray-500";
     if (score >= 80) return "from-green-500 to-green-600";
     if (score >= 60) return "from-blue-500 to-blue-600";
     if (score >= 40) return "from-yellow-500 to-yellow-600";
@@ -116,8 +129,17 @@ export default function ProductionFundSearch() {
       let aValue = a[sortBy as keyof FundScore];
       let bValue = b[sortBy as keyof FundScore];
       
+      // Handle null values - put them at the end
+      if (aValue === null && bValue === null) return 0;
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
+      
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortOrder === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
       }
       
       return 0;
@@ -163,28 +185,22 @@ export default function ProductionFundSearch() {
                   Production Fund Search
                 </h1>
                 <p className="mt-2 text-lg text-gray-600">
-                  Discover top-performing mutual funds with comprehensive scoring and analysis
+                  Search and analyze mutual funds with comprehensive ELIVATE scoring
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-900">
-                  {fundScores?.length?.toLocaleString() || '0'}
+                  {sortedFunds?.length?.toLocaleString() || '0'}
                 </div>
                 <div className="text-sm text-gray-500">Total Funds</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {fundScores?.filter(f => f.recommendation === 'STRONG_BUY' || f.recommendation === 'BUY').length || '0'}
-                </div>
-                <div className="text-sm text-gray-500">Buy Rated</div>
-              </div>
-              <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {fundScores?.filter(f => f.quartile === 1).length || '0'}
+                  {sortedFunds?.filter(f => f.total_score && f.total_score > 70).length || 0}
                 </div>
-                <div className="text-sm text-gray-500">Q1 Funds</div>
+                <div className="text-sm text-gray-500">Top Rated</div>
               </div>
             </div>
           </div>
@@ -198,7 +214,7 @@ export default function ProductionFundSearch() {
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
-                    placeholder="Search funds by name..."
+                    placeholder="Search funds by name or subcategory..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-10 h-12 text-lg border-gray-200 focus:border-blue-500"
@@ -223,7 +239,6 @@ export default function ProductionFundSearch() {
                     onClick={resetFilters}
                     className="h-12 px-4 text-gray-500 hover:text-gray-700"
                   >
-                    <X className="h-4 w-4 mr-2" />
                     Clear
                   </Button>
                 )}
@@ -231,19 +246,17 @@ export default function ProductionFundSearch() {
 
               <Collapsible open={isFiltersOpen} onOpenChange={setIsFiltersOpen}>
                 <CollapsibleContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-700">Subcategory</label>
                       <Select value={selectedSubcategory} onValueChange={setSelectedSubcategory}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select subcategory" />
+                          <SelectValue placeholder="All Subcategories" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Subcategories</SelectItem>
-                          {subcategories?.map((subcategory) => (
-                            <SelectItem key={subcategory} value={subcategory}>
-                              {subcategory}
-                            </SelectItem>
+                          {subcategories?.map((sub) => (
+                            <SelectItem key={sub} value={sub}>{sub}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -253,13 +266,13 @@ export default function ProductionFundSearch() {
                       <label className="text-sm font-medium text-gray-700">Quartile</label>
                       <Select value={selectedQuartile} onValueChange={setSelectedQuartile}>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select quartile" />
+                          <SelectValue placeholder="All Quartiles" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="all">All Quartiles</SelectItem>
                           <SelectItem value="1">Q1 (Top 25%)</SelectItem>
-                          <SelectItem value="2">Q2 (26-50%)</SelectItem>
-                          <SelectItem value="3">Q3 (51-75%)</SelectItem>
+                          <SelectItem value="2">Q2 (25-50%)</SelectItem>
+                          <SelectItem value="3">Q3 (50-75%)</SelectItem>
                           <SelectItem value="4">Q4 (Bottom 25%)</SelectItem>
                         </SelectContent>
                       </Select>
@@ -273,9 +286,23 @@ export default function ProductionFundSearch() {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="total_score">Total Score</SelectItem>
-                          <SelectItem value="return_1y_score">1Y Return</SelectItem>
-                          <SelectItem value="return_3y_score">3Y Return</SelectItem>
+                          <SelectItem value="historical_returns_total">Historical Returns</SelectItem>
+                          <SelectItem value="risk_grade_total">Risk Grade</SelectItem>
+                          <SelectItem value="fundamentals_total">Fundamentals</SelectItem>
                           <SelectItem value="subcategory_rank">Subcategory Rank</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700">Order</label>
+                      <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as "asc" | "desc")}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Order" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="desc">Highest First</SelectItem>
+                          <SelectItem value="asc">Lowest First</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -286,25 +313,24 @@ export default function ProductionFundSearch() {
           </CardContent>
         </Card>
 
-        {/* Enhanced Fund List */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {/* Enhanced Fund Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {sortedFunds?.map((fund) => (
             <Card key={fund.fund_id} className="hover:shadow-lg transition-shadow duration-300 border-0 bg-white">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg leading-tight mb-2">
+                    <CardTitle className="text-lg leading-tight mb-2 line-clamp-2">
                       {fund.fund_name}
                     </CardTitle>
-                    <Badge variant="outline" className="text-xs mb-2">
-                      {fund.subcategory}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {getPerformanceIcon(fund.recommendation)}
-                    <Badge className={`${getRecommendationColor(fund.recommendation)} text-xs px-2 py-1`}>
-                      {fund.recommendation}
-                    </Badge>
+                    <div className="flex items-center space-x-2">
+                      <Badge variant="outline" className="text-xs">
+                        {fund.subcategory}
+                      </Badge>
+                      <Badge className={`${getRecommendationColor(fund.recommendation)} text-xs px-2 py-1`}>
+                        {fund.recommendation}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
@@ -313,21 +339,21 @@ export default function ProductionFundSearch() {
                 <div className="flex items-center justify-between">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-gray-900">
-                      {fund.total_score.toFixed(1)}
+                      {safeToFixed(fund.total_score)}
                     </div>
                     <div className="text-sm text-gray-500">Total Score</div>
                   </div>
                   <div className="text-center">
                     <Badge className={`${getQuartileColor(fund.quartile)} text-sm px-3 py-1 font-semibold`}>
-                      Q{fund.quartile}
+                      Q{fund.quartile || 'N/A'}
                     </Badge>
                     <div className="text-sm text-gray-500 mt-1">Quartile</div>
                   </div>
                   <div className="text-center">
                     <div className="text-lg font-semibold text-gray-900">
-                      #{fund.subcategory_rank}
+                      #{fund.subcategory_rank || 'N/A'}
                     </div>
-                    <div className="text-sm text-gray-500">of {fund.subcategory_total}</div>
+                    <div className="text-sm text-gray-500">of {fund.subcategory_total || 'N/A'}</div>
                   </div>
                 </div>
 
@@ -335,21 +361,21 @@ export default function ProductionFundSearch() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Historical Returns</span>
-                    <span className="text-sm font-medium">{fund.historical_returns_total.toFixed(1)}</span>
+                    <span className="text-sm font-medium">{safeToFixed(fund.historical_returns_total)}</span>
                   </div>
-                  <Progress value={(fund.historical_returns_total / 50) * 100} className="h-2" />
+                  <Progress value={fund.historical_returns_total ? (fund.historical_returns_total / 50) * 100 : 0} className="h-2" />
                   
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Risk Grade</span>
-                    <span className="text-sm font-medium">{fund.risk_grade_total.toFixed(1)}</span>
+                    <span className="text-sm font-medium">{safeToFixed(fund.risk_grade_total)}</span>
                   </div>
-                  <Progress value={(fund.risk_grade_total / 30) * 100} className="h-2" />
+                  <Progress value={fund.risk_grade_total ? (fund.risk_grade_total / 30) * 100 : 0} className="h-2" />
                   
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">Fundamentals</span>
-                    <span className="text-sm font-medium">{fund.fundamentals_total.toFixed(1)}</span>
+                    <span className="text-sm font-medium">{safeToFixed(fund.fundamentals_total)}</span>
                   </div>
-                  <Progress value={(fund.fundamentals_total / 30) * 100} className="h-2" />
+                  <Progress value={fund.fundamentals_total ? (fund.fundamentals_total / 30) * 100 : 0} className="h-2" />
                 </div>
 
                 {/* Risk Metrics */}
@@ -358,7 +384,7 @@ export default function ProductionFundSearch() {
                     {fund.calmar_ratio_1y && (
                       <div className="text-center">
                         <div className="text-sm font-medium text-gray-900">
-                          {fund.calmar_ratio_1y.toFixed(2)}
+                          {safeToFixed(fund.calmar_ratio_1y, 2)}
                         </div>
                         <div className="text-xs text-gray-500">Calmar Ratio</div>
                       </div>
@@ -366,7 +392,7 @@ export default function ProductionFundSearch() {
                     {fund.sortino_ratio_1y && (
                       <div className="text-center">
                         <div className="text-sm font-medium text-gray-900">
-                          {fund.sortino_ratio_1y.toFixed(2)}
+                          {safeToFixed(fund.sortino_ratio_1y, 2)}
                         </div>
                         <div className="text-xs text-gray-500">Sortino Ratio</div>
                       </div>
@@ -408,7 +434,7 @@ export default function ProductionFundSearch() {
                   <div className="space-y-4">
                     <div className="text-center p-4 bg-gray-50 rounded-lg">
                       <div className="text-3xl font-bold text-gray-900 mb-2">
-                        {selectedFund.total_score.toFixed(1)}
+                        {safeToFixed(selectedFund.total_score)}
                       </div>
                       <div className="text-lg text-gray-600">Total Score</div>
                     </div>
@@ -421,50 +447,34 @@ export default function ProductionFundSearch() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Quartile</span>
                         <Badge className={getQuartileColor(selectedFund.quartile)}>
-                          Q{selectedFund.quartile}
+                          Q{selectedFund.quartile || 'N/A'}
                         </Badge>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Subcategory Rank</span>
-                        <span className="font-medium">#{selectedFund.subcategory_rank} of {selectedFund.subcategory_total}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Percentile</span>
-                        <span className="font-medium">{selectedFund.subcategory_percentile.toFixed(1)}%</span>
+                        <span className="text-gray-600">Recommendation</span>
+                        <Badge className={getRecommendationColor(selectedFund.recommendation)}>
+                          {selectedFund.recommendation}
+                        </Badge>
                       </div>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    <h3 className="text-lg font-semibold">Score Breakdown</h3>
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm text-gray-600">Historical Returns</span>
-                          <span className="text-sm font-medium">{selectedFund.historical_returns_total.toFixed(1)}/50</span>
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <h4 className="font-semibold mb-2">Score Breakdown</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm">Historical Returns</span>
+                          <span className="font-medium">{safeToFixed(selectedFund.historical_returns_total)}</span>
                         </div>
-                        <Progress value={(selectedFund.historical_returns_total / 50) * 100} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm text-gray-600">Risk Grade</span>
-                          <span className="text-sm font-medium">{selectedFund.risk_grade_total.toFixed(1)}/30</span>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Risk Grade</span>
+                          <span className="font-medium">{safeToFixed(selectedFund.risk_grade_total)}</span>
                         </div>
-                        <Progress value={(selectedFund.risk_grade_total / 30) * 100} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm text-gray-600">Fundamentals</span>
-                          <span className="text-sm font-medium">{selectedFund.fundamentals_total.toFixed(1)}/30</span>
+                        <div className="flex justify-between">
+                          <span className="text-sm">Fundamentals</span>
+                          <span className="font-medium">{safeToFixed(selectedFund.fundamentals_total)}</span>
                         </div>
-                        <Progress value={(selectedFund.fundamentals_total / 30) * 100} className="h-2" />
-                      </div>
-                      <div>
-                        <div className="flex justify-between mb-1">
-                          <span className="text-sm text-gray-600">Other Metrics</span>
-                          <span className="text-sm font-medium">{selectedFund.other_metrics_total.toFixed(1)}/30</span>
-                        </div>
-                        <Progress value={(selectedFund.other_metrics_total / 30) * 100} className="h-2" />
                       </div>
                     </div>
                   </div>
