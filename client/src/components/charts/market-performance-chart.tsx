@@ -37,35 +37,41 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
   });
   
   useEffect(() => {
-    if (!nifty50Data && !midcapData && !smallcapData) return;
+    // Only process authentic data - NO SYNTHETIC DATA
+    if (!nifty50Data || !midcapData || !smallcapData) {
+      setChartData([]); // Clear chart data if no authentic data
+      return;
+    }
     
-    // Create normalized chart data based on timeframe
+    // Create normalized chart data based on timeframe using AUTHENTIC DATA ONLY
     const normalizeData = () => {
-      // If we don't have real data yet, generate demo data
-      if (!nifty50Data || !midcapData || !smallcapData) {
-        return generateDemoData();
+      // Determine the number of data points based on timeframe
+      let numPoints = Math.min(30, nifty50Data.length); // Default for daily
+      if (timeframe === "weekly") numPoints = Math.min(52, nifty50Data.length);
+      if (timeframe === "monthly") numPoints = Math.min(24, nifty50Data.length);
+      if (timeframe === "yearly") numPoints = Math.min(5, nifty50Data.length);
+      
+      // Get base value for normalization from authentic data
+      const niftyBase = nifty50Data[nifty50Data.length - 1]?.closeValue || nifty50Data[0]?.closeValue;
+      const midcapBase = midcapData[midcapData.length - 1]?.closeValue || midcapData[0]?.closeValue;
+      const smallcapBase = smallcapData[smallcapData.length - 1]?.closeValue || smallcapData[0]?.closeValue;
+      
+      if (!niftyBase || !midcapBase || !smallcapBase) {
+        console.warn('Unable to normalize authentic data - missing base values');
+        return [];
       }
       
-      // Determine the number of data points based on timeframe
-      let numPoints = 30; // Default for daily
-      if (timeframe === "weekly") numPoints = 52;
-      if (timeframe === "monthly") numPoints = 24;
-      if (timeframe === "yearly") numPoints = 5;
-      
-      // Get base value for normalization
-      const niftyBase = nifty50Data[0]?.closeValue || 100;
-      const midcapBase = midcapData[0]?.closeValue || 100;
-      const smallcapBase = smallcapData[0]?.closeValue || 100;
-      
-      // Create data points
+      // Create data points from authentic data
       const points = [];
       
-      for (let i = 0; i < Math.min(numPoints, nifty50Data.length); i++) {
+      for (let i = 0; i < numPoints; i++) {
         const niftyPoint = nifty50Data[i];
         const midcapPoint = midcapData[i < midcapData.length ? i : midcapData.length - 1];
         const smallcapPoint = smallcapData[i < smallcapData.length ? i : smallcapData.length - 1];
         
-        // Create normalized values (indexed to 100)
+        if (!niftyPoint || !midcapPoint || !smallcapPoint) continue;
+        
+        // Create normalized values (indexed to 100) from authentic data
         const niftyNorm = (niftyPoint.closeValue / niftyBase) * 100;
         const midcapNorm = (midcapPoint.closeValue / midcapBase) * 100;
         const smallcapNorm = (smallcapPoint.closeValue / smallcapBase) * 100;
@@ -76,9 +82,9 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
             year: timeframe === 'yearly' ? 'numeric' : undefined,
             day: timeframe === 'daily' ? 'numeric' : undefined,
           }),
-          nifty50: niftyNorm,
-          midcap: midcapNorm,
-          smallcap: smallcapNorm,
+          nifty50: parseFloat(niftyNorm.toFixed(2)),
+          midcap: parseFloat(midcapNorm.toFixed(2)),
+          smallcap: parseFloat(smallcapNorm.toFixed(2)),
         });
       }
       
@@ -88,62 +94,15 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
     setChartData(normalizeData());
   }, [nifty50Data, midcapData, smallcapData, timeframe]);
   
-  // Generate demo data if actual data is not available
-  const generateDemoData = () => {
-    const demoData = [];
-    const periods = timeframe === 'daily' ? 30 : 
-                  timeframe === 'weekly' ? 52 : 
-                  timeframe === 'monthly' ? 12 : 5;
-    
-    let nifty = 100;
-    let midcap = 100;
-    let smallcap = 100;
-    
-    for (let i = 0; i < periods; i++) {
-      // Generate a date label based on timeframe
-      let date;
-      const today = new Date();
-      
-      if (timeframe === 'daily') {
-        date = new Date(today);
-        date.setDate(today.getDate() - (periods - i - 1));
-        date = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      } else if (timeframe === 'weekly') {
-        date = new Date(today);
-        date.setDate(today.getDate() - (periods - i - 1) * 7);
-        date = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      } else if (timeframe === 'monthly') {
-        date = new Date(today);
-        date.setMonth(today.getMonth() - (periods - i - 1));
-        date = date.toLocaleDateString('en-US', { month: 'short' });
-      } else {
-        date = new Date(today);
-        date.setFullYear(today.getFullYear() - (periods - i - 1));
-        date = date.toLocaleDateString('en-US', { year: 'numeric' });
-      }
-      
-      // Apply some randomness but maintain a trend
-      const trendFactor = (i / periods) * 30; // Higher values towards the end
-      
-      nifty = nifty * (1 + (Math.random() * 0.04 - 0.015 + 0.001 * trendFactor));
-      midcap = midcap * (1 + (Math.random() * 0.05 - 0.02 + 0.0015 * trendFactor));
-      smallcap = smallcap * (1 + (Math.random() * 0.06 - 0.025 + 0.002 * trendFactor));
-      
-      demoData.push({
-        date,
-        nifty50: parseFloat(nifty.toFixed(2)),
-        midcap: parseFloat(midcap.toFixed(2)),
-        smallcap: parseFloat(smallcap.toFixed(2)),
-      });
-    }
-    
-    return demoData;
-  };
+  // NO SYNTHETIC DATA GENERATION - Authentic data only
   
   if (chartData.length === 0) {
     return (
       <div className="h-64 w-full bg-neutral-50 rounded-lg flex items-center justify-center">
-        <span className="text-neutral-400">Loading market data...</span>
+        <div className="text-center">
+          <span className="text-neutral-600 font-medium">Waiting for authentic market data...</span>
+          <p className="text-sm text-neutral-500 mt-2">No synthetic data used - only authentic sources</p>
+        </div>
       </div>
     );
   }
