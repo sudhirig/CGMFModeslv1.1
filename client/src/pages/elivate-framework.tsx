@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info, TrendingUp, Globe, Activity, DollarSign, Target, BarChart3, Award, Star, Zap, Shield, Eye, RefreshCw, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Area, AreaChart } from "recharts";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, PieChart, Pie, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Area, AreaChart } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useElivate } from "@/hooks/use-elivate";
 import ElivateGauge from "../components/dashboard/elivate-gauge";
