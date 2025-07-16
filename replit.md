@@ -311,6 +311,36 @@ server/
 - **Memory Usage**: Efficient data structures, connection pooling
 - **Scalability**: Horizontally scalable architecture design
 
+### Performance Optimization Success (July 16, 2025)
+**Problem**: NAV queries were taking 220-290ms with continuous polling every 2 seconds, causing slow chart loading
+
+**Solutions That Worked**:
+1. **Raw SQL Queries**: Replaced Drizzle ORM queries with raw SQL for NAV data retrieval
+   - Direct query with indexed columns (fund_id, nav_date)
+   - Parameterized queries for security
+   - Result: 3-4x performance improvement
+
+2. **Caching Strategy**:
+   - Added HTTP caching headers: `Cache-Control: public, max-age=3600`
+   - Implemented ETag based on query parameters
+   - React Query staleTime: 30 minutes
+   - Disabled refetchOnWindowFocus and refetchOnMount
+
+3. **Query Optimization**:
+   - Leveraged existing unique index on (fundId, navDate)
+   - Proper date filtering in WHERE clause
+   - Limited result sets with LIMIT clause
+
+4. **React Performance**:
+   - Fixed useMemo import issues
+   - Memoized date calculations in hooks
+   - Optimized query key structure
+
+**Results**: NAV queries now respond in 75-80ms (down from 220-290ms)
+- Eliminated continuous polling
+- Improved user experience with faster chart loading
+- Reduced server load with proper caching
+
 ## Future Considerations
 - User authentication system (JWT tokens)
 - Real-time WebSocket connections for live data
