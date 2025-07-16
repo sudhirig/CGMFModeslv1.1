@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useFunds } from "@/hooks/use-funds";
 import { useFundDetails } from "@/hooks/use-fund-details";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
-import { Loader2, Search, Filter, BarChart3, TrendingUp, Target, Star, Eye, Zap, PieChart as PieChartIcon, Activity, DollarSign, Shield, Award, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Loader2, Search, Filter, BarChart3, TrendingUp, Target, Star, Eye, Zap, PieChart as PieChartIcon, Activity, DollarSign, Shield, Award, ArrowUpRight, ArrowDownRight, Clock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
@@ -22,6 +22,7 @@ export default function FundAnalysis() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [chartPeriod, setChartPeriod] = useState<'1M' | '3M' | '6M' | '1Y' | '3Y' | 'ALL'>('1Y');
   
   // Helper function to safely format numbers
   const safeToFixed = (value: number | null | undefined, decimals: number = 1): string => {
@@ -33,6 +34,60 @@ export default function FundAnalysis() {
   const safeCurrency = (value: number | null | undefined): string => {
     if (value === null || value === undefined || typeof value !== 'number') return 'N/A';
     return `₹${value.toLocaleString()}`;
+  };
+
+  // Prepare chart data based on selected time period
+  const prepareChartData = (navHistory: any[], period: string) => {
+    if (!navHistory || navHistory.length === 0) return [];
+    
+    // Sort by date descending (most recent first)
+    const sortedData = [...navHistory].sort((a, b) => 
+      new Date(b.navDate).getTime() - new Date(a.navDate).getTime()
+    );
+    
+    let dataToShow = sortedData;
+    const today = new Date();
+    
+    switch (period) {
+      case '1M':
+        const oneMonthAgo = new Date(today);
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        dataToShow = sortedData.filter(nav => new Date(nav.navDate) >= oneMonthAgo);
+        break;
+      case '3M':
+        const threeMonthsAgo = new Date(today);
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        dataToShow = sortedData.filter(nav => new Date(nav.navDate) >= threeMonthsAgo);
+        break;
+      case '6M':
+        const sixMonthsAgo = new Date(today);
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        dataToShow = sortedData.filter(nav => new Date(nav.navDate) >= sixMonthsAgo);
+        break;
+      case '1Y':
+        const oneYearAgo = new Date(today);
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        dataToShow = sortedData.filter(nav => new Date(nav.navDate) >= oneYearAgo);
+        break;
+      case '3Y':
+        const threeYearsAgo = new Date(today);
+        threeYearsAgo.setFullYear(threeYearsAgo.getFullYear() - 3);
+        dataToShow = sortedData.filter(nav => new Date(nav.navDate) >= threeYearsAgo);
+        break;
+      case 'ALL':
+        dataToShow = sortedData;
+        break;
+    }
+    
+    // Reverse to show oldest to newest for the chart
+    return dataToShow.reverse().map(nav => ({
+      date: new Date(nav.navDate).toLocaleDateString('en-US', { 
+        month: 'short', 
+        day: 'numeric',
+        year: dataToShow.length > 50 ? '2-digit' : undefined 
+      }),
+      value: parseFloat(nav.navValue)
+    }));
   };
   
   // Called when category is changed from dropdown
@@ -542,29 +597,83 @@ export default function FundAnalysis() {
                     <div className="space-y-6">
                       <Card>
                         <CardHeader>
-                          <CardTitle className="flex items-center space-x-2">
-                            <TrendingUp className="w-5 h-5 text-green-600" />
-                            <span>Performance Chart</span>
+                          <CardTitle className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <TrendingUp className="w-5 h-5 text-green-600" />
+                              <span>Performance Chart</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant={chartPeriod === '1M' ? 'default' : 'outline'}
+                                onClick={() => setChartPeriod('1M')}
+                              >
+                                1M
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={chartPeriod === '3M' ? 'default' : 'outline'}
+                                onClick={() => setChartPeriod('3M')}
+                              >
+                                3M
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={chartPeriod === '6M' ? 'default' : 'outline'}
+                                onClick={() => setChartPeriod('6M')}
+                              >
+                                6M
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={chartPeriod === '1Y' ? 'default' : 'outline'}
+                                onClick={() => setChartPeriod('1Y')}
+                              >
+                                1Y
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={chartPeriod === '3Y' ? 'default' : 'outline'}
+                                onClick={() => setChartPeriod('3Y')}
+                              >
+                                3Y
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={chartPeriod === 'ALL' ? 'default' : 'outline'}
+                                onClick={() => setChartPeriod('ALL')}
+                              >
+                                ALL
+                              </Button>
+                            </div>
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="h-80">
                             {fundDetails?.navHistory && fundDetails.navHistory.length > 0 ? (
                               <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={fundDetails.navHistory.slice(0, 12).reverse().map(nav => ({
-                                  date: new Date(nav.navDate).toLocaleDateString('en-US', { month: 'short' }),
-                                  value: parseFloat(nav.navValue)
-                                }))}>
+                                <LineChart data={prepareChartData(fundDetails.navHistory, chartPeriod)}>
                                   <CartesianGrid strokeDasharray="3 3" />
                                   <XAxis dataKey="date" />
-                                  <YAxis />
-                                  <Tooltip />
-                                  <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} />
+                                  <YAxis domain={['dataMin', 'dataMax']} />
+                                  <Tooltip 
+                                    formatter={(value: any) => [`₹${safeToFixed(value, 2)}`, 'NAV']}
+                                    labelFormatter={(label) => `Date: ${label}`}
+                                  />
+                                  <Line 
+                                    type="monotone" 
+                                    dataKey="value" 
+                                    stroke="#10B981" 
+                                    strokeWidth={2}
+                                    dot={false}
+                                    animationDuration={500}
+                                  />
                                 </LineChart>
                               </ResponsiveContainer>
                             ) : (
                               <div className="flex items-center justify-center h-full">
                                 <div className="text-center">
+                                  <Clock className="w-8 h-8 mx-auto mb-2 text-gray-400" />
                                   <div className="text-gray-500">
                                     {detailsLoading ? 'Loading chart data...' : 'No NAV history available'}
                                   </div>
@@ -572,6 +681,11 @@ export default function FundAnalysis() {
                               </div>
                             )}
                           </div>
+                          {fundDetails?.navHistory && fundDetails.navHistory.length > 0 && (
+                            <div className="mt-4 text-sm text-gray-600">
+                              Showing {prepareChartData(fundDetails.navHistory, chartPeriod).length} data points from {fundDetails.navHistory.length} total records
+                            </div>
+                          )}
                         </CardContent>
                       </Card>
 

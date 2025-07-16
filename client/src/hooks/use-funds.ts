@@ -119,8 +119,13 @@ export function useFund(fundId: number) {
 }
 
 export function useFundNavHistory(fundId: number, days: number = 365) {
+  // Calculate date range based on days
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+  
   const { data, isLoading, error } = useQuery({
-    queryKey: [`/api/funds/${fundId}/nav?limit=${days}`],
+    queryKey: [`/api/funds/${fundId}/nav?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&limit=1000`],
     staleTime: 5 * 60 * 1000, // 5 minutes
     enabled: !!fundId,
   });
