@@ -175,18 +175,37 @@ export class DatabaseStorage implements IStorage {
     return result.length;
   }
   
-  // Fund score methods
-  async getFundScore(fundId: number, scoreDate?: Date): Promise<FundScore | undefined> {
-    let query = db.select().from(fundScores).where(eq(fundScores.fundId, fundId));
-    
-    if (scoreDate) {
-      query = query.where(eq(fundScores.scoreDate, scoreDate));
-    } else {
-      query = query.orderBy(desc(fundScores.scoreDate)).limit(1);
+  // Fund score methods - using authentic fund_scores_corrected data
+  async getFundScore(fundId: number, scoreDate?: Date): Promise<any> {
+    try {
+      // Use raw SQL to fetch from fund_scores_corrected (the correct table)
+      let query = `
+        SELECT 
+          fs.*,
+          f.fund_name,
+          f.category,
+          f.subcategory,
+          f.amc_name
+        FROM fund_scores_corrected fs
+        JOIN funds f ON fs.fund_id = f.id
+        WHERE fs.fund_id = $1
+      `;
+      
+      const params = [fundId];
+      
+      if (scoreDate) {
+        query += ` AND fs.score_date = $2`;
+        params.push(scoreDate);
+      } else {
+        query += ` ORDER BY fs.score_date DESC LIMIT 1`;
+      }
+      
+      const result = await executeRawQuery(query, params);
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error fetching fund score:', error);
+      return undefined;
     }
-    
-    const [score] = await query;
-    return score;
   }
   
   async getLatestFundScores(limit: number = 20, category?: string): Promise<(FundScore & { fund: Fund })[]> {

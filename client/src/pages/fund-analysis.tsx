@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFunds } from "@/hooks/use-funds";
+import { useFundDetails } from "@/hooks/use-fund-details";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { Loader2, Search, Filter, BarChart3, TrendingUp, Target, Star, Eye, Zap, PieChart as PieChartIcon, Activity, DollarSign, Shield, Award, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -17,6 +18,7 @@ export default function FundAnalysis() {
   const [showDatabaseStats, setShowDatabaseStats] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFund, setSelectedFund] = useState<any>(null);
+  const { fundDetails, isLoading: detailsLoading } = useFundDetails(selectedFund?.id || 0);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -350,7 +352,7 @@ export default function FundAnalysis() {
                     <div className="flex items-center space-x-1">
                       <Star className="w-4 h-4 text-yellow-500 fill-current" />
                       <span className="text-sm font-medium">
-                        {(Math.random() * 2 + 3).toFixed(1)}
+                        {fund.totalScore ? (fund.totalScore / 20).toFixed(1) : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -467,27 +469,27 @@ export default function FundAnalysis() {
                           <div className="grid grid-cols-2 gap-4">
                             <div className="text-center p-4 bg-white rounded-lg">
                               <div className="text-2xl font-bold text-blue-600">
-                                ₹{safeToFixed(selectedFund.nav, 2)}
+                                ₹{fundDetails?.performance?.currentNav ? safeToFixed(fundDetails.performance.currentNav, 2) : 'N/A'}
                               </div>
                               <div className="text-sm text-gray-500">Current NAV</div>
                             </div>
                             <div className="text-center p-4 bg-white rounded-lg">
                               <div className="text-2xl font-bold text-green-600">
-                                {selectedFund.aum ? formatCurrency(selectedFund.aum) : 'N/A'}
+                                {fundDetails?.fundamentals?.aum ? formatCurrency(fundDetails.fundamentals.aum) : 'N/A'}
                               </div>
                               <div className="text-sm text-gray-500">AUM</div>
                             </div>
                             <div className="text-center p-4 bg-white rounded-lg">
                               <div className="text-2xl font-bold text-purple-600">
-                                {safeToFixed(selectedFund.expenseRatio, 2)}%
+                                {fundDetails?.fundamentals?.expenseRatio ? safeToFixed(fundDetails.fundamentals.expenseRatio, 2) : 'N/A'}%
                               </div>
                               <div className="text-sm text-gray-500">Expense Ratio</div>
                             </div>
                             <div className="text-center p-4 bg-white rounded-lg">
                               <div className="text-2xl font-bold text-orange-600">
-                                {safeCurrency(selectedFund.minSip)}
+                                {fundDetails?.fundamentals?.minInvestment ? safeCurrency(fundDetails.fundamentals.minInvestment) : 'N/A'}
                               </div>
-                              <div className="text-sm text-gray-500">Min SIP</div>
+                              <div className="text-sm text-gray-500">Min Investment</div>
                             </div>
                           </div>
                         </CardContent>
@@ -547,28 +549,28 @@ export default function FundAnalysis() {
                         </CardHeader>
                         <CardContent>
                           <div className="h-80">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={[
-                                { month: 'Jan', value: 100 },
-                                { month: 'Feb', value: 105 },
-                                { month: 'Mar', value: 98 },
-                                { month: 'Apr', value: 112 },
-                                { month: 'May', value: 108 },
-                                { month: 'Jun', value: 115 },
-                                { month: 'Jul', value: 120 },
-                                { month: 'Aug', value: 118 },
-                                { month: 'Sep', value: 125 },
-                                { month: 'Oct', value: 122 },
-                                { month: 'Nov', value: 128 },
-                                { month: 'Dec', value: 135 }
-                              ]}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="month" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} />
-                              </LineChart>
-                            </ResponsiveContainer>
+                            {fundDetails?.navHistory && fundDetails.navHistory.length > 0 ? (
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={fundDetails.navHistory.slice(0, 12).reverse().map(nav => ({
+                                  date: new Date(nav.navDate).toLocaleDateString('en-US', { month: 'short' }),
+                                  value: parseFloat(nav.navValue)
+                                }))}>
+                                  <CartesianGrid strokeDasharray="3 3" />
+                                  <XAxis dataKey="date" />
+                                  <YAxis />
+                                  <Tooltip />
+                                  <Line type="monotone" dataKey="value" stroke="#10B981" strokeWidth={2} />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            ) : (
+                              <div className="flex items-center justify-center h-full">
+                                <div className="text-center">
+                                  <div className="text-gray-500">
+                                    {detailsLoading ? 'Loading chart data...' : 'No NAV history available'}
+                                  </div>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </CardContent>
                       </Card>
@@ -577,7 +579,7 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-green-600">
-                              {((Math.random() * 30) - 5).toFixed(2)}%
+                              {fundDetails?.performance?.return1y ? safeToFixed(fundDetails.performance.return1y, 2) : 'N/A'}%
                             </div>
                             <div className="text-sm text-gray-600">1Y Return</div>
                           </CardContent>
@@ -585,7 +587,7 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-blue-600">
-                              {((Math.random() * 25) + 5).toFixed(2)}%
+                              {fundDetails?.performance?.return3y ? safeToFixed(fundDetails.performance.return3y, 2) : 'N/A'}%
                             </div>
                             <div className="text-sm text-gray-600">3Y Return</div>
                           </CardContent>
@@ -593,7 +595,7 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-purple-600">
-                              {((Math.random() * 20) + 8).toFixed(2)}%
+                              {fundDetails?.performance?.return5y ? safeToFixed(fundDetails.performance.return5y, 2) : 'N/A'}%
                             </div>
                             <div className="text-sm text-gray-600">5Y Return</div>
                           </CardContent>
@@ -619,19 +621,35 @@ export default function FundAnalysis() {
                           <div className="space-y-3">
                             <div className="flex justify-between">
                               <span className="text-gray-600">ISIN</span>
-                              <span className="font-medium">{selectedFund.isin || 'N/A'}</span>
+                              <span className="font-medium">{fundDetails?.basicData?.isin_div_payout || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Fund Manager</span>
-                              <span className="font-medium">{selectedFund.fundManager || 'N/A'}</span>
+                              <span className="font-medium">{fundDetails?.basicData?.fund_manager || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Benchmark</span>
-                              <span className="font-medium">{selectedFund.benchmark || 'N/A'}</span>
+                              <span className="font-medium">{fundDetails?.basicData?.benchmark_name || 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Min Investment</span>
-                              <span className="font-medium">{safeCurrency(selectedFund.minInvestment)}</span>
+                              <span className="font-medium">{fundDetails?.basicData?.minimum_investment ? safeCurrency(fundDetails.basicData.minimum_investment) : 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Total Score</span>
+                              <span className="font-medium text-green-600">{fundDetails?.score?.total_score ? safeToFixed(fundDetails.score.total_score, 2) : 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Quartile</span>
+                              <Badge className={`${fundDetails?.score?.quartile === 1 ? 'bg-green-100 text-green-800' : fundDetails?.score?.quartile === 2 ? 'bg-blue-100 text-blue-800' : fundDetails?.score?.quartile === 3 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                                Q{fundDetails?.score?.quartile || 'N/A'}
+                              </Badge>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Recommendation</span>
+                              <Badge className={`${fundDetails?.score?.recommendation === 'STRONG_BUY' ? 'bg-green-100 text-green-800' : fundDetails?.score?.recommendation === 'BUY' ? 'bg-blue-100 text-blue-800' : fundDetails?.score?.recommendation === 'HOLD' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'}`}>
+                                {fundDetails?.score?.recommendation || 'N/A'}
+                              </Badge>
                             </div>
                           </div>
                         </CardContent>
@@ -639,25 +657,33 @@ export default function FundAnalysis() {
 
                       <Card>
                         <CardHeader>
-                          <CardTitle>Investment Options</CardTitle>
+                          <CardTitle>Risk & Performance Metrics</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-3">
                             <div className="flex justify-between">
-                              <span className="text-gray-600">SIP Available</span>
-                              <Badge className="bg-green-100 text-green-800">Yes</Badge>
+                              <span className="text-gray-600">Sharpe Ratio</span>
+                              <span className="font-medium">{fundDetails?.riskMetrics?.sharpeRatio ? safeToFixed(fundDetails.riskMetrics.sharpeRatio, 2) : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">STP Available</span>
-                              <Badge className="bg-blue-100 text-blue-800">Yes</Badge>
+                              <span className="text-gray-600">Alpha</span>
+                              <span className="font-medium">{fundDetails?.riskMetrics?.alpha ? safeToFixed(fundDetails.riskMetrics.alpha, 2) : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">SWP Available</span>
-                              <Badge className="bg-purple-100 text-purple-800">Yes</Badge>
+                              <span className="text-gray-600">Beta</span>
+                              <span className="font-medium">{fundDetails?.riskMetrics?.beta ? safeToFixed(fundDetails.riskMetrics.beta, 2) : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-gray-600">Dividend Option</span>
-                              <Badge className="bg-orange-100 text-orange-800">Available</Badge>
+                              <span className="text-gray-600">Volatility</span>
+                              <span className="font-medium">{fundDetails?.riskMetrics?.volatility ? safeToFixed(fundDetails.riskMetrics.volatility, 2) : 'N/A'}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Max Drawdown</span>
+                              <span className="font-medium">{fundDetails?.riskMetrics?.maxDrawdown ? safeToFixed(fundDetails.riskMetrics.maxDrawdown, 2) : 'N/A'}%</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Exit Load</span>
+                              <span className="font-medium">{fundDetails?.basicData?.exit_load ? `${fundDetails.basicData.exit_load}%` : 'N/A'}</span>
                             </div>
                           </div>
                         </CardContent>
