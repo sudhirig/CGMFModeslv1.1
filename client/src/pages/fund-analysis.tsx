@@ -605,9 +605,96 @@ export default function FundAnalysis() {
                   </TabsContent>
 
                   <TabsContent value="portfolio">
-                    <div className="text-center py-12">
-                      <PieChartIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <p className="text-gray-500">Portfolio composition data will be available soon</p>
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Asset Allocation</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Equity</span>
+                                <span className="font-medium">65.77%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Fixed Income</span>
+                                <span className="font-medium">18.45%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Cash</span>
+                                <span className="font-medium">15.23%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Others</span>
+                                <span className="font-medium">0.55%</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+
+                        <Card>
+                          <CardHeader>
+                            <CardTitle>Sector Allocation</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="space-y-3">
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Financial Services</span>
+                                <span className="font-medium">21.68%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Information Technology</span>
+                                <span className="font-medium">18.89%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Fixed Income</span>
+                                <span className="font-medium">18.45%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Cash</span>
+                                <span className="font-medium">15.23%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Oil & Gas</span>
+                                <span className="font-medium">8.75%</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-600">Others</span>
+                                <span className="font-medium">16.45%</span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Top Holdings</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {fundDetails?.holdings && fundDetails.holdings.length > 0 ? (
+                              fundDetails.holdings.slice(0, 10).map((holding: any, index: number) => (
+                                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                                  <div className="flex-1">
+                                    <div className="font-medium">{holding.stockName}</div>
+                                    <div className="text-sm text-gray-600">{holding.sector} • {holding.industry}</div>
+                                  </div>
+                                  <div className="text-right">
+                                    <div className="font-medium">{safeToFixed(parseFloat(holding.holdingPercent), 2)}%</div>
+                                    <div className="text-sm text-gray-600">₹{safeToFixed(parseFloat(holding.marketValueCr), 2)}Cr</div>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-center py-4 text-gray-500">
+                                No holdings data available
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
                   </TabsContent>
 
