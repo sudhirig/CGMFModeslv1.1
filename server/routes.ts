@@ -1060,6 +1060,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parsedEndDate = endDate ? new Date(endDate as string) : undefined;
       const parsedLimit = limit ? parseInt(limit as string) : 100;
       
+      // Add caching headers to improve performance
+      res.set({
+        'Cache-Control': 'public, max-age=3600', // Cache for 1 hour
+        'ETag': `"nav-${fundId}-${startDate}-${endDate}-${limit}"`,
+      });
+      
       const navData = await storage.getNavData(fundId, parsedStartDate, parsedEndDate, parsedLimit);
       res.json(navData);
     } catch (error) {

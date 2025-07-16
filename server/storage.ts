@@ -142,17 +142,35 @@ export class DatabaseStorage implements IStorage {
   
   // NAV data methods
   async getNavData(fundId: number, startDate?: Date, endDate?: Date, limit: number = 100): Promise<NavData[]> {
-    let query = db.select().from(navData).where(eq(navData.fundId, fundId));
+    // Use raw SQL for better performance with large NAV dataset
+    let query = `
+      SELECT fund_id as "fundId", nav_date as "navDate", nav_value as "navValue", 
+             nav_change as "navChange", nav_change_pct as "navChangePct", 
+             aum_cr as "aumCr", created_at as "createdAt"
+      FROM nav_data
+      WHERE fund_id = $1
+    `;
+    
+    const params: any[] = [fundId];
+    let paramCount = 1;
     
     if (startDate) {
-      query = query.where(gte(navData.navDate, startDate));
+      paramCount++;
+      query += ` AND nav_date >= $${paramCount}`;
+      params.push(startDate);
     }
     
     if (endDate) {
-      query = query.where(lte(navData.navDate, endDate));
+      paramCount++;
+      query += ` AND nav_date <= $${paramCount}`;
+      params.push(endDate);
     }
     
-    return query.orderBy(desc(navData.navDate)).limit(limit);
+    query += ` ORDER BY nav_date DESC LIMIT $${paramCount + 1}`;
+    params.push(limit);
+    
+    const result = await executeRawQuery(query, params);
+    return result.rows;
   }
   
   async getLatestNav(fundId: number): Promise<NavData | undefined> {

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 interface Fund {
   id: number;
@@ -119,15 +119,29 @@ export function useFund(fundId: number) {
 }
 
 export function useFundNavHistory(fundId: number, days: number = 365) {
-  // Calculate date range based on days
-  const endDate = new Date();
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
+  // Memoize date calculations to prevent unnecessary re-renders
+  const { startDate, endDate } = useMemo(() => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - days);
+    
+    // Format dates as YYYY-MM-DD to avoid millisecond precision issues
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
+    
+    return {
+      startDate: startStr,
+      endDate: endStr
+    };
+  }, [days]);
   
   const { data, isLoading, error } = useQuery({
-    queryKey: [`/api/funds/${fundId}/nav?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&limit=1000`],
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: !!fundId,
+    queryKey: [`/api/funds/${fundId}/nav?startDate=${startDate}&endDate=${endDate}&limit=1000`],
+    staleTime: 30 * 60 * 1000, // 30 minutes - increase cache time
+    gcTime: 60 * 60 * 1000, // 1 hour - keep in cache longer
+    refetchOnWindowFocus: false, // Prevent refetch on window focus
+    refetchOnMount: false, // Don't refetch if data exists
+    enabled: !!fundId && fundId > 0,
   });
   
   return {

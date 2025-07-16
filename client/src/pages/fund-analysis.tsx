@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -158,7 +159,7 @@ export default function FundAnalysis() {
   ].filter(Boolean).length;
 
   // Sort funds
-  const sortedFunds = React.useMemo(() => {
+  const sortedFunds = useMemo(() => {
     if (!filteredFunds) return [];
     
     let sorted = [...filteredFunds];
