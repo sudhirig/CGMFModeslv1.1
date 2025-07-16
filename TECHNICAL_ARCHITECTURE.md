@@ -8,9 +8,11 @@
 ├─────────────────────────────────────────────────────────────────┤
 │  React 18 + TypeScript + Tailwind CSS + Radix UI              │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐              │
-│  │ Dashboard   │ │ Analytics   │ │ Backtesting │              │
-│  │ Components  │ │ Pages       │ │ Engine      │              │
+│  │ Dashboard   │ │ ELIVATE     │ │ Backtesting │              │
+│  │ Components  │ │ Framework   │ │ Engine      │              │
 │  └─────────────┘ └─────────────┘ └─────────────┘              │
+│                                                                 │
+│  Data Quality: ZERO_SYNTHETIC_CONTAMINATION                    │
 └─────────────────────────────────────────────────────────────────┘
                                │
                          HTTP/REST API
@@ -67,6 +69,12 @@ NAV Data → Performance Calculation → Risk Analytics → ELIVATE Score
     │              │                      │               │
 Historical     Multi-year            Sharpe/Beta      Quartile
 Analysis       Returns               Calculations     Assignment
+
+Market Data → ELIVATE Framework → 6-Component Score → Market Stance
+     │              │                    │               │
+     │              │                    │               │
+FRED/Yahoo     Component Calc      Weighted Score    NEUTRAL/BUY
+Sources        (External/Local)     (63.0/100)        Interpretation
 ```
 
 ### 3. Backtesting Pipeline

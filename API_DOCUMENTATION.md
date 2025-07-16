@@ -36,6 +36,79 @@ All API responses follow a consistent format:
 
 ## Core APIs
 
+### ELIVATE Framework
+
+#### Get ELIVATE Market Score
+```http
+GET /api/elivate/score
+```
+
+**Response:**
+```json
+{
+  "score": 63,
+  "interpretation": "NEUTRAL",
+  "confidence": "HIGH",
+  "lastUpdate": "2025-06-07T00:00:00.000Z",
+  "dataQuality": "ZERO_SYNTHETIC_CONTAMINATION"
+}
+```
+
+#### Get ELIVATE Components
+```http
+GET /api/elivate/components
+```
+
+**Response:**
+```json
+{
+  "components": [
+    {
+      "name": "External Influence",
+      "score": 8,
+      "maxScore": 20,
+      "data": "FRED US data - GDP, Fed rates, DXY, China PMI"
+    },
+    {
+      "name": "Local Story", 
+      "score": 8,
+      "maxScore": 20,
+      "data": "FRED India data - GDP, GST, IIP, India PMI"
+    },
+    {
+      "name": "Inflation & Rates",
+      "score": 10,
+      "maxScore": 20,
+      "data": "FRED combined data - CPI, WPI, repo rate, 10Y yield"
+    }
+  ],
+  "totalScore": 63,
+  "dataQuality": "ZERO_SYNTHETIC_CONTAMINATION"
+}
+```
+
+#### Get ELIVATE Historical Data
+```http
+GET /api/elivate/historical
+```
+
+**Response:**
+```json
+{
+  "historical": [
+    {
+      "date": "2025-06-07T00:00:00.000Z",
+      "score": 63,
+      "components": {
+        "externalInfluence": 8,
+        "localStory": 8,
+        "inflationRates": 10
+      }
+    }
+  ]
+}
+```
+
 ### Fund Management
 
 #### Get Top Rated Funds

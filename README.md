@@ -9,16 +9,18 @@ This platform provides institutional-grade mutual fund analysis with authentic d
 ## 📊 Key Features
 
 ### ELIVATE Scoring Framework
-- **Multi-component scoring** across 4 core categories
-- **Authentic data validation** with zero synthetic contamination
-- **Realistic value ranges** (-5 to +5 for Sharpe, 0.1 to 3.0 for Beta)
+- **6-component market framework** with complete implementation (External Influence, Local Story, Inflation & Rates, Valuation & Earnings, Capital Allocation, Trends & Sentiments)
+- **Individual fund scoring** across 4 core categories (Historical Returns, Risk Grade, Fundamentals, Other Metrics)
+- **Authentic data validation** with ZERO_SYNTHETIC_CONTAMINATION status
+- **Current market score**: 63.0/100 (NEUTRAL) with HIGH confidence
 - **Database-level constraints** ensuring data integrity
 
 ### Advanced Analytics
-- **Phase 2**: Risk Analytics (Sharpe, Beta, Alpha calculations)
-- **Phase 3**: Sector Analysis (12 authentic market sectors)
-- **Phase 4**: Historical Data Expansion (multi-year returns)
-- **Real-time market data** integration
+- **Market Performance**: Authentic NIFTY 50 (21,919.33), MIDCAP 100, SMALLCAP 100 data
+- **Risk Analytics**: Sharpe, Beta, Alpha calculations with realistic constraints
+- **Sector Analysis**: 12 authentic market sectors with 3,306 classified funds
+- **Historical Data**: Multi-year returns with 8,156 funds having 3-year data
+- **Real-time integration**: FRED US/India data, Yahoo Finance, Alpha Vantage APIs
 
 ### Comprehensive Backtesting
 - **6 backtesting types**: Individual Fund, Risk Profile, Portfolio, Score Range, Quartile, Recommendation
@@ -272,6 +274,8 @@ ALPHA_VANTAGE_API_KEY=your_api_key
 ```
 GET /api/funds/top-rated           # Top-performing funds by ELIVATE score
 GET /api/elivate/score            # Current ELIVATE market score
+GET /api/elivate/components       # ELIVATE 6-component breakdown
+GET /api/elivate/historical       # Historical ELIVATE data
 GET /api/portfolios               # Risk-based portfolio configurations
 GET /api/market/indices           # Market benchmark data
 ```

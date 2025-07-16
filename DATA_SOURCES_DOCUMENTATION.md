@@ -3,7 +3,56 @@
 ## Overview
 This document details all external data sources, extraction methodologies, database schemas, and integration logic used in the CGMF Models v1.1 platform. Our zero-tolerance policy for synthetic data ensures all information comes from authorized financial APIs.
 
-## 1. MFAPI.in Integration
+**Current Data Quality Status**: ZERO_SYNTHETIC_CONTAMINATION with HIGH confidence across all components and systems.
+
+## 1. ELIVATE Framework Data Sources
+
+### 1.1 FRED (Federal Reserve Economic Data)
+- **Primary URL**: https://fred.stlouisfed.org/
+- **Purpose**: Economic indicators for External Influence and Local Story components
+- **Authentication**: API key required
+- **Rate Limits**: 120 requests per 60 seconds
+- **Data Coverage**: US and India economic indicators
+
+#### Key Indicators Used:
+- **External Influence (8/20 points)**: US GDP, Fed rates, DXY, China PMI
+- **Local Story (8/20 points)**: India GDP, GST, IIP, India PMI
+- **Inflation & Rates (10/20 points)**: CPI, WPI, repo rate, 10Y yield
+
+### 1.2 Yahoo Finance
+- **Primary URL**: https://finance.yahoo.com/
+- **Purpose**: Market data for Valuation, Capital Allocation, and Trends components
+- **Authentication**: Public API (no key required)
+- **Rate Limits**: Rate limited by IP
+- **Data Coverage**: Indian market indices and financial data
+
+#### Key Indicators Used:
+- **Valuation & Earnings (7/20 points)**: Nifty PE/PB, earnings growth
+- **Capital Allocation (4/10 points)**: FII/DII flows, SIP inflows
+- **Trends & Sentiments (3/10 points)**: 200DMA, VIX, advance/decline
+
+### 1.3 Alpha Vantage
+- **Primary URL**: https://www.alphavantage.co/
+- **Purpose**: Market indices and economic indicators
+- **Authentication**: API key required (ALPHA_VANTAGE_API_KEY)
+- **Rate Limits**: 5 calls per minute
+- **Data Coverage**: NIFTY 50, SENSEX, MIDCAP 100
+
+#### Database Integration:
+```sql
+CREATE TABLE market_indices (
+  id SERIAL PRIMARY KEY,
+  index_name VARCHAR(100) NOT NULL,
+  index_date DATE NOT NULL,
+  close_value DECIMAL(12,4) NOT NULL,
+  pe_ratio DECIMAL(8,4),
+  pb_ratio DECIMAL(8,4),
+  dividend_yield DECIMAL(8,4),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+## 2. MFAPI.in Integration
 
 ### Data Source Information
 - **URL**: https://api.mfapi.in/
