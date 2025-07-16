@@ -37,8 +37,8 @@ export function useFundDetails(fundId: number) {
   const { score, isLoading: scoreLoading } = useFundScore(fundId);
   const { holdings, isLoading: holdingsLoading } = useFundHoldings(fundId);
 
-  // Calculate performance metrics from NAV history
-  const performance = calculatePerformanceMetrics(navHistory);
+  // Calculate performance metrics from NAV history and score data
+  const performance = calculatePerformanceMetrics(navHistory, score);
   
   // Extract risk metrics from score data
   const riskMetrics = extractRiskMetrics(score);
@@ -63,35 +63,40 @@ export function useFundDetails(fundId: number) {
   };
 }
 
-function calculatePerformanceMetrics(navHistory: any[]) {
-  if (!navHistory || navHistory.length === 0) {
-    return {
-      currentNav: 0,
-      navChange: 0,
-      navChangePct: 0,
-      return1y: 0,
-      return3y: 0,
-      return5y: 0,
-      ytd: 0
-    };
+function calculatePerformanceMetrics(navHistory: any[], score: any) {
+  const performance = {
+    currentNav: 0,
+    navChange: 0,
+    navChangePct: 0,
+    return1y: 0,
+    return3y: 0,
+    return5y: 0,
+    ytd: 0
+  };
+
+  // Calculate NAV metrics from history
+  if (navHistory && navHistory.length > 0) {
+    const sortedNavs = navHistory.sort((a, b) => new Date(b.navDate).getTime() - new Date(a.navDate).getTime());
+    const currentNav = parseFloat(sortedNavs[0]?.navValue || 0);
+    const previousNav = parseFloat(sortedNavs[1]?.navValue || 0);
+    
+    const navChange = currentNav - previousNav;
+    const navChangePct = previousNav ? ((navChange / previousNav) * 100) : 0;
+
+    performance.currentNav = currentNav;
+    performance.navChange = navChange;
+    performance.navChangePct = navChangePct;
   }
 
-  const sortedNavs = navHistory.sort((a, b) => new Date(b.navDate).getTime() - new Date(a.navDate).getTime());
-  const currentNav = parseFloat(sortedNavs[0]?.navValue || 0);
-  const previousNav = parseFloat(sortedNavs[1]?.navValue || 0);
-  
-  const navChange = currentNav - previousNav;
-  const navChangePct = previousNav ? ((navChange / previousNav) * 100) : 0;
+  // Use calculated returns from score data if available
+  if (score) {
+    performance.return1y = parseFloat(score.return_1y_absolute || 0);
+    performance.return3y = parseFloat(score.return_3y_absolute || 0);
+    performance.return5y = parseFloat(score.return_5y_absolute || 0);
+    performance.ytd = parseFloat(score.return_ytd_absolute || 0);
+  }
 
-  return {
-    currentNav,
-    navChange,
-    navChangePct,
-    return1y: calculateReturn(sortedNavs, 365),
-    return3y: calculateReturn(sortedNavs, 365 * 3),
-    return5y: calculateReturn(sortedNavs, 365 * 5),
-    ytd: calculateYTDReturn(sortedNavs)
-  };
+  return performance;
 }
 
 function calculateReturn(navHistory: any[], days: number): number {
@@ -134,11 +139,11 @@ function extractRiskMetrics(score: any) {
   }
 
   return {
-    sharpeRatio: parseFloat(score.sharpe_ratio_1y || 0),
-    beta: parseFloat(score.beta_1y || 0),
-    alpha: parseFloat(score.alpha_1y || 0),
-    volatility: parseFloat(score.volatility_1y || 0),
-    maxDrawdown: parseFloat(score.max_drawdown_1y || 0)
+    sharpeRatio: parseFloat(score.sharpe_ratio || 0),
+    beta: parseFloat(score.beta || 0),
+    alpha: parseFloat(score.alpha || 0),
+    volatility: parseFloat(score.volatility || 0),
+    maxDrawdown: parseFloat(score.max_drawdown || 0)
   };
 }
 
@@ -155,7 +160,7 @@ function extractFundamentals(basicData: any, score: any) {
 
   return {
     expenseRatio: parseFloat(basicData.expense_ratio || 0),
-    aum: parseFloat(score?.aum_cr || 0),
+    aum: parseFloat(basicData.aum_crores || score?.aum_cr || 0),
     fundAge: calculateFundAge(basicData.inception_date),
     minInvestment: parseFloat(basicData.minimum_investment || 0),
     exitLoad: parseFloat(basicData.exit_load || 0)

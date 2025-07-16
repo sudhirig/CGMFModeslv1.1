@@ -579,7 +579,7 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-green-600">
-                              {fundDetails?.performance?.return1y ? safeToFixed(fundDetails.performance.return1y, 2) : 'N/A'}%
+                              {fundDetails?.score?.return_1y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_1y_absolute), 2) : 'N/A'}%
                             </div>
                             <div className="text-sm text-gray-600">1Y Return</div>
                           </CardContent>
@@ -587,7 +587,7 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-blue-600">
-                              {fundDetails?.performance?.return3y ? safeToFixed(fundDetails.performance.return3y, 2) : 'N/A'}%
+                              {fundDetails?.score?.return_3y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_3y_absolute), 2) : 'N/A'}%
                             </div>
                             <div className="text-sm text-gray-600">3Y Return</div>
                           </CardContent>
@@ -595,7 +595,7 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-purple-600">
-                              {fundDetails?.performance?.return5y ? safeToFixed(fundDetails.performance.return5y, 2) : 'N/A'}%
+                              {fundDetails?.score?.return_5y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_5y_absolute), 2) : 'N/A'}%
                             </div>
                             <div className="text-sm text-gray-600">5Y Return</div>
                           </CardContent>
@@ -637,7 +637,7 @@ export default function FundAnalysis() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Total Score</span>
-                              <span className="font-medium text-green-600">{fundDetails?.score?.total_score ? safeToFixed(fundDetails.score.total_score, 2) : 'N/A'}</span>
+                              <span className="font-medium text-green-600">{fundDetails?.score?.total_score ? safeToFixed(parseFloat(fundDetails.score.total_score), 2) : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Quartile</span>
@@ -663,7 +663,7 @@ export default function FundAnalysis() {
                           <div className="space-y-3">
                             <div className="flex justify-between">
                               <span className="text-gray-600">Sharpe Ratio</span>
-                              <span className="font-medium">{fundDetails?.riskMetrics?.sharpeRatio ? safeToFixed(fundDetails.riskMetrics.sharpeRatio, 2) : 'N/A'}</span>
+                              <span className="font-medium">{fundDetails?.score?.sharpe_ratio ? safeToFixed(parseFloat(fundDetails.score.sharpe_ratio), 2) : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Alpha</span>
