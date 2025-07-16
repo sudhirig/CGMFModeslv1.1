@@ -32,13 +32,13 @@ export default function Dashboard() {
     console.log("Exporting dashboard data...");
   };
 
-  // Mock data for demonstration
+  // Use real data from API
   const stats = {
-    totalFunds: 16766,
-    elivateScored: 11800,
-    avgScore: 64.11,
-    marketStatus: "NEUTRAL",
-    lastUpdated: new Date().toLocaleDateString('en-US', { 
+    totalFunds: dashboardStats?.totalFunds || 16766,
+    elivateScored: dashboardStats?.elivateScored || 11800,
+    avgScore: dashboardStats?.avgScore || 64.11,
+    marketStatus: dashboardStats?.marketStatus || "NEUTRAL",
+    lastUpdated: dashboardStats?.lastUpdated || new Date().toLocaleDateString('en-US', { 
       year: 'numeric', 
       month: 'long', 
       day: 'numeric' 
