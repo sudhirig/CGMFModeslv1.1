@@ -575,29 +575,37 @@ export default function FundAnalysis() {
                         </CardContent>
                       </Card>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-green-600">
-                              {fundDetails?.score?.return_1y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_1y_absolute), 2) : 'N/A'}%
+                              {fundDetails?.score?.return_3m_absolute ? safeToFixed(parseFloat(fundDetails.score.return_3m_absolute), 2) : 'N/A'}%
                             </div>
-                            <div className="text-sm text-gray-600">1Y Return</div>
+                            <div className="text-sm text-gray-600">3M Return</div>
                           </CardContent>
                         </Card>
                         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-blue-600">
-                              {fundDetails?.score?.return_3y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_3y_absolute), 2) : 'N/A'}%
+                              {fundDetails?.score?.return_6m_absolute ? safeToFixed(parseFloat(fundDetails.score.return_6m_absolute), 2) : 'N/A'}%
                             </div>
-                            <div className="text-sm text-gray-600">3Y Return</div>
+                            <div className="text-sm text-gray-600">6M Return</div>
                           </CardContent>
                         </Card>
                         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-purple-600">
-                              {fundDetails?.score?.return_5y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_5y_absolute), 2) : 'N/A'}%
+                              {fundDetails?.score?.return_1y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_1y_absolute), 2) : 'N/A'}%
                             </div>
-                            <div className="text-sm text-gray-600">5Y Return</div>
+                            <div className="text-sm text-gray-600">1Y Return</div>
+                          </CardContent>
+                        </Card>
+                        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                          <CardContent className="p-4 text-center">
+                            <div className="text-2xl font-bold text-orange-600">
+                              {fundDetails?.score?.return_3y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_3y_absolute), 2) : 'N/A'}%
+                            </div>
+                            <div className="text-sm text-gray-600">3Y Return</div>
                           </CardContent>
                         </Card>
                       </div>
@@ -738,6 +746,22 @@ export default function FundAnalysis() {
                                 {fundDetails?.score?.recommendation || 'N/A'}
                               </Badge>
                             </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Sub-category Rank</span>
+                              <span className="font-medium">{fundDetails?.score?.subcategory_rank && fundDetails?.score?.subcategory_total ? `${fundDetails.score.subcategory_rank} / ${fundDetails.score.subcategory_total}` : 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Sub-category Percentile</span>
+                              <span className="font-medium">{fundDetails?.score?.subcategory_percentile ? `${safeToFixed(parseFloat(fundDetails.score.subcategory_percentile), 2)}%` : 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Expense Ratio</span>
+                              <span className="font-medium">{fundDetails?.basicData?.expense_ratio ? `${fundDetails.basicData.expense_ratio}%` : 'N/A'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Fund Age</span>
+                              <span className="font-medium">{fundDetails?.basicData?.inception_date ? `${Math.floor((new Date().getTime() - new Date(fundDetails.basicData.inception_date).getTime()) / (1000 * 60 * 60 * 24 * 365))} years` : 'N/A'}</span>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -754,19 +778,19 @@ export default function FundAnalysis() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Alpha</span>
-                              <span className="font-medium">{fundDetails?.riskMetrics?.alpha ? safeToFixed(fundDetails.riskMetrics.alpha, 2) : 'N/A'}</span>
+                              <span className="font-medium">{fundDetails?.score?.alpha ? safeToFixed(parseFloat(fundDetails.score.alpha), 2) : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Beta</span>
-                              <span className="font-medium">{fundDetails?.riskMetrics?.beta ? safeToFixed(fundDetails.riskMetrics.beta, 2) : 'N/A'}</span>
+                              <span className="font-medium">{fundDetails?.score?.beta ? safeToFixed(parseFloat(fundDetails.score.beta), 2) : 'N/A'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Volatility</span>
-                              <span className="font-medium">{fundDetails?.riskMetrics?.volatility ? safeToFixed(fundDetails.riskMetrics.volatility, 2) : 'N/A'}%</span>
+                              <span className="font-medium">{fundDetails?.score?.volatility ? safeToFixed(parseFloat(fundDetails.score.volatility), 2) : 'N/A'}%</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Max Drawdown</span>
-                              <span className="font-medium">{fundDetails?.riskMetrics?.maxDrawdown ? safeToFixed(fundDetails.riskMetrics.maxDrawdown, 2) : 'N/A'}%</span>
+                              <span className="font-medium">{fundDetails?.score?.max_drawdown ? safeToFixed(parseFloat(fundDetails.score.max_drawdown), 2) : 'N/A'}%</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-600">Exit Load</span>
