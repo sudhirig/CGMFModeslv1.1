@@ -49,7 +49,8 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
       console.log('Market Data Check:', {
         nifty50: nifty50Data?.length || 0,
         midcap: midcapData?.length || 0,  
-        smallcap: smallcapData?.length || 0
+        smallcap: smallcapData?.length || 0,
+        sampleData: nifty50Data?.[0]
       });
       
       // Determine the number of data points based on timeframe
@@ -87,11 +88,15 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
           date: new Date(niftyPoint.indexDate).toLocaleDateString('en-US', { 
             month: 'short',
             year: timeframe === 'yearly' ? 'numeric' : undefined,
-            day: timeframe === 'daily' ? 'numeric' : undefined,
+            day: timeframe === 'daily' || timeframe === 'weekly' ? 'numeric' : undefined,
           }),
           nifty50: parseFloat(niftyNorm.toFixed(2)),
           midcap: parseFloat(midcapNorm.toFixed(2)),
           smallcap: parseFloat(smallcapNorm.toFixed(2)),
+          // Store raw values for tooltip
+          niftyRaw: parseFloat(niftyPoint.closeValue),
+          midcapRaw: parseFloat(midcapPoint.closeValue),
+          smallcapRaw: parseFloat(smallcapPoint.closeValue),
         });
       }
       
@@ -125,12 +130,29 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
           bottom: 5,
         }}
       >
-        <CartesianGrid strokeDasharray="3 3" />
-        <XAxis dataKey="date" />
-        <YAxis />
+        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+        <XAxis 
+          dataKey="date" 
+          tick={{ fontSize: 12 }}
+          tickLine={{ stroke: '#666' }}
+        />
+        <YAxis 
+          domain={['dataMin - 2', 'dataMax + 2']}
+          tick={{ fontSize: 12 }}
+          tickLine={{ stroke: '#666' }}
+          tickFormatter={(value) => `${value.toFixed(0)}`}
+          label={{ value: 'Indexed Value (Base = 100)', angle: -90, position: 'insideLeft', style: { fontSize: 12 } }}
+        />
         <Tooltip
-          formatter={(value: number) => [`${value.toFixed(2)}`, '']}
+          formatter={(value: number, name: string) => {
+            // Show both normalized and percentage change
+            const baseValue = 100;
+            const percentChange = ((value - baseValue) / baseValue * 100).toFixed(2);
+            const sign = value >= baseValue ? '+' : '';
+            return [`${value.toFixed(2)} (${sign}${percentChange}%)`, name];
+          }}
           labelFormatter={(label) => `Date: ${label}`}
+          contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', border: '1px solid #ccc' }}
         />
         <Legend />
         <Line 
