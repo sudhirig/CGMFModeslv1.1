@@ -45,16 +45,23 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
     
     // Create normalized chart data based on timeframe using AUTHENTIC DATA ONLY
     const normalizeData = () => {
+      // Check data availability
+      console.log('Market Data Check:', {
+        nifty50: nifty50Data?.length || 0,
+        midcap: midcapData?.length || 0,  
+        smallcap: smallcapData?.length || 0
+      });
+      
       // Determine the number of data points based on timeframe
       let numPoints = Math.min(30, nifty50Data.length); // Default for daily
       if (timeframe === "weekly") numPoints = Math.min(52, nifty50Data.length);
       if (timeframe === "monthly") numPoints = Math.min(24, nifty50Data.length);
       if (timeframe === "yearly") numPoints = Math.min(5, nifty50Data.length);
       
-      // Get base value for normalization from authentic data
-      const niftyBase = nifty50Data[nifty50Data.length - 1]?.closeValue || nifty50Data[0]?.closeValue;
-      const midcapBase = midcapData[midcapData.length - 1]?.closeValue || midcapData[0]?.closeValue;
-      const smallcapBase = smallcapData[smallcapData.length - 1]?.closeValue || smallcapData[0]?.closeValue;
+      // Get base value for normalization from authentic data - parse as float
+      const niftyBase = parseFloat(nifty50Data[nifty50Data.length - 1]?.closeValue || nifty50Data[0]?.closeValue);
+      const midcapBase = parseFloat(midcapData[midcapData.length - 1]?.closeValue || midcapData[0]?.closeValue);
+      const smallcapBase = parseFloat(smallcapData[smallcapData.length - 1]?.closeValue || smallcapData[0]?.closeValue);
       
       if (!niftyBase || !midcapBase || !smallcapBase) {
         console.warn('Unable to normalize authentic data - missing base values');
@@ -71,10 +78,10 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
         
         if (!niftyPoint || !midcapPoint || !smallcapPoint) continue;
         
-        // Create normalized values (indexed to 100) from authentic data
-        const niftyNorm = (niftyPoint.closeValue / niftyBase) * 100;
-        const midcapNorm = (midcapPoint.closeValue / midcapBase) * 100;
-        const smallcapNorm = (smallcapPoint.closeValue / smallcapBase) * 100;
+        // Create normalized values (indexed to 100) from authentic data - parse as float
+        const niftyNorm = (parseFloat(niftyPoint.closeValue) / niftyBase) * 100;
+        const midcapNorm = (parseFloat(midcapPoint.closeValue) / midcapBase) * 100;
+        const smallcapNorm = (parseFloat(smallcapPoint.closeValue) / smallcapBase) * 100;
         
         points.push({
           date: new Date(niftyPoint.indexDate).toLocaleDateString('en-US', { 
