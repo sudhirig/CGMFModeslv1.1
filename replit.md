@@ -4,6 +4,12 @@
 A sophisticated mutual fund analysis platform built with TypeScript, React, and PostgreSQL. Features the ELIVATE scoring methodology with authentic data integration from MFAPI.in, AMFI, and Alpha Vantage APIs. The system maintains zero tolerance for synthetic data contamination and provides comprehensive backtesting capabilities.
 
 ## Recent Changes
+- **July 17, 2025**: CRITICAL TERMINOLOGY CORRECTION - Fixed incorrect references to individual fund scores as "ELIVATE scores":
+  - ELIVATE is a market-wide macroeconomic framework (6 components, 100 points total, current score: 63/100 NEUTRAL)
+  - Individual funds use a separate 4-component Performance Scoring system (Historical Returns, Risk Grade, Fundamentals, Other Metrics)
+  - Updated UI: Changed "ELIVATE Score" to "Performance Score" in top-rated-funds.tsx
+  - Updated documentation: Clarified distinction in replit.md and API_DOCUMENTATION.md
+  - Updated backend: Fixed error messages in comprehensive-backtesting-engine.ts
 - **July 17, 2025**: Created comprehensive Benchmark Rolling Returns page modeled after AdvisorKhoj:
   - benchmark-rolling-returns.tsx: Professional rolling returns analysis with 1Y/3Y/5Y/7Y/10Y periods
   - benchmark-data-collector.ts: Service to fetch benchmark data from Alpha Vantage and other sources
@@ -234,7 +240,7 @@ server/
 4. **Processing**: ELIVATE scoring and performance calculations
 5. **Monitoring**: Real-time data quality dashboard
 
-## ELIVATE Scoring Framework
+## Individual Fund Scoring Framework
 
 ### 4-Component System (Total: 100 points)
 1. **Historical Returns** (0-50 points)
@@ -273,13 +279,14 @@ server/
 
 ### Current Coverage
 - **Total Funds**: 16,766 with authentic master data
-- **ELIVATE Scores**: 11,800 funds (70% coverage)
+- **Fund Performance Scores**: 11,800 funds (70% coverage)
 - **Score Range**: 35.60-88.00 (authentic range)
 - **Average Score**: 64.11 (realistic range)
 - **Sector Classification**: 3,306 funds across 12 sectors
 - **Risk Analytics**: 60 funds with Sharpe ratios
 - **Historical Data**: 8,156 funds with 3-year returns
 - **NAV Records**: 20M+ authentic NAV records
+- **Market ELIVATE Score**: 63/100 (NEUTRAL stance)
 
 ## Existing Authentic Data Analysis (July 17, 2025)
 
@@ -299,7 +306,7 @@ server/
 #### Fund Scores (11,800 funds scored)
 - **Real performance data**: Example fund shows 3M return: 7.47%, 6M: 2.11%, 1Y: 0.10%
 - **Risk metrics**: volatility scores, Sharpe ratios, drawdown metrics all calculated
-- **ELIVATE scores**: Average 64.11 across all scored funds
+- **Fund Performance scores**: Average 64.11 across all scored funds
 - **Quartile rankings**: Properly calculated and assigned (Q1-Q4)
 - **Recommendations**: BUY/HOLD/SELL based on authentic performance
 

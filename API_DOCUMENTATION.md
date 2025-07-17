@@ -163,7 +163,7 @@ GET /api/funds/:id
   "fundManager": "Fund Manager Name",
   "lockInPeriod": 4,
   "sector": "Debt",
-  "elivateScore": {
+  "performanceScore": {
     "totalScore": 90.5,
     "components": {
       "historicalReturns": 40,
@@ -196,9 +196,9 @@ GET /api/elivate/score
 }
 ```
 
-#### Get Fund ELIVATE Breakdown
+#### Get Fund Performance Score Breakdown
 ```http
-GET /api/elivate/breakdown/:fundId
+GET /api/fund-score/breakdown/:fundId
 ```
 
 **Parameters:**
@@ -321,7 +321,7 @@ POST /api/comprehensive-backtest
   "portfolioId": 1,
   "riskProfile": "MODERATE",
   "quartile": "Q1",
-  "elivateScoreRange": {
+  "performanceScoreRange": {
     "min": 80,
     "max": 90
   },

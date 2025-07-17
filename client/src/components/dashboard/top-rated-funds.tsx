@@ -33,7 +33,7 @@ export default function TopRatedFunds() {
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">Top-Rated Mutual Funds</h2>
-                <p className="text-sm text-gray-600">Best performing funds based on ELIVATE scoring</p>
+                <p className="text-sm text-gray-600">Best performing funds based on comprehensive scoring</p>
               </div>
             </div>
             <div className="flex items-center space-x-3 mt-4 sm:mt-0">
@@ -105,7 +105,7 @@ export default function TopRatedFunds() {
                         <div className="mt-4 lg:mt-0 lg:ml-6">
                           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                             <div className="text-center">
-                              <p className="text-xs font-medium text-gray-500 uppercase">ELIVATE Score</p>
+                              <p className="text-xs font-medium text-gray-500 uppercase">Performance Score</p>
                               <p className="text-xl font-bold text-gray-900">{fund.totalScore.toFixed(1)}</p>
                             </div>
                             <div className="text-center">

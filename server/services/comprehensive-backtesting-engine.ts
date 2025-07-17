@@ -324,7 +324,7 @@ export class ComprehensiveBacktestingEngine {
     `, [scoreRange.min, scoreRange.max, maxFunds]);
 
     if (fundData.rows.length === 0) {
-      throw new Error(`No funds found with ELIVATE scores between ${scoreRange.min} and ${scoreRange.max}`);
+      throw new Error(`No funds found with performance scores between ${scoreRange.min} and ${scoreRange.max}`);
     }
 
     const equalAllocation = 100 / fundData.rows.length;
