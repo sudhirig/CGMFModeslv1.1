@@ -463,6 +463,30 @@ export default function FundAnalysis() {
                     </div>
                   </div>
 
+                  {/* Key Performance Factors */}
+                  <div className="grid grid-cols-3 gap-2 mt-3">
+                    <div className="text-center p-2 bg-purple-50 rounded">
+                      <div className="text-sm font-bold text-purple-600">
+                        {fundScores?.[fund.id]?.total_score ? parseFloat(fundScores[fund.id].total_score).toFixed(1) : 'N/A'}
+                      </div>
+                      <div className="text-xs text-gray-500">Score</div>
+                    </div>
+                    <div className="text-center p-2 bg-blue-50 rounded">
+                      <div className="text-sm font-bold text-blue-600">
+                        {fundScores?.[fund.id]?.quartile ? `Q${fundScores[fund.id].quartile}` : 'N/A'}
+                      </div>
+                      <div className="text-xs text-gray-500">Quartile</div>
+                    </div>
+                    <div className="text-center p-2 bg-green-50 rounded">
+                      <div className="text-sm font-bold text-green-600">
+                        {fundScores?.[fund.id]?.risk_grade_total && fundScores[fund.id].risk_grade_total >= 25 ? 'Low' :
+                         fundScores?.[fund.id]?.risk_grade_total && fundScores[fund.id].risk_grade_total >= 20 ? 'Med' : 
+                         fundScores?.[fund.id]?.risk_grade_total ? 'High' : 'N/A'}
+                      </div>
+                      <div className="text-xs text-gray-500">Risk</div>
+                    </div>
+                  </div>
+
                   {/* Performance Indicator */}
                   <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                     <div className="flex items-center space-x-2">
@@ -504,6 +528,25 @@ export default function FundAnalysis() {
                         {fund.inceptionDate ? new Date(fund.inceptionDate).getFullYear() : 'N/A'}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Recommendation Badge */}
+                  <div className="mt-3 text-center">
+                    <Badge 
+                      className={`${
+                        fundScores?.[fund.id]?.recommendation === "STRONG_BUY" 
+                          ? "bg-green-500 text-white" 
+                          : fundScores?.[fund.id]?.recommendation === "BUY" 
+                          ? "bg-green-100 text-green-800" 
+                          : fundScores?.[fund.id]?.recommendation === "HOLD" 
+                          ? "bg-blue-100 text-blue-800" 
+                          : fundScores?.[fund.id]?.recommendation === "SELL"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
+                      } px-3 py-1`}
+                    >
+                      {fundScores?.[fund.id]?.recommendation || 'N/A'}
+                    </Badge>
                   </div>
 
                   {/* Action Button */}
