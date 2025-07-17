@@ -384,6 +384,91 @@ export const insertQuartileRankingSchema = createInsertSchema(quartileRankings).
 export type InsertQuartileRanking = z.infer<typeof insertQuartileRankingSchema>;
 export type QuartileRanking = typeof quartileRankings.$inferSelect;
 
+// AdvisorKhoj Data Tables
+export const aumAnalytics = pgTable("aum_analytics", {
+  id: serial("id").primaryKey(),
+  amcName: text("amc_name"),
+  fundName: text("fund_name"),
+  aumCrores: decimal("aum_crores", { precision: 15, scale: 2 }),
+  totalAumCrores: decimal("total_aum_crores", { precision: 15, scale: 2 }),
+  fundCount: integer("fund_count"),
+  category: text("category"),
+  dataDate: date("data_date").notNull(),
+  source: text("source").default("advisorkhoj"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const insertAumAnalyticsSchema = createInsertSchema(aumAnalytics).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export type InsertAumAnalytics = z.infer<typeof insertAumAnalyticsSchema>;
+export type AumAnalytics = typeof aumAnalytics.$inferSelect;
+
+export const portfolioOverlap = pgTable("portfolio_overlap", {
+  id: serial("id").primaryKey(),
+  fund1SchemeCode: text("fund1_scheme_code"),
+  fund2SchemeCode: text("fund2_scheme_code"),
+  fund1Name: text("fund1_name"),
+  fund2Name: text("fund2_name"),
+  overlapPercentage: decimal("overlap_percentage", { precision: 5, scale: 2 }),
+  analysisDate: date("analysis_date").notNull(),
+  source: text("source").default("advisorkhoj"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertPortfolioOverlapSchema = createInsertSchema(portfolioOverlap).omit({
+  id: true,
+  createdAt: true
+});
+
+export type InsertPortfolioOverlap = z.infer<typeof insertPortfolioOverlapSchema>;
+export type PortfolioOverlap = typeof portfolioOverlap.$inferSelect;
+
+export const managerAnalytics = pgTable("manager_analytics", {
+  id: serial("id").primaryKey(),
+  managerName: text("manager_name").notNull(),
+  managedFundsCount: integer("managed_funds_count"),
+  totalAumManaged: decimal("total_aum_managed", { precision: 15, scale: 2 }),
+  avgPerformance1y: decimal("avg_performance_1y", { precision: 8, scale: 4 }),
+  avgPerformance3y: decimal("avg_performance_3y", { precision: 8, scale: 4 }),
+  analysisDate: date("analysis_date").notNull(),
+  source: text("source").default("advisorkhoj"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertManagerAnalyticsSchema = createInsertSchema(managerAnalytics).omit({
+  id: true,
+  createdAt: true
+});
+
+export type InsertManagerAnalytics = z.infer<typeof insertManagerAnalyticsSchema>;
+export type ManagerAnalytics = typeof managerAnalytics.$inferSelect;
+
+export const categoryPerformance = pgTable("category_performance", {
+  id: serial("id").primaryKey(),
+  categoryName: text("category_name").notNull(),
+  subcategory: text("subcategory"),
+  avgReturn1y: decimal("avg_return_1y", { precision: 8, scale: 4 }),
+  avgReturn3y: decimal("avg_return_3y", { precision: 8, scale: 4 }),
+  avgReturn5y: decimal("avg_return_5y", { precision: 8, scale: 4 }),
+  fundCount: integer("fund_count"),
+  analysisDate: date("analysis_date").notNull(),
+  source: text("source").default("advisorkhoj"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+export const insertCategoryPerformanceSchema = createInsertSchema(categoryPerformance).omit({
+  id: true,
+  createdAt: true
+});
+
+export type InsertCategoryPerformance = z.infer<typeof insertCategoryPerformanceSchema>;
+export type CategoryPerformance = typeof categoryPerformance.$inferSelect;
+
 // Fund Scores Corrected (Primary Scoring Table)
 export const fundScoresCorrected = pgTable("fund_scores_corrected", {
   fundId: integer("fund_id").references(() => funds.id),

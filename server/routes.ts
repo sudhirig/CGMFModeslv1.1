@@ -27,6 +27,7 @@ import mfapiHistoricalImportRoutes from "./api/mfapi-historical-import";
 import quartileCalculationRoutes from "./api/quartile-calculation";
 import unifiedScoringRoutes from "./api/unified-scoring";
 import benchmarkRoutes from "./api/benchmarks";
+import advisorKhojRoutes from "./api/advisorkhoj";
 import { cacheMiddleware, invalidateCacheMiddleware } from './middleware/cache-middleware';
 import { cache, cacheKeys } from './services/redis-cache';
 
@@ -93,6 +94,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Benchmark routes
   app.use('/api/benchmarks', benchmarkRoutes);
+  
+  // Register AdvisorKhoj routes
+  app.use('/api/advisorkhoj', advisorKhojRoutes);
   
   // Register Benchmark Collection routes
   const benchmarkCollectionRoutes = await import('./api/benchmark-collection');

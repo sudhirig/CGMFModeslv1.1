@@ -1,0 +1,512 @@
+# Simple AdvisorKhoj Scraper Setup Guide
+
+## 🎯 Overview
+
+This simple scraper collects specific data from AdvisorKhoj to enhance your CGMF Models v1.1 database without automation or complex features.
+
+## 📋 What It Collects
+
+- ✅ **Benchmark data** across all MFs from AdvisorKhoj
+- ✅ **Enhanced market indices** for your `market_indices` table  
+- ✅ **Real-time category performance** data
+- ✅ **AUM data** by AMC and individual funds
+- ✅ **Portfolio Overlap Analysis** (unique to AdvisorKhoj)
+- ✅ **Manager Analytics** with performance data
+- ✅ **Enhanced Benchmark Data** from multiple sources
+
+## ⚙️ Installation
+
+### 1. Dependencies
+
+Create `requirements.txt`:
+
+```txt
+requests==2.31.0
+beautifulsoup4==4.12.2
+selenium==4.15.0
+webdriver-manager==4.0.1
+pandas==2.0.3
+psycopg2-binary==2.9.7
+python-dotenv==1.0.0
+yfinance==0.2.18
+```
+
+### 2. Environment Setup
+
+Update your `.env` file:
+
+```bash
+# Your existing CGMF configuration
+DATABASE_URL=postgresql://username:password@localhost:5432/cgmf_models
+
+# Optional individual DB settings (if not using DATABASE_URL)
+DB_HOST=localhost
+DB_NAME=cgmf_models
+DB_USER=postgres
+DB_PASSWORD=your_password
+DB_PORT=5432
+```
+
+### 3. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+## 🚀 Usage
+
+### Run the Scraper
+
+```bash
+python simple_advisorkhoj_scraper.py
+```
+
+### Expected Output
+
+```
+Simple AdvisorKhoj Data Scraper
+===============================
+✅ Connected to CGMF database
+🔍 Starting data collection...
+
+INFO - Creating new tables...
+INFO - Scraping market indices...
+INFO - Scraped 15 market indices
+INFO - Scraping AUM data...
+INFO - Scraped 25 AUM records
+INFO - Scraping portfolio overlap data...
+INFO - Scraped 3 overlap analyses
+INFO - Scraping manager analytics...
+INFO - Scraped 5 manager records
+INFO - Scraping category performance...
+INFO - Scraped 12 category records
+
+✅ Scraping completed successfully!
+
+Data collected:
+- Market indices: 15
+- AUM data: 25
+- Portfolio overlap: 3
+- Manager analytics: 5
+- Category performance: 12
+
+📊 New tables created:
+- aum_analytics
+- portfolio_overlap
+- manager_analytics
+- category_performance
+
+🔄 Enhanced existing tables:
+- market_indices (with new benchmark data)
+```
+
+## 📊 Database Schema
+
+### New Tables Created
+
+```sql
+-- AUM Analytics
+CREATE TABLE aum_analytics (
+    id SERIAL PRIMARY KEY,
+    amc_name VARCHAR(200),
+    fund_name VARCHAR(500),
+    aum_crores NUMERIC(15,2),
+    total_aum_crores NUMERIC(15,2),
+    fund_count INTEGER,
+    category VARCHAR(100),
+    data_date DATE NOT NULL,
+    source VARCHAR(100)
+);
+
+-- Portfolio Overlap Analysis
+CREATE TABLE portfolio_overlap (
+    id SERIAL PRIMARY KEY,
+    fund1_scheme_code VARCHAR(20),
+    fund2_scheme_code VARCHAR(20),
+    fund1_name VARCHAR(500),
+    fund2_name VARCHAR(500),
+    overlap_percentage NUMERIC(5,2),
+    analysis_date DATE NOT NULL,
+    source VARCHAR(100)
+);
+
+-- Manager Analytics
+CREATE TABLE manager_analytics (
+    id SERIAL PRIMARY KEY,
+    manager_name VARCHAR(200) NOT NULL,
+    managed_funds_count INTEGER,
+    total_aum_managed NUMERIC(15,2),
+    analysis_date DATE NOT NULL,
+    source VARCHAR(100)
+);
+
+-- Category Performance
+CREATE TABLE category_performance (
+    id SERIAL PRIMARY KEY,
+    category_name VARCHAR(100) NOT NULL,
+    avg_return_1y NUMERIC(8,4),
+    avg_return_3y NUMERIC(8,4),
+    fund_count INTEGER,
+    analysis_date DATE NOT NULL,
+    source VARCHAR(100)
+);
+```
+
+### Enhanced Existing Table
+
+The scraper adds new data to your existing `market_indices` table with additional benchmark indices from:
+- AdvisorKhoj category monitor
+- Yahoo Finance Indian indices (NIFTY variants, BSE Sensex)
+- Category-wise performance benchmarks
+
+## 🔧 API Integration (Optional)
+
+### Backend Integration
+
+Add these endpoints to your Express.js API:
+
+```javascript
+// server/api/enhanced-data.js
+
+// Get AUM analytics
+app.get('/api/aum-analytics', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT * FROM aum_analytics 
+      ORDER BY data_date DESC, total_aum_crores DESC NULLS LAST
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch AUM analytics' });
+  }
+});
+
+// Get portfolio overlap analysis
+app.get('/api/portfolio-overlap', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT * FROM portfolio_overlap 
+      ORDER BY analysis_date DESC, overlap_percentage DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch portfolio overlap' });
+  }
+});
+
+// Get manager analytics
+app.get('/api/manager-analytics', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT * FROM manager_analytics 
+      ORDER BY analysis_date DESC, managed_funds_count DESC NULLS LAST
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch manager analytics' });
+  }
+});
+
+// Get category performance
+app.get('/api/category-performance', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT * FROM category_performance 
+      ORDER BY analysis_date DESC, avg_return_1y DESC NULLS LAST
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch category performance' });
+  }
+});
+
+// Get enhanced market indices
+app.get('/api/market-indices/enhanced', async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT DISTINCT ON (index_name) 
+        index_name, index_value, daily_return, index_date
+      FROM market_indices 
+      ORDER BY index_name, index_date DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch enhanced indices' });
+  }
+});
+```
+
+### Frontend Integration
+
+Add these components to your React frontend:
+
+```typescript
+// client/src/components/EnhancedDataDashboard.tsx
+import React, { useState, useEffect } from 'react';
+
+interface AUMData {
+  amc_name: string;
+  total_aum_crores: number;
+  fund_count: number;
+  data_date: string;
+}
+
+interface PortfolioOverlap {
+  fund1_name: string;
+  fund2_name: string;
+  overlap_percentage: number;
+  analysis_date: string;
+}
+
+interface ManagerAnalytics {
+  manager_name: string;
+  managed_funds_count: number;
+  total_aum_managed: number;
+  analysis_date: string;
+}
+
+export const EnhancedDataDashboard: React.FC = () => {
+  const [aumData, setAumData] = useState<AUMData[]>([]);
+  const [overlapData, setOverlapData] = useState<PortfolioOverlap[]>([]);
+  const [managerData, setManagerData] = useState<ManagerAnalytics[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      const [aumResponse, overlapResponse, managerResponse] = await Promise.all([
+        fetch('/api/aum-analytics'),
+        fetch('/api/portfolio-overlap'),
+        fetch('/api/manager-analytics')
+      ]);
+
+      const [aum, overlap, manager] = await Promise.all([
+        aumResponse.json(),
+        overlapResponse.json(),
+        managerResponse.json()
+      ]);
+
+      setAumData(aum.slice(0, 10)); // Top 10
+      setOverlapData(overlap.slice(0, 5)); // Top 5
+      setManagerData(manager.slice(0, 5)); // Top 5
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching enhanced data:', error);
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-4">Loading enhanced data...</div>;
+  }
+
+  return (
+    <div className="p-6 space-y-8">
+      <h2 className="text-2xl font-bold mb-6">Enhanced Data Dashboard</h2>
+      
+      {/* AUM Analytics */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-xl font-semibold mb-4">Top AMCs by AUM</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full table-auto">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="px-4 py-2 text-left">AMC Name</th>
+                <th className="px-4 py-2 text-left">Total AUM (Crores)</th>
+                <th className="px-4 py-2 text-left">Fund Count</th>
+                <th className="px-4 py-2 text-left">Data Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {aumData.map((aum, index) => (
+                <tr key={index} className="border-t">
+                  <td className="px-4 py-2 font-medium">{aum.amc_name}</td>
+                  <td className="px-4 py-2">₹{aum.total_aum_crores?.toLocaleString()}</td>
+                  <td className="px-4 py-2">{aum.fund_count}</td>
+                  <td className="px-4 py-2">{aum.data_date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Portfolio Overlap */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-xl font-semibold mb-4">Portfolio Overlap Analysis</h3>
+        <div className="space-y-4">
+          {overlapData.map((overlap, index) => (
+            <div key={index} className="p-4 border rounded-lg">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="font-medium">{overlap.fund1_name}</p>
+                  <p className="text-gray-600">vs {overlap.fund2_name}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-600">
+                    {overlap.overlap_percentage}%
+                  </p>
+                  <p className="text-sm text-gray-500">{overlap.analysis_date}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Manager Analytics */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-xl font-semibold mb-4">Top Fund Managers</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {managerData.map((manager, index) => (
+            <div key={index} className="p-4 border rounded-lg">
+              <h4 className="font-medium text-lg mb-2">{manager.manager_name}</h4>
+              <div className="space-y-1 text-sm">
+                <p>Funds Managed: {manager.managed_funds_count}</p>
+                <p>Total AUM: ₹{manager.total_aum_managed?.toLocaleString()} Cr</p>
+                <p className="text-gray-500">Updated: {manager.analysis_date}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+## 📈 Data Analysis Queries
+
+### Useful Analysis Queries
+
+```sql
+-- Top performing categories
+SELECT 
+  category_name,
+  avg_return_1y,
+  avg_return_3y,
+  fund_count
+FROM category_performance 
+WHERE analysis_date = (SELECT MAX(analysis_date) FROM category_performance)
+ORDER BY avg_return_1y DESC;
+
+-- AMC rankings by AUM
+SELECT 
+  amc_name,
+  SUM(total_aum_crores) as total_aum,
+  SUM(fund_count) as total_funds
+FROM aum_analytics 
+WHERE data_date = (SELECT MAX(data_date) FROM aum_analytics)
+AND amc_name IS NOT NULL
+GROUP BY amc_name
+ORDER BY total_aum DESC;
+
+-- High overlap fund pairs
+SELECT 
+  fund1_name,
+  fund2_name,
+  overlap_percentage
+FROM portfolio_overlap 
+WHERE analysis_date = (SELECT MAX(analysis_date) FROM portfolio_overlap)
+ORDER BY overlap_percentage DESC;
+
+-- Top managers by AUM managed
+SELECT 
+  manager_name,
+  managed_funds_count,
+  total_aum_managed
+FROM manager_analytics 
+WHERE analysis_date = (SELECT MAX(analysis_date) FROM manager_analytics)
+ORDER BY total_aum_managed DESC NULLS LAST;
+
+-- Enhanced market indices summary
+SELECT 
+  index_name,
+  index_value,
+  daily_return,
+  index_date
+FROM market_indices 
+WHERE index_date = (SELECT MAX(index_date) FROM market_indices)
+ORDER BY ABS(daily_return) DESC NULLS LAST;
+```
+
+## 🔍 Data Quality Checks
+
+### Validation Queries
+
+```sql
+-- Check data freshness
+SELECT 
+  'aum_analytics' as table_name,
+  COUNT(*) as total_records,
+  MAX(data_date) as latest_data,
+  MIN(data_date) as earliest_data
+FROM aum_analytics
+UNION ALL
+SELECT 
+  'portfolio_overlap',
+  COUNT(*),
+  MAX(analysis_date),
+  MIN(analysis_date)
+FROM portfolio_overlap
+UNION ALL
+SELECT 
+  'manager_analytics',
+  COUNT(*),
+  MAX(analysis_date),
+  MIN(analysis_date)
+FROM manager_analytics
+UNION ALL
+SELECT 
+  'category_performance',
+  COUNT(*),
+  MAX(analysis_date),
+  MIN(analysis_date)
+FROM category_performance;
+
+-- Check for duplicate data
+SELECT source, COUNT(*) as record_count
+FROM (
+  SELECT source FROM aum_analytics
+  UNION ALL
+  SELECT source FROM portfolio_overlap
+  UNION ALL
+  SELECT source FROM manager_analytics
+  UNION ALL
+  SELECT source FROM category_performance
+) sources
+GROUP BY source;
+```
+
+## 🎯 Benefits
+
+### 1. **Enhanced Market Intelligence**
+- **15+ new market indices** including NIFTY variants and category benchmarks
+- **Real-time AUM tracking** by AMC and individual funds
+- **Category performance comparison** across fund types
+
+### 2. **Unique Analytics**
+- **Portfolio overlap analysis** not available elsewhere
+- **Manager performance tracking** across portfolios
+- **Benchmark data integration** with your existing market_indices table
+
+### 3. **Simple Integration**
+- **PostgreSQL-native** design with your existing schema
+- **Clean data separation** in new tables
+- **API-ready** for frontend consumption
+- **Zero disruption** to existing CGMF data
+
+## 🔒 Notes
+
+- **Educational use only** - respects AdvisorKhoj's terms
+- **Rate limited** - 2.5 second delays between requests
+- **Error handling** - comprehensive logging and graceful failures
+- **Data validation** - numeric extraction and text cleaning
+- **No automation** - run manually when needed
+- **No ELIVATE integration** - keeps existing scoring separate
+
+This simple scraper adds valuable AdvisorKhoj data to your CGMF platform while maintaining simplicity and data integrity.

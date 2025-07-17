@@ -5,6 +5,15 @@ A sophisticated mutual fund analysis platform built with TypeScript, React, and 
 
 ## Recent Changes (Consolidated)
 
+### July 17, 2025 - AdvisorKhoj Integration
+- **Comprehensive AdvisorKhoj Data Integration**:
+  - Created Python-based scraper with TypeScript service wrapper
+  - Added 4 new database tables: aum_analytics, portfolio_overlap, manager_analytics, category_performance
+  - Implemented 10 new API endpoints for AUM, portfolio overlap, manager, and category data
+  - Maintained zero synthetic data policy with educational use compliance
+  - Added rate limiting (2.5 second delays) and comprehensive error handling
+  - Created detailed integration plan with 10-phase implementation strategy
+
 ### July 17, 2025 - Fund Analysis Enhancement Session
 - **Enhanced Fund Analysis Cards with Key Performance Metrics**:
   - Added Performance Score, Quartile (Q1-Q4), Risk level (Low/Med/High) display
@@ -148,6 +157,7 @@ server/
 - `portfolio-builder.ts` - Portfolio construction
 - `recommendation-engine.ts` - Recommendation system
 - `yahoo-finance-collector.ts` - Yahoo Finance data
+- **`advisorkhoj-scraper-service.ts` - AdvisorKhoj data integration** (NEW - July 2025)
 
 **API Endpoints:**
 - Unified scoring: `/api/unified-scoring/*`
@@ -165,14 +175,15 @@ server/
 - System fixes: `/api/system/execute-critical-fixes`
 - Validation: `/api/validation/*`
 - **ELIVATE Framework: `/api/elivate/components` and `/api/elivate/historical`** (NEW - July 2025)
+- **AdvisorKhoj Data: `/api/advisorkhoj/*` - AUM, overlap, managers, categories** (NEW - July 2025)
 
 ### Database (PostgreSQL + Drizzle ORM)
-**Core Tables (31 total):**
+**Core Tables (35 total):**
 - `funds` - Master fund data (16,766 records)
 - `nav_data` - Historical NAV records (20M+ records)
 - `fund_scores` - Comprehensive scoring data (72 columns)
 - `fund_scores_corrected` - Corrected ELIVATE scoring data (11,800 records)
-- `market_indices` - Market benchmark data
+- `market_indices` - Market benchmark data (enhanced with AdvisorKhoj indices)
 - `portfolio_holdings` - Fund holdings data
 - `elivate_scores` - ELIVATE framework scores (6 components)
 - `model_portfolios` - Model portfolio configurations
@@ -181,6 +192,10 @@ server/
 - `users` - User authentication data
 - `fund_performance_metrics` - Performance metrics (17,721 records)
 - `quartile_rankings` - Quartile ranking data (24,435 records)
+- **`aum_analytics` - AMC and fund AUM data** (NEW - July 2025)
+- **`portfolio_overlap` - Fund portfolio overlap analysis** (NEW - July 2025)
+- **`manager_analytics` - Fund manager performance** (NEW - July 2025)
+- **`category_performance` - Category-wise performance** (NEW - July 2025)
 
 **Schema Features:**
 - Comprehensive CHECK constraints for data integrity
@@ -209,6 +224,14 @@ server/
    - NIFTY 50, SENSEX, MIDCAP 100 data
    - Economic indicators
    - Rate limited to 5 calls/minute
+
+4. **AdvisorKhoj** - Enhanced analytics (NEW - July 2025)
+   - AUM data by AMC and individual funds
+   - Portfolio overlap analysis (unique data)
+   - Fund manager performance metrics
+   - Category-wise performance benchmarks
+   - Enhanced market indices (15+ indices)
+   - Educational use only with rate limiting
 
 ### Data Processing Pipeline
 1. **Collection**: Automated daily collection from external APIs
