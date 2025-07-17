@@ -146,7 +146,7 @@ export default function ModelPortfolio() {
                   <div className="mt-4">
                     <div className="text-sm font-medium text-neutral-700 mb-2">Expected Returns (Annualized)</div>
                     <div className="text-lg font-semibold text-neutral-900">
-                      {portfolio.expectedReturns ? `${portfolio.expectedReturns.min}% - ${portfolio.expectedReturns.max}%` : "10% - 15%"}
+                      {portfolio.expectedReturns ? `${portfolio.expectedReturns.min}% - ${portfolio.expectedReturns.max}%` : "N/A"}
                     </div>
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export default function ModelPortfolio() {
                             {allocation.allocationPercent}%
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-neutral-900">
-                            {portfolio.fundScores?.[allocation.fund.id] || ((Math.random() * 15 + 75).toFixed(1))}
+                            {portfolio.fundScores?.[allocation.fund.id] || 'N/A'}
                           </td>
                         </tr>
                       ))}

@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useFunds } from "@/hooks/use-funds";
 import { useFundDetails } from "@/hooks/use-fund-details";
+import { useFundScore } from "@/hooks/use-fund-score";
+import { useFundScores } from "@/hooks/use-fund-scores";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { Loader2, Search, Filter, BarChart3, TrendingUp, Target, Star, Eye, Zap, PieChart as PieChartIcon, Activity, DollarSign, Shield, Award, ArrowUpRight, ArrowDownRight, Clock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -20,6 +22,7 @@ export default function FundAnalysis() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedFund, setSelectedFund] = useState<any>(null);
   const { fundDetails, isLoading: detailsLoading } = useFundDetails(selectedFund?.id || 0);
+  const { data: fundScore } = useFundScore(selectedFund?.id || 0);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -202,6 +205,13 @@ export default function FundAnalysis() {
     
     return sorted;
   }, [filteredFunds, sortBy, sortOrder]);
+
+  // Fetch scores for visible funds
+  const visibleFundIds = useMemo(() => {
+    return sortedFunds.slice(0, 12).map(fund => fund.id);
+  }, [sortedFunds]);
+  
+  const { data: fundScores } = useFundScores(visibleFundIds);
 
   const getPerformanceIcon = (performance: number) => {
     if (performance > 0) return <ArrowUpRight className="w-4 h-4 text-green-600" />;
@@ -433,11 +443,18 @@ export default function FundAnalysis() {
                   {/* Performance Indicator */}
                   <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                     <div className="flex items-center space-x-2">
-                      {getPerformanceIcon(Math.random() * 20 - 10)}
+                      {fundScores?.[fund.id]?.return_1y_absolute !== undefined ? (
+                        getPerformanceIcon(fundScores[fund.id].return_1y_absolute)
+                      ) : (
+                        <Target className="w-4 h-4 text-gray-600" />
+                      )}
                       <span className="text-sm font-medium text-gray-700">1Y Return</span>
                     </div>
                     <div className="text-sm font-bold text-blue-600">
-                      {((Math.random() * 30) - 5).toFixed(2)}%
+                      {fundScores?.[fund.id]?.return_1y_absolute !== undefined
+                        ? `${fundScores[fund.id].return_1y_absolute >= 0 ? '+' : ''}${safeToFixed(fundScores[fund.id].return_1y_absolute, 2)}%`
+                        : 'N/A'
+                      }
                     </div>
                   </div>
 
@@ -735,24 +752,22 @@ export default function FundAnalysis() {
                             <CardTitle>Asset Allocation</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Equity</span>
-                                <span className="font-medium">65.77%</span>
+                            {fundDetails?.assetAllocation ? (
+                              <div className="space-y-3">
+                                {Object.entries(fundDetails.assetAllocation).map(([asset, percent]) => (
+                                  <div key={asset} className="flex justify-between">
+                                    <span className="text-gray-600">{asset}</span>
+                                    <span className="font-medium">{safeToFixed(percent, 2)}%</span>
+                                  </div>
+                                ))}
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Fixed Income</span>
-                                <span className="font-medium">18.45%</span>
+                            ) : (
+                              <div className="text-center py-8">
+                                <Shield className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                                <p className="text-gray-500">Asset allocation data not available</p>
+                                <p className="text-sm text-gray-400 mt-2">This data may not be disclosed by the fund house</p>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Cash</span>
-                                <span className="font-medium">15.23%</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Others</span>
-                                <span className="font-medium">0.55%</span>
-                              </div>
-                            </div>
+                            )}
                           </CardContent>
                         </Card>
 
@@ -761,32 +776,22 @@ export default function FundAnalysis() {
                             <CardTitle>Sector Allocation</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-3">
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Financial Services</span>
-                                <span className="font-medium">21.68%</span>
+                            {fundDetails?.sectorAllocation ? (
+                              <div className="space-y-3">
+                                {Object.entries(fundDetails.sectorAllocation).slice(0, 6).map(([sector, percent]) => (
+                                  <div key={sector} className="flex justify-between">
+                                    <span className="text-gray-600">{sector}</span>
+                                    <span className="font-medium">{safeToFixed(percent, 2)}%</span>
+                                  </div>
+                                ))}
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Information Technology</span>
-                                <span className="font-medium">18.89%</span>
+                            ) : (
+                              <div className="text-center py-8">
+                                <PieChartIcon className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                                <p className="text-gray-500">Sector allocation data not available</p>
+                                <p className="text-sm text-gray-400 mt-2">This information may not be publicly disclosed</p>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Fixed Income</span>
-                                <span className="font-medium">18.45%</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Cash</span>
-                                <span className="font-medium">15.23%</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Oil & Gas</span>
-                                <span className="font-medium">8.75%</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-gray-600">Others</span>
-                                <span className="font-medium">16.45%</span>
-                              </div>
-                            </div>
+                            )}
                           </CardContent>
                         </Card>
                       </div>
