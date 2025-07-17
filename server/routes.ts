@@ -26,6 +26,8 @@ import mftoolTestRoutes from "./api/mftool-test";
 import mfapiHistoricalImportRoutes from "./api/mfapi-historical-import";
 import quartileCalculationRoutes from "./api/quartile-calculation";
 import unifiedScoringRoutes from "./api/unified-scoring";
+import { cacheMiddleware, invalidateCacheMiddleware } from './middleware/cache-middleware';
+import { cache, cacheKeys } from './services/redis-cache';
 
 // Error handling middleware
 const errorHandler = (err: any, req: any, res: any, next: any) => {
@@ -1037,8 +1039,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Top-rated funds route - must come before generic :id route
-  app.get("/api/funds/top-rated/:category?", async (req, res) => {
+  // Top-rated funds route - must come before generic :id route - CACHED
+  app.get("/api/funds/top-rated/:category?", 
+    cacheMiddleware({ 
+      ttl: 900, // 15 minutes
+      keyBuilder: (req) => {
+        const category = req.params.category || 'all';
+        const limit = req.query.limit || 10;
+        return cacheKeys.topFunds(Number(limit)) + `:${category}`;
+      }
+    }),
+    async (req, res) => {
     try {
       const { category } = req.params;
       const { limit } = req.query;
@@ -1188,8 +1199,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // API routes for ELIVATE framework
-  app.get("/api/elivate/score", async (req, res) => {
+  // API routes for ELIVATE framework - CACHED
+  app.get("/api/elivate/score", 
+    cacheMiddleware({ 
+      ttl: 1800, // 30 minutes
+      keyBuilder: () => cacheKeys.elivateScore()
+    }),
+    async (req, res) => {
     try {
       console.log('Fetching ELIVATE score from database...');
       // Get AUTHENTIC CORRECTED ELIVATE score (correct point-based structure)
@@ -1501,44 +1517,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Dashboard stats endpoint with real data
-  app.get("/api/dashboard/stats", async (req, res) => {
-    try {
-      // Get real statistics from database
-      const statsResult = await executeRawQuery(`
-        SELECT 
-          (SELECT COUNT(*) FROM funds WHERE status = 'ACTIVE') as total_funds,
-          (SELECT COUNT(DISTINCT fund_id) FROM fund_scores_corrected) as elivate_scored,
-          (SELECT AVG(total_score) FROM fund_scores_corrected) as avg_score,
-          (SELECT COUNT(DISTINCT fund_id) FROM nav_data WHERE nav_date >= CURRENT_DATE - INTERVAL '30 days') as active_funds
-      `);
-      
-      const stats = statsResult.rows[0];
-      
-      res.json({
-        totalFunds: parseInt(stats.total_funds),
-        elivateScored: parseInt(stats.elivate_scored),
-        avgScore: parseFloat(stats.avg_score).toFixed(2),
-        marketStatus: "NEUTRAL",
-        activeFunds: parseInt(stats.active_funds),
-        lastUpdated: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
-      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+  // Dashboard stats endpoint with real data - CACHED
+  app.get("/api/dashboard/stats", 
+    cacheMiddleware({ 
+      ttl: 600, // 10 minutes
+      keyBuilder: () => cacheKeys.dashboardStats()
+    }),
+    async (req, res) => {
+      try {
+        // Get real statistics from database
+        const statsResult = await executeRawQuery(`
+          SELECT 
+            (SELECT COUNT(*) FROM funds WHERE status = 'ACTIVE') as total_funds,
+            (SELECT COUNT(DISTINCT fund_id) FROM fund_scores_corrected) as elivate_scored,
+            (SELECT AVG(total_score) FROM fund_scores_corrected) as avg_score,
+            (SELECT COUNT(DISTINCT fund_id) FROM nav_data WHERE nav_date >= CURRENT_DATE - INTERVAL '30 days') as active_funds
+        `);
+        
+        const stats = statsResult.rows[0];
+        
+        res.json({
+          totalFunds: parseInt(stats.total_funds),
+          elivateScored: parseInt(stats.elivate_scored),
+          avgScore: parseFloat(stats.avg_score).toFixed(2),
+          marketStatus: "NEUTRAL",
+          activeFunds: parseInt(stats.active_funds),
+          lastUpdated: new Date().toISOString()
+        });
+      } catch (error) {
+        console.error("Error fetching dashboard stats:", error);
+        res.status(500).json({ message: "Failed to fetch dashboard stats" });
+      }
     }
-  });
+  );
 
-  // API routes for market indices
-  app.get("/api/market/indices", async (req, res) => {
-    try {
-      const latestIndices = await storage.getLatestMarketIndices();
-      res.json(latestIndices);
-    } catch (error) {
-      console.error("Error fetching market indices:", error);
-      res.status(500).json({ message: "Failed to fetch market indices" });
+  // API routes for market indices - CACHED
+  app.get("/api/market/indices", 
+    cacheMiddleware({ 
+      ttl: 300, // 5 minutes
+      keyBuilder: () => cacheKeys.marketIndices()
+    }),
+    async (req, res) => {
+      try {
+        const latestIndices = await storage.getLatestMarketIndices();
+        res.json(latestIndices);
+      } catch (error) {
+        console.error("Error fetching market indices:", error);
+        res.status(500).json({ message: "Failed to fetch market indices" });
+      }
     }
-  });
+  );
 
   app.get("/api/market/index/:name", async (req, res) => {
     try {
