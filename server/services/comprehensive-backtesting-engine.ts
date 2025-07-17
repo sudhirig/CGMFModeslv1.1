@@ -374,7 +374,7 @@ export class ComprehensiveBacktestingEngine {
       SELECT fund_id, total_score, fund_name, category, subcategory, quartile_rank
       FROM quartile_ranked_funds
       WHERE quartile_rank = $1
-      ORDER BY RANDOM()  -- Add randomization within quartile
+      ORDER BY total_score DESC  -- Order by score to get top performers
       LIMIT $2
     `, [quartileNum, maxFunds]);
 
@@ -408,7 +408,7 @@ export class ComprehensiveBacktestingEngine {
           f.category,
           f.subcategory,
           COUNT(nav.nav_value) as nav_data_points,
-          ROW_NUMBER() OVER (ORDER BY RANDOM()) as random_rank
+          ROW_NUMBER() OVER (ORDER BY fsc.total_score DESC) as score_rank
         FROM fund_scores_corrected fsc
         JOIN funds f ON fsc.fund_id = f.id
         LEFT JOIN nav_data nav ON fsc.fund_id = nav.fund_id 
@@ -422,7 +422,7 @@ export class ComprehensiveBacktestingEngine {
       )
       SELECT fund_id, total_score, recommendation, fund_name, category, subcategory
       FROM recommendation_funds
-      WHERE random_rank <= $2 * 3  -- Get 3x more funds for diversity
+      WHERE score_rank <= $2 * 3  -- Get top scoring funds
       ORDER BY total_score DESC
       LIMIT $2
     `, [recommendation, maxFunds]);

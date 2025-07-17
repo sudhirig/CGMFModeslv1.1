@@ -58,33 +58,15 @@ router.post('/test', async (req, res) => {
 });
 
 /**
- * Generate mock NAV data for testing purposes
+ * SYNTHETIC NAV DATA GENERATION DISABLED
+ * Real NAV data must come from authorized MFAPI or AMFI sources only
  */
 function generateMockNavData(startDate?: string, endDate?: string) {
-  const mockData = [];
-  const start = startDate ? parseDate(startDate) : new Date('2024-01-01');
-  const end = endDate ? parseDate(endDate) : new Date('2024-12-31');
+  console.error('Mock NAV data generation is disabled to maintain data integrity');
+  console.error('Please use authentic NAV data from MFAPI.in or AMFI sources');
   
-  let currentDate = new Date(start);
-  let currentNav = 45.0;
-  
-  while (currentDate <= end && mockData.length < 10) {
-    // Generate realistic NAV fluctuation
-    const change = (Math.random() - 0.5) * 2; // Random change between -1 and +1
-    currentNav = Math.max(10, currentNav + change);
-    
-    mockData.push({
-      date: formatDate(currentDate),
-      nav: currentNav.toFixed(2)
-    });
-    
-    // Move to next business day (skip weekends)
-    do {
-      currentDate.setDate(currentDate.getDate() + 1);
-    } while (currentDate.getDay() === 0 || currentDate.getDay() === 6);
-  }
-  
-  return mockData.reverse(); // Latest first
+  // Return empty array instead of synthetic data
+  return [];
 }
 
 /**

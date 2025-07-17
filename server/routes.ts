@@ -854,9 +854,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add a few sample funds for each category
       for (const category of categories) {
         for (let i = 0; i < 5; i++) {
-          const amc = amcs[Math.floor(Math.random() * amcs.length)];
-          const subcategory = subcategories[category][Math.floor(Math.random() * subcategories[category].length)];
-          const schemeCode = (category[0] + Math.floor(Math.random() * 100000)).toString().padStart(6, '0');
+          // SYNTHETIC DATA GENERATION DISABLED - Cannot create sample funds
+          console.error('Sample fund generation disabled - funds must come from MFAPI/AMFI data');
+          break; // Exit the loop
           const fundName = `${amc} ${subcategory} Fund`;
           
           await executeRawQuery(`
@@ -1985,17 +1985,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (let i = 0; i < totalFunds; i++) {
             // Determine category based on distribution
             let category;
-            const rand = Math.random() * 100;
-            if (rand < 60) category = 'Equity';
-            else if (rand < 90) category = 'Debt';
-            else category = 'Hybrid';
-            
-            // Generate fund details
-            const amcName = amcNames[Math.floor(Math.random() * amcNames.length)];
-            const subcategory = (fundSubcategories as any)[category][Math.floor(Math.random() * (fundSubcategories as any)[category].length)];
-            const fundName = `${amcName} ${subcategory} Fund${Math.random() > 0.7 ? ' Series ' + (Math.floor(Math.random() * 5) + 1) : ''}`;
-            const schemeCode = (category === 'Equity' ? '1' : category === 'Debt' ? '2' : '3') + 
-                              Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+            // SYNTHETIC FUND GENERATION DISABLED
+            console.error('Cannot generate synthetic funds - all funds must come from MFAPI/AMFI data');
+            break; // Exit the loop to prevent synthetic data creation
             
             // Generate random ISIN codes
             const isinDivPayout = Math.random() > 0.3 ? 

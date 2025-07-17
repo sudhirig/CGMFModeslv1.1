@@ -87,46 +87,13 @@ export class QuartileSeeder {
         const q3Size = Math.ceil(totalFunds * 0.25); // Next 25%
         const q4Size = totalFunds - q1Size - q2Size - q3Size; // Remaining (approximately 25%)
         
-        // Shuffle the funds to randomize quartile assignment
-        const shuffledIds = [...categoryFundIds].sort(() => Math.random() - 0.5);
+        // SYNTHETIC QUARTILE ASSIGNMENT DISABLED
+        // Quartile assignments must be based on authentic performance calculations
+        console.error(`Cannot assign synthetic quartiles to ${categoryFundIds.length} funds in ${category}`);
+        console.error('Quartile ratings must be calculated from authentic NAV performance data');
         
-        // Assign Q1 - Top funds
-        for (let i = 0; i < q1Size; i++) {
-          if (i < shuffledIds.length) {
-            await this.createFundScore(shuffledIds[i], 1, scoreDate, 
-              75 + Math.random() * 25, // Total score between 75-100
-              'BUY');
-            successCount++;
-          }
-        }
-        
-        // Assign Q2 funds
-        for (let i = q1Size; i < q1Size + q2Size; i++) {
-          if (i < shuffledIds.length) {
-            await this.createFundScore(shuffledIds[i], 2, scoreDate,
-              60 + Math.random() * 15, // Total score between 60-75
-              'HOLD');
-            successCount++;
-          }
-        }
-        
-        // Assign Q3 funds
-        for (let i = q1Size + q2Size; i < q1Size + q2Size + q3Size; i++) {
-          if (i < shuffledIds.length) {
-            await this.createFundScore(shuffledIds[i], 3, scoreDate,
-              40 + Math.random() * 20, // Total score between 40-60
-              'REVIEW');
-            successCount++;
-          }
-        }
-        
-        // Assign Q4 funds
-        for (let i = q1Size + q2Size + q3Size; i < shuffledIds.length; i++) {
-          await this.createFundScore(shuffledIds[i], 4, scoreDate,
-            20 + Math.random() * 20, // Total score between 20-40
-            'SELL');
-          successCount++;
-        }
+        // Skip synthetic assignment - maintain data integrity
+        continue;
       }
       
       return successCount;

@@ -138,20 +138,19 @@ export class FundDetailsCollector {
     try {
       console.log(`Collecting details for ${fund.fundName} (${fund.schemeCode})`);
       
-      // Generate consistent test data based on fund ID
+      // NO SYNTHETIC DATA GENERATION - All fund details must come from authentic sources
       const fundId = fund.id || 1;
-      const inceptionYear = 2000 + (fundId % 20); // Between 2000-2019
       
       try {
-        // Create the update with proper type handling for database compatibility
+        // Only update with null values until authentic data is available
         const fundUpdate = {
-          inceptionDate: new Date(inceptionYear, 0, 1),
-          expenseRatio: parseFloat((0.75 + (fundId % 10) / 10).toFixed(2)),
-          exitLoad: parseFloat((0.5 + (fundId % 10) / 10).toFixed(2)), // Store just the numeric value
-          benchmarkName: null, // No authentic benchmark data available
-          minimumInvestment: 1000 * (1 + (fundId % 10)),
-          fundManager: "Fund Manager Name",
-          lockInPeriod: 1 + (fundId % 5)
+          inceptionDate: null, // Must come from AMC/AMFI data
+          expenseRatio: null, // Must come from scheme documents
+          exitLoad: null, // Must come from scheme documents
+          benchmarkName: null, // Must come from AMC data
+          minimumInvestment: null, // Must come from scheme documents
+          fundManager: null, // Must come from AMC data
+          lockInPeriod: null // Must come from scheme documents
         };
         
         // Log the update we're attempting to perform

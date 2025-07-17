@@ -270,11 +270,8 @@ export class DataCollector {
             const existingNavOneMonth = await storage.getNavData(fundId, oneMonthAgo, oneMonthAgo);
             
             if (existingNavOneMonth.length === 0) {
-              await storage.createNavData({
-                fundId: fundId,
-                navDate: oneMonthAgo,
-                navValue: baseNav * (1 - Math.random() * 0.03)
-              });
+              // SYNTHETIC DATA GENERATION DISABLED - NO NAV CREATION
+              console.log(`No authentic NAV data available for fund ${fundId} on ${oneMonthAgo.toISOString()}`);
             }
             
             // 6 months ago NAV (typically 5-10% different)
@@ -284,11 +281,8 @@ export class DataCollector {
             const existingNavSixMonths = await storage.getNavData(fundId, sixMonthsAgo, sixMonthsAgo);
             
             if (existingNavSixMonths.length === 0) {
-              await storage.createNavData({
-                fundId: fundId,
-                navDate: sixMonthsAgo,
-                navValue: baseNav * (1 - Math.random() * 0.08)
-              });
+              // SYNTHETIC DATA GENERATION DISABLED - NO NAV CREATION
+              console.log(`No authentic NAV data available for fund ${fundId} on ${sixMonthsAgo.toISOString()}`);
             }
             
             // 1 year ago NAV (typically 10-20% different)
@@ -298,11 +292,8 @@ export class DataCollector {
             const existingNavOneYear = await storage.getNavData(fundId, oneYearAgo, oneYearAgo);
             
             if (existingNavOneYear.length === 0) {
-              await storage.createNavData({
-                fundId: fundId,
-                navDate: oneYearAgo,
-                navValue: baseNav * (1 - 0.15 - Math.random() * 0.05)
-              });
+              // SYNTHETIC DATA GENERATION DISABLED - NO NAV CREATION
+              console.log(`No authentic NAV data available for fund ${fundId} on ${oneYearAgo.toISOString()}`);
             }
             
             totalProcessed++;
@@ -314,89 +305,13 @@ export class DataCollector {
       
       console.log(`Successfully processed ${totalProcessed} funds.`);
       
-      // Generate fund scores for the top performing funds
-      if (totalProcessed > 0) {
-        for (let fundId = 1; fundId <= totalProcessed; fundId++) {
-          try {
-            const scoreDate = new Date();
-            const totalScore = 65 + Math.random() * 25; // Score between 65-90
-            const quartile = totalScore >= 85 ? 1 : 
-                            totalScore >= 75 ? 2 : 
-                            totalScore >= 65 ? 3 : 4;
-            const recommendation = quartile <= 2 ? 'Buy' : quartile === 3 ? 'Hold' : 'Sell';
-            
-            // Insert fund score using storage interface
-            const existingScore = await storage.getFundScore(fundId, scoreDate);
-            
-            if (!existingScore) {
-              await storage.createFundScore({
-                fundId,
-                scoreDate,
-                totalScore,
-                quartile,
-                recommendation,
-                // Individual component scores (random but realistic)
-                return3mScore: parseFloat((Math.random() * 10).toFixed(2)),
-                return6mScore: parseFloat((Math.random() * 10).toFixed(2)),
-                return1yScore: parseFloat((Math.random() * 10).toFixed(2)),
-                return3yScore: parseFloat((Math.random() * 10).toFixed(2)),
-                return5yScore: parseFloat((Math.random() * 10).toFixed(2)),
-                stdDev1yScore: parseFloat((Math.random() * 10).toFixed(2)),
-                stdDev3yScore: parseFloat((Math.random() * 10).toFixed(2)),
-                updownCapture1yScore: parseFloat((Math.random() * 10).toFixed(2)),
-                updownCapture3yScore: parseFloat((Math.random() * 10).toFixed(2)),
-                maxDrawdownScore: parseFloat((Math.random() * 10).toFixed(2)),
-                sectoralSimilarityScore: parseFloat((Math.random() * 10).toFixed(2)),
-                forwardScore: parseFloat((Math.random() * 10).toFixed(2)),
-                aumSizeScore: parseFloat((Math.random() * 10).toFixed(2)),
-                expenseRatioScore: parseFloat((Math.random() * 10).toFixed(2))
-              });
-            }
-          } catch (err) {
-            console.error(`Error creating fund score for fund ID ${fundId}:`, err);
-          }
-        }
-      }
+      // SYNTHETIC FUND SCORE GENERATION DISABLED
+      // Fund scores must be calculated from authentic performance data only
+      console.log('Synthetic fund score generation disabled - scores must come from authentic calculations');
       
-      // Create ELIVATE score
-      try {
-        const scoreDate = new Date();
-        const externalInfluenceScore = Math.random() * 20;
-        const localStoryScore = Math.random() * 20;
-        const inflationRatesScore = Math.random() * 20;
-        const valuationEarningsScore = Math.random() * 20;
-        const allocationCapitalScore = Math.random() * 10;
-        const trendsSentimentsScore = Math.random() * 10;
-        
-        const totalElivateScore = externalInfluenceScore + localStoryScore + 
-                                 inflationRatesScore + valuationEarningsScore + 
-                                 allocationCapitalScore + trendsSentimentsScore;
-        
-        const marketStance = totalElivateScore >= 70 ? 'Bullish' : 
-                             totalElivateScore >= 50 ? 'Moderately Bullish' :
-                             totalElivateScore >= 40 ? 'Neutral' :
-                             totalElivateScore >= 30 ? 'Moderately Bearish' : 'Bearish';
-        
-        // Check if an ELIVATE score already exists for this date
-        const existingElivateScore = await storage.getElivateScore(undefined, scoreDate);
-        
-        if (!existingElivateScore) {
-          // Create ELIVATE score using storage interface
-          await storage.createElivateScore({
-            scoreDate: scoreDate,
-            externalInfluenceScore: externalInfluenceScore,
-            localStoryScore: localStoryScore,
-            inflationRatesScore: inflationRatesScore,
-            valuationEarningsScore: valuationEarningsScore,
-            allocationCapitalScore: allocationCapitalScore,
-            trendsSentimentsScore: trendsSentimentsScore,
-            totalScore: totalElivateScore,
-            marketStance: marketStance
-          });
-        }
-      } catch (err) {
-        console.error('Error creating ELIVATE score:', err);
-      }
+      // SYNTHETIC ELIVATE SCORE GENERATION DISABLED
+      // ELIVATE scores must be calculated from authentic market data only
+      console.log('Synthetic ELIVATE score generation disabled - scores must come from authentic market indicators');
       
       // Create a model portfolio for different risk profiles
       const riskProfiles = ['Conservative', 'Moderately Conservative', 'Balanced', 'Moderately Aggressive', 'Aggressive'];
@@ -554,14 +469,15 @@ export class DataCollector {
           const indexData: InsertMarketIndex = {
             indexName,
             indexDate: today,
-            closeValue: this.generateRealisticMarketValue(indexName),
-            openValue: this.generateRealisticMarketValue(indexName) * 0.998,
-            highValue: this.generateRealisticMarketValue(indexName) * 1.01,
-            lowValue: this.generateRealisticMarketValue(indexName) * 0.995,
-            volume: Math.floor(Math.random() * 100000000) + 50000000,
-            peRatio: 18 + Math.random() * 5,
-            pbRatio: 2.5 + Math.random() * 1.5,
-            dividendYield: 1 + Math.random() * 1.5,
+            // SYNTHETIC MARKET DATA GENERATION DISABLED
+            closeValue: null,
+            openValue: null,
+            highValue: null,
+            lowValue: null,
+            volume: null,
+            peRatio: null,
+            pbRatio: null,
+            dividendYield: null,
           };
           
           await storage.createMarketIndex(indexData);
