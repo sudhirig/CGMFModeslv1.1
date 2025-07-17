@@ -4,6 +4,10 @@
 A sophisticated mutual fund analysis platform built with TypeScript, React, and PostgreSQL. Features the ELIVATE scoring methodology with authentic data integration from MFAPI.in, AMFI, and Alpha Vantage APIs. The system maintains zero tolerance for synthetic data contamination and provides comprehensive backtesting capabilities.
 
 ## Recent Changes
+- **July 17, 2025**: Market indices endpoint optimization - reduced response time from 6+ seconds to 78ms using single window function query
+- **July 17, 2025**: Database connection pool optimized - increased max connections to 20, idle timeout to 5 minutes to reduce connection churn
+- **July 17, 2025**: Fund search pagination fully implemented - backend API and frontend UI now support proper pagination
+- **July 17, 2025**: Merged duplicate quartile analysis pages - combined best features from both into single comprehensive page with export functionality
 - **July 16, 2025**: Comprehensive system analysis completed - documented backend, frontend, database architecture with improvement plan
 - **July 16, 2025**: Created COMPREHENSIVE_SYSTEM_ANALYSIS_JULY_2025.md with detailed UI/UX improvements for all pages
 - **July 16, 2025**: Identified critical improvements: database partitioning, Redis caching, pagination, real-time updates

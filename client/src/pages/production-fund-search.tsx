@@ -39,12 +39,36 @@ export default function ProductionFundSearch() {
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState("total_score");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
 
-  // Fetch all fund scores with search and filter capabilities
-  const { data: fundScores, isLoading, error } = useQuery<FundScore[]>({
-    queryKey: ['/api/fund-scores/search', searchQuery, selectedSubcategory, selectedQuartile],
+  // Fetch paginated fund scores with search and filter capabilities
+  const { data: fundResponse, isLoading, error } = useQuery<{
+    data: FundScore[];
+    pagination: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+  }>({
+    queryKey: ['/api/fund-scores/search', searchQuery, selectedSubcategory, selectedQuartile, currentPage],
+    queryFn: async () => {
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        pageSize: pageSize.toString(),
+        ...(searchQuery && { search: searchQuery }),
+        ...(selectedSubcategory !== "all" && { subcategory: selectedSubcategory }),
+        ...(selectedQuartile !== "all" && { quartile: selectedQuartile })
+      });
+      const response = await fetch(`/api/fund-scores/search?${params.toString()}`);
+      return response.json();
+    },
     enabled: true
   });
+
+  const fundScores = fundResponse?.data || [];
+  const pagination = fundResponse?.pagination;
 
   // Fetch subcategories for filter dropdown
   const { data: subcategories } = useQuery<string[]>({
@@ -114,9 +138,15 @@ export default function ProductionFundSearch() {
     setSelectedQuartile("all");
     setSortBy("total_score");
     setSortOrder("desc");
+    setCurrentPage(1);
   };
 
   const filterCount = [searchQuery, selectedSubcategory !== "all", selectedQuartile !== "all"].filter(Boolean).length;
+
+  // Reset page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedSubcategory, selectedQuartile]);
 
   // Sort and filter funds
   const sortedFunds = React.useMemo(() => {
@@ -192,15 +222,15 @@ export default function ProductionFundSearch() {
             <div className="flex items-center space-x-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-900">
-                  {sortedFunds?.length?.toLocaleString() || '0'}
+                  {pagination?.total?.toLocaleString() || '0'}
                 </div>
                 <div className="text-sm text-gray-500">Total Funds</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {sortedFunds?.filter(f => f.total_score && f.total_score > 70).length || 0}
+                  {fundScores?.filter(f => f.total_score && f.total_score > 70).length || 0}
                 </div>
-                <div className="text-sm text-gray-500">Top Rated</div>
+                <div className="text-sm text-gray-500">Top Rated (This Page)</div>
               </div>
             </div>
           </div>
@@ -315,7 +345,7 @@ export default function ProductionFundSearch() {
 
         {/* Enhanced Fund Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {sortedFunds?.map((fund) => (
+          {fundScores?.map((fund) => (
             <Card key={fund.fund_id} className="hover:shadow-lg transition-shadow duration-300 border-0 bg-white">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -412,6 +442,60 @@ export default function ProductionFundSearch() {
             </Card>
           ))}
         </div>
+
+        {/* Pagination Controls */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            
+            <div className="flex items-center space-x-1">
+              {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                let pageNum;
+                if (pagination.totalPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= pagination.totalPages - 2) {
+                  pageNum = pagination.totalPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <Button
+                    key={pageNum}
+                    variant={currentPage === pageNum ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className="w-10"
+                  >
+                    {pageNum}
+                  </Button>
+                );
+              })}
+            </div>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(Math.min(pagination.totalPages, currentPage + 1))}
+              disabled={currentPage === pagination.totalPages}
+            >
+              Next
+            </Button>
+            
+            <div className="ml-4 text-sm text-gray-600">
+              Page {currentPage} of {pagination.totalPages} • {pagination.total} total funds
+            </div>
+          </div>
+        )}
 
         {/* Fund Details Modal */}
         {selectedFund && (

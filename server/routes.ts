@@ -234,9 +234,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Production Fund Search API endpoints using authenticated corrected scoring data
   app.get('/api/fund-scores/search', async (req, res) => {
     try {
-      const { search, subcategory, quartile, limit = 100 } = req.query;
+      const { search, subcategory, quartile, page = 1, pageSize = 50 } = req.query;
       
-      let query = `
+      // Convert to numbers and validate
+      const currentPage = Math.max(1, parseInt(page.toString()));
+      const size = Math.min(100, Math.max(1, parseInt(pageSize.toString()))); // Max 100 per page
+      const offset = (currentPage - 1) * size;
+      
+      // First get total count
+      let countQuery = `
+        SELECT COUNT(*) as total
+        FROM fund_scores_corrected fsc
+        JOIN funds f ON fsc.fund_id = f.id
+        WHERE fsc.score_date = '2025-06-05'
+      `;
+      
+      let mainQuery = `
         SELECT 
           fsc.fund_id,
           f.fund_name,
@@ -263,31 +276,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const params: any[] = [];
       let paramCount = 0;
+      let whereClause = '';
       
       if (search && search !== '') {
         paramCount++;
-        query += ` AND (LOWER(f.fund_name) LIKE $${paramCount} OR LOWER(f.amc_name) LIKE $${paramCount})`;
+        whereClause += ` AND (LOWER(f.fund_name) LIKE $${paramCount} OR LOWER(f.amc_name) LIKE $${paramCount})`;
         params.push(`%${search.toString().toLowerCase()}%`);
       }
       
       if (subcategory && subcategory !== 'all') {
         paramCount++;
-        query += ` AND fsc.subcategory = $${paramCount}`;
+        whereClause += ` AND fsc.subcategory = $${paramCount}`;
         params.push(subcategory);
       }
       
       if (quartile && quartile !== 'all') {
         paramCount++;
-        query += ` AND fsc.quartile = $${paramCount}`;
+        whereClause += ` AND fsc.quartile = $${paramCount}`;
         params.push(parseInt(quartile.toString()));
       }
       
-      query += ` ORDER BY fsc.total_score DESC LIMIT $${paramCount + 1}`;
-      params.push(parseInt(limit.toString()));
+      // Add where clause to both queries
+      countQuery += whereClause;
+      mainQuery += whereClause;
       
-      const result = await pool.query(query, params);
+      // Get total count
+      const countResult = await pool.query(countQuery, params);
+      const totalCount = parseInt(countResult.rows[0].total);
       
-      res.json(result.rows);
+      // Add ordering and pagination
+      mainQuery += ` ORDER BY fsc.total_score DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
+      params.push(size, offset);
+      
+      const result = await pool.query(mainQuery, params);
+      
+      res.json({
+        data: result.rows,
+        pagination: {
+          page: currentPage,
+          pageSize: size,
+          total: totalCount,
+          totalPages: Math.ceil(totalCount / size)
+        }
+      });
     } catch (error) {
       console.error('Fund search error:', error);
       res.status(500).json({ error: 'Failed to search funds' });
@@ -1421,7 +1452,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-
+  // Dashboard stats endpoint with real data
+  app.get("/api/dashboard/stats", async (req, res) => {
+    try {
+      // Get real statistics from database
+      const statsResult = await executeRawQuery(`
+        SELECT 
+          (SELECT COUNT(*) FROM funds WHERE status = 'ACTIVE') as total_funds,
+          (SELECT COUNT(DISTINCT fund_id) FROM fund_scores_corrected) as elivate_scored,
+          (SELECT AVG(total_score) FROM fund_scores_corrected) as avg_score,
+          (SELECT COUNT(DISTINCT fund_id) FROM nav_data WHERE nav_date >= CURRENT_DATE - INTERVAL '30 days') as active_funds
+      `);
+      
+      const stats = statsResult.rows[0];
+      
+      res.json({
+        totalFunds: parseInt(stats.total_funds),
+        elivateScored: parseInt(stats.elivate_scored),
+        avgScore: parseFloat(stats.avg_score).toFixed(2),
+        marketStatus: "NEUTRAL",
+        activeFunds: parseInt(stats.active_funds),
+        lastUpdated: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      res.status(500).json({ message: "Failed to fetch dashboard stats" });
+    }
+  });
 
   // API routes for market indices
   app.get("/api/market/indices", async (req, res) => {

@@ -13,11 +13,12 @@ if (!process.env.DATABASE_URL) {
 // Export the pool connection for direct use with enhanced error handling
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  max: 10,
-  idleTimeoutMillis: 60000,
-  connectionTimeoutMillis: 5000,
+  max: 20, // Increased from 10 to handle concurrent requests better
+  idleTimeoutMillis: 300000, // Increased from 60s to 5 minutes to reduce connection churn
+  connectionTimeoutMillis: 10000, // Increased from 5s to 10s for slower connections
   keepAlive: true,
-  keepAliveInitialDelayMillis: 0
+  keepAliveInitialDelayMillis: 0,
+  allowExitOnIdle: false // Keep connections alive even when idle
 });
 
 // Add comprehensive pool error handling to prevent crashes

@@ -314,26 +314,37 @@ export class DatabaseStorage implements IStorage {
   }
   
   async getLatestMarketIndices(): Promise<MarketIndex[]> {
-    // Get a list of unique index names
-    const indexNames = await db.select({ name: marketIndices.indexName })
-      .from(marketIndices)
-      .groupBy(marketIndices.indexName);
+    // Optimized query using window function to get latest index for each name in a single query
+    const query = `
+      WITH ranked_indices AS (
+        SELECT *,
+               ROW_NUMBER() OVER (PARTITION BY index_name ORDER BY index_date DESC) as rn
+        FROM market_indices
+      )
+      SELECT index_name, index_date, open_value, high_value, low_value, close_value, 
+             volume, market_cap, pe_ratio, pb_ratio, dividend_yield, created_at
+      FROM ranked_indices
+      WHERE rn = 1
+      ORDER BY index_name
+    `;
     
-    const latestIndices: MarketIndex[] = [];
+    const result = await executeRawQuery(query);
     
-    // For each index name, get the latest data
-    for (const { name } of indexNames) {
-      const [latestIndex] = await db.select().from(marketIndices)
-        .where(eq(marketIndices.indexName, name))
-        .orderBy(desc(marketIndices.indexDate))
-        .limit(1);
-      
-      if (latestIndex) {
-        latestIndices.push(latestIndex);
-      }
-    }
-    
-    return latestIndices;
+    // Map the raw results to MarketIndex type with available columns
+    return result.rows.map(row => ({
+      indexName: row.index_name,
+      indexDate: row.index_date,
+      openValue: row.open_value,
+      highValue: row.high_value,
+      lowValue: row.low_value,
+      closeValue: row.close_value,
+      volume: row.volume,
+      marketCap: row.market_cap,
+      peRatio: row.pe_ratio,
+      pbRatio: row.pb_ratio,
+      dividendYield: row.dividend_yield,
+      createdAt: row.created_at
+    }));
   }
   
   async createMarketIndex(index: InsertMarketIndex): Promise<MarketIndex> {
