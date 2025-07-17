@@ -26,6 +26,7 @@ import mftoolTestRoutes from "./api/mftool-test";
 import mfapiHistoricalImportRoutes from "./api/mfapi-historical-import";
 import quartileCalculationRoutes from "./api/quartile-calculation";
 import unifiedScoringRoutes from "./api/unified-scoring";
+import benchmarkRoutes from "./api/benchmarks";
 import { cacheMiddleware, invalidateCacheMiddleware } from './middleware/cache-middleware';
 import { cache, cacheKeys } from './services/redis-cache';
 
@@ -89,6 +90,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Quartile Calculation route
   app.use('/api/quartile', quartileCalculationRoutes);
+  
+  // Register Benchmark routes
+  app.use('/api/benchmarks', benchmarkRoutes);
 
   // Critical System Fixes endpoint
   app.post('/api/system/execute-critical-fixes', async (req, res) => {

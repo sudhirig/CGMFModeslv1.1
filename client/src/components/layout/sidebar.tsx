@@ -90,6 +90,10 @@ export default function Sidebar() {
                 <span className="material-icons text-xl mr-3">storage</span>
                 <span>Database Explorer</span>
               </Link>
+              <Link href="/benchmark-manager" className={linkClass("/benchmark-manager")}>
+                <span className="material-icons text-xl mr-3">show_chart</span>
+                <span>Benchmark Manager</span>
+              </Link>
               <Link href="/nav-partitioning" className={linkClass("/nav-partitioning")}>
                 <span className="material-icons text-xl mr-3">table_chart</span>
                 <span>NAV Partitioning</span>

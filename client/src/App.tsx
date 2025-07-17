@@ -20,6 +20,7 @@ import AutomationDashboard from "@/pages/automation-dashboard";
 import HistoricalImportDashboard from "@/pages/historical-import-dashboard";
 import ValidationDashboard from "@/pages/validation-dashboard";
 import AdvancedAnalyticsPage from "@/pages/AdvancedAnalyticsPage";
+import BenchmarkManager from "@/pages/benchmark-manager";
 import Sidebar from "@/components/layout/sidebar";
 import Header from "@/components/layout/header";
 
@@ -48,6 +49,7 @@ function Router() {
             <Route path="/validation-dashboard" component={ValidationDashboard} />
             <Route path="/validation" component={ValidationDashboard} />
             <Route path="/advanced-analytics" component={AdvancedAnalyticsPage} />
+            <Route path="/benchmark-manager" component={BenchmarkManager} />
             <Route component={NotFound} />
           </Switch>
         </main>
