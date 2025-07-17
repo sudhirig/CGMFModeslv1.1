@@ -112,7 +112,7 @@ export default function DataImportStatus() {
   };
 
   // Get total number of funds to process
-  const [totalFundsToProcess, setTotalFundsToProcess] = useState(16766); // We have 16,766 funds total
+  const [totalFundsToProcess, setTotalFundsToProcess] = useState(0); // Will be fetched from API
   
   // Fetch the actual count on component mount
   useEffect(() => {

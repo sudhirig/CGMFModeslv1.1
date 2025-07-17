@@ -34,15 +34,11 @@ export default function Dashboard() {
 
   // Use real data from API
   const stats = {
-    totalFunds: dashboardStats?.totalFunds || 16766,
-    elivateScored: dashboardStats?.elivateScored || 11800,
-    avgScore: dashboardStats?.avgScore || 64.11,
-    marketStatus: dashboardStats?.marketStatus || "NEUTRAL",
-    lastUpdated: dashboardStats?.lastUpdated || new Date().toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    })
+    totalFunds: dashboardStats?.totalFunds || 0,
+    elivateScored: dashboardStats?.elivateScored || 0,
+    avgScore: dashboardStats?.avgScore || 0,
+    marketStatus: dashboardStats?.marketStatus || "Loading...",
+    lastUpdated: dashboardStats?.lastUpdated || "Updating..."
   };
 
   return (

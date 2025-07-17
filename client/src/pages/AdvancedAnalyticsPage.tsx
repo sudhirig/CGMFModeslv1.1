@@ -100,7 +100,7 @@ export default function AdvancedAnalyticsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-3xl font-bold text-blue-900">
-                {overviewLoading ? '...' : fundOverview?.totalFunds?.toLocaleString() || '16,766'}
+                {overviewLoading ? '...' : fundOverview?.totalFunds?.toLocaleString() || '0'}
               </div>
               <p className="text-xs text-blue-700 mt-1">
                 With complete scoring

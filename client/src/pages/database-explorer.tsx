@@ -523,15 +523,15 @@ export default function DatabaseExplorer() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-black/5 p-3 rounded-md text-center">
                   <p className="text-sm text-muted-foreground">Total Funds</p>
-                  <p className="text-xl font-bold">11,766</p>
+                  <p className="text-xl font-bold">Loading...</p>
                 </div>
                 <div className="bg-black/5 p-3 rounded-md text-center">
                   <p className="text-sm text-muted-foreground">NAV Records</p>
-                  <p className="text-xl font-bold">10,116+</p>
+                  <p className="text-xl font-bold">Loading...</p>
                 </div>
                 <div className="bg-black/5 p-3 rounded-md text-center">
                   <p className="text-sm text-muted-foreground">Historical Range</p>
-                  <p className="text-xl font-bold">36 months</p>
+                  <p className="text-xl font-bold">Loading...</p>
                 </div>
                 <div className="bg-black/5 p-3 rounded-md text-center">
                   <p className="text-sm text-muted-foreground">Update Frequency</p>
@@ -803,7 +803,7 @@ export default function DatabaseExplorer() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="rounded-full h-8 w-8 mx-auto mb-2 bg-green-500 flex items-center justify-center text-white">↑</div>
-                <div className="text-2xl font-bold">Bullish</div>
+                <div className="text-2xl font-bold">Loading...</div>
                 <p className="text-sm text-muted-foreground">Market Stance</p>
               </div>
             </CardContent>
@@ -811,7 +811,7 @@ export default function DatabaseExplorer() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="rounded-full h-8 w-8 mx-auto mb-2 bg-blue-500 flex items-center justify-center text-white">21</div>
+                <div className="rounded-full h-8 w-8 mx-auto mb-2 bg-blue-500 flex items-center justify-center text-white">...</div>
                 <div className="text-2xl font-bold">Indicators</div>
                 <p className="text-sm text-muted-foreground">Market Factors Tracked</p>
               </div>
@@ -821,79 +821,9 @@ export default function DatabaseExplorer() {
         
         <div className="mb-6">
           <h3 className="text-lg font-semibold mb-4">ELIVATE Component Scores</h3>
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">External Influence</span>
-                <span className="text-sm text-muted-foreground">17.8 / 20</span>
-              </div>
-              <div className="w-full bg-neutral-200 rounded-full h-2.5">
-                <div 
-                  className="bg-blue-500 h-2.5 rounded-full" 
-                  style={{ width: `${(17.8 / 20) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Local Story</span>
-                <span className="text-sm text-muted-foreground">16.5 / 20</span>
-              </div>
-              <div className="w-full bg-neutral-200 rounded-full h-2.5">
-                <div 
-                  className="bg-green-500 h-2.5 rounded-full" 
-                  style={{ width: `${(16.5 / 20) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Inflation & Rates</span>
-                <span className="text-sm text-muted-foreground">15.2 / 20</span>
-              </div>
-              <div className="w-full bg-neutral-200 rounded-full h-2.5">
-                <div 
-                  className="bg-yellow-500 h-2.5 rounded-full" 
-                  style={{ width: `${(15.2 / 20) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Valuation & Earnings</span>
-                <span className="text-sm text-muted-foreground">18.3 / 20</span>
-              </div>
-              <div className="w-full bg-neutral-200 rounded-full h-2.5">
-                <div 
-                  className="bg-purple-500 h-2.5 rounded-full" 
-                  style={{ width: `${(18.3 / 20) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Allocation of Capital</span>
-                <span className="text-sm text-muted-foreground">8.7 / 10</span>
-              </div>
-              <div className="w-full bg-neutral-200 rounded-full h-2.5">
-                <div 
-                  className="bg-indigo-500 h-2.5 rounded-full" 
-                  style={{ width: `${(8.7 / 10) * 100}%` }}
-                ></div>
-              </div>
-            </div>
-            <div>
-              <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Trends & Sentiments</span>
-                <span className="text-sm text-muted-foreground">8.2 / 10</span>
-              </div>
-              <div className="w-full bg-neutral-200 rounded-full h-2.5">
-                <div 
-                  className="bg-red-500 h-2.5 rounded-full" 
-                  style={{ width: `${(8.2 / 10) * 100}%` }}
-                ></div>
-              </div>
-            </div>
+          <div className="text-center text-muted-foreground py-4">
+            <p>Loading ELIVATE component scores...</p>
+            <p className="text-sm mt-2">Fetching authentic data from API</p>
           </div>
         </div>
         

@@ -48,7 +48,13 @@ export function useFunds(category?: string) {
       lockInPeriod: fund.lock_in_period,
       expenseRatio: fund.expense_ratio,
       createdAt: fund.created_at,
-      updatedAt: fund.updated_at
+      updatedAt: fund.updated_at,
+      // Additional fields needed by fund cards
+      minSip: fund.minimum_investment,
+      aum: fund.aum_crores ? parseFloat(fund.aum_crores) * 10000000 : null, // Convert crores to rupees
+      aumCrores: fund.aum_crores,
+      nav: fund.latest_nav ? parseFloat(fund.latest_nav) : null,
+      totalScore: fund.total_score
     }));
   };
   

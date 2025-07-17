@@ -877,9 +877,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`Fetching funds for category: ${category}`);
           const categoryResult = await executeRawQuery(`
-            SELECT * FROM funds 
-            WHERE category = $1
-            ORDER BY fund_name
+            SELECT 
+              f.*,
+              ln.nav_value as latest_nav,
+              ln.nav_date as latest_nav_date
+            FROM funds f
+            LEFT JOIN LATERAL (
+              SELECT nav_value, nav_date
+              FROM nav_data
+              WHERE fund_id = f.id
+              ORDER BY nav_date DESC
+              LIMIT 1
+            ) ln ON true
+            WHERE f.category = $1
+            ORDER BY f.fund_name
           `, [category]);
           
           if (categoryResult && categoryResult.rows && categoryResult.rows.length > 0) {
@@ -931,8 +942,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Updated to handle high limits for retrieving all funds
         const result = await pool.query(`
-          SELECT * FROM funds 
-          ORDER BY fund_name
+          SELECT 
+            f.*,
+            ln.nav_value as latest_nav,
+            ln.nav_date as latest_nav_date
+          FROM funds f
+          LEFT JOIN LATERAL (
+            SELECT nav_value, nav_date
+            FROM nav_data
+            WHERE fund_id = f.id
+            ORDER BY nav_date DESC
+            LIMIT 1
+          ) ln ON true
+          ORDER BY f.fund_name
           LIMIT $1 OFFSET $2
         `, [Math.min(parsedLimit, 5000), parsedOffset]);
         
