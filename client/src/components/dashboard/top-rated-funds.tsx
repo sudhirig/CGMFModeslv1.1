@@ -122,7 +122,7 @@ export default function TopRatedFunds() {
                         </div>
                         
                         <div className="mt-4 lg:mt-0 lg:ml-6">
-                          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                             <div className="text-center">
                               <p className="text-xs font-medium text-gray-500 uppercase">Performance Score</p>
                               <p className="text-xl font-bold text-gray-900">{fund.totalScore.toFixed(1)}</p>
@@ -146,6 +146,12 @@ export default function TopRatedFunds() {
                                 <riskGrade.icon className="w-3 h-3 mr-1" />
                                 {riskGrade.text}
                               </Badge>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs font-medium text-gray-500 uppercase">Expense Ratio</p>
+                              <p className="text-lg font-semibold text-gray-900">
+                                {fund.fund.expenseRatio ? `${fund.fund.expenseRatio}%` : "N/A"}
+                              </p>
                             </div>
                             <div className="text-center">
                               <p className="text-xs font-medium text-gray-500 uppercase">AUM</p>

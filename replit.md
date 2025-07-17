@@ -4,6 +4,12 @@
 A sophisticated mutual fund analysis platform built with TypeScript, React, and PostgreSQL. Features the ELIVATE scoring methodology with authentic data integration from MFAPI.in, AMFI, and Alpha Vantage APIs. The system maintains zero tolerance for synthetic data contamination and provides comprehensive backtesting capabilities.
 
 ## Recent Changes
+- **July 17, 2025**: Fixed expense ratio and AUM display in fund cards:
+  - Updated /api/funds/top-rated endpoint to include expense_ratio and aum_crores fields from funds table
+  - Added expense ratio display to top-rated-funds component (now shows 5 metrics)
+  - Added expense ratio and AUM display to production-fund-search page
+  - Database contains expense_ratio data for all 16,766 funds (values 0.75%-1.65%)
+  - AUM data (aum_crores) is NULL for all funds - correctly displays "N/A"
 - **July 17, 2025**: CRITICAL DATA POLICY - User requires NO demonstration data ever:
   - Removed all manually inserted portfolio holdings data
   - Policy: Display "Data not available" when authentic data is missing

@@ -408,6 +408,22 @@ export default function ProductionFundSearch() {
                   <Progress value={fund.fundamentals_total ? (fund.fundamentals_total / 30) * 100 : 0} className="h-2" />
                 </div>
 
+                {/* Fund Metrics */}
+                <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">
+                  <div className="text-center">
+                    <div className="text-sm font-medium text-gray-900">
+                      {fund.expense_ratio ? `${fund.expense_ratio}%` : 'N/A'}
+                    </div>
+                    <div className="text-xs text-gray-500">Expense Ratio</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-sm font-medium text-gray-900">
+                      {fund.aum_crores ? `₹${parseFloat(fund.aum_crores).toLocaleString('en-IN')} Cr` : 'N/A'}
+                    </div>
+                    <div className="text-xs text-gray-500">AUM</div>
+                  </div>
+                </div>
+
                 {/* Risk Metrics */}
                 {(fund.calmar_ratio_1y || fund.sortino_ratio_1y) && (
                   <div className="grid grid-cols-2 gap-4 pt-3 border-t border-gray-100">

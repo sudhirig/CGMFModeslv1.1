@@ -1107,6 +1107,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           f.category, 
           f.subcategory, 
           f.amc_name,
+          f.expense_ratio,
+          f.aum_crores,
           fs.return_1y_absolute as return_1y,
           latest_nav.aum_cr
         FROM fund_scores_corrected fs
@@ -1151,7 +1153,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           category: row.category,
           subcategory: row.subcategory,
           amcName: row.amc_name,
-          aumCr: row.aum_cr ? parseFloat(row.aum_cr) : null
+          aumCr: row.aum_cr ? parseFloat(row.aum_cr) : (row.aum_crores ? parseFloat(row.aum_crores) : null),
+          expenseRatio: row.expense_ratio ? parseFloat(row.expense_ratio) : null
         },
         totalScore: parseFloat(row.total_score),
         quartile: row.quartile,
