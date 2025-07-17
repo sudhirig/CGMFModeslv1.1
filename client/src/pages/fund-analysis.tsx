@@ -488,7 +488,7 @@ export default function FundAnalysis() {
                       <span className="text-sm text-gray-600">Expense Ratio</span>
                       <span className="text-sm font-medium">
                         {fund.expenseRatio !== null && fund.expenseRatio !== undefined 
-                          ? `${fund.expenseRatio.toFixed(2)}%`
+                          ? `${parseFloat(fund.expenseRatio).toFixed(2)}%`
                           : 'N/A'}
                       </span>
                     </div>
