@@ -17,6 +17,12 @@ export default function TopRatedFunds() {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
   
+  // Debug logging
+  console.log('Top Funds API URL:', apiUrl);
+  console.log('Top Funds Data:', topFunds);
+  console.log('Is Loading:', isLoading);
+  console.log('Error:', error);
+  
   const handleViewFund = (fundId: number) => {
     // In a full implementation, this would navigate to a fund detail page
     console.log(`View fund: ${fundId}`);
@@ -47,9 +53,20 @@ export default function TopRatedFunds() {
                   <SelectItem value="Equity: Mid Cap">Equity: Mid Cap</SelectItem>
                   <SelectItem value="Equity: Small Cap">Equity: Small Cap</SelectItem>
                   <SelectItem value="Equity: Multi Cap">Equity: Multi Cap</SelectItem>
+                  <SelectItem value="Equity: Flexi Cap">Equity: Flexi Cap</SelectItem>
+                  <SelectItem value="Equity: Focused">Equity: Focused</SelectItem>
+                  <SelectItem value="Equity: ELSS">Equity: ELSS</SelectItem>
+                  <SelectItem value="Equity: Value">Equity: Value</SelectItem>
                   <SelectItem value="Debt: Short Duration">Debt: Short Duration</SelectItem>
                   <SelectItem value="Debt: Medium Duration">Debt: Medium Duration</SelectItem>
-                  <SelectItem value="Hybrid: Balanced Advantage">Hybrid: Balanced Advantage</SelectItem>
+                  <SelectItem value="Debt: Long Duration">Debt: Long Duration</SelectItem>
+                  <SelectItem value="Debt: Corporate Bond">Debt: Corporate Bond</SelectItem>
+                  <SelectItem value="Debt: Banking and PSU">Debt: Banking and PSU</SelectItem>
+                  <SelectItem value="Debt: Gilt">Debt: Gilt</SelectItem>
+                  <SelectItem value="Debt: Liquid">Debt: Liquid</SelectItem>
+                  <SelectItem value="Hybrid: Aggressive">Hybrid: Aggressive</SelectItem>
+                  <SelectItem value="Hybrid: Balanced">Hybrid: Balanced</SelectItem>
+                  <SelectItem value="Hybrid: Conservative">Hybrid: Conservative</SelectItem>
                 </SelectContent>
               </Select>
               <Button variant="outline" size="sm">

@@ -1117,8 +1117,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let paramIndex = 1;
       
       if (category && category !== 'undefined' && category !== '') {
-        query += ` AND f.category = $${paramIndex++} `;
-        params.push(category);
+        // Handle both "Category: Subcategory" format and plain category
+        if (category.includes(':')) {
+          // Extract subcategory from "Category: Subcategory" format
+          const [cat, subcat] = category.split(':').map(s => s.trim());
+          query += ` AND f.category = $${paramIndex++} AND f.subcategory = $${paramIndex++} `;
+          params.push(cat);
+          params.push(subcat);
+        } else {
+          // Plain category filter
+          query += ` AND f.category = $${paramIndex++} `;
+          params.push(category);
+        }
       }
       
       query += ` ORDER BY fs.total_score DESC LIMIT $${paramIndex}`;
