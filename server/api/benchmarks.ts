@@ -62,6 +62,35 @@ router.get('/performance/:benchmarkName', async (req, res) => {
   }
 });
 
+// Get historical data for a benchmark
+router.get('/historical-data', async (req, res) => {
+  try {
+    const { benchmark } = req.query;
+    
+    if (!benchmark) {
+      return res.status(400).json({ success: false, error: 'Benchmark parameter is required' });
+    }
+    
+    const result = await pool.query(`
+      SELECT 
+        index_date,
+        close_value
+      FROM market_indices
+      WHERE index_name = $1
+      ORDER BY index_date ASC
+    `, [benchmark]);
+    
+    res.json({
+      success: true,
+      benchmark: benchmark,
+      data: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching historical data:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch historical data' });
+  }
+});
+
 // Get data sources information
 router.get('/data-sources', async (req, res) => {
   try {

@@ -46,13 +46,13 @@ export default function BenchmarkRollingReturns() {
 
   // Fetch historical data for selected benchmark
   const { data: benchmarkData, isLoading: isLoadingData } = useQuery({
-    queryKey: ['/api/benchmarks/historical-data', selectedBenchmark],
+    queryKey: [`/api/benchmarks/historical-data?benchmark=${encodeURIComponent(selectedBenchmark)}`],
     enabled: !!selectedBenchmark,
   });
 
   // Fetch historical data for comparison benchmark
   const { data: benchmarkData2, isLoading: isLoadingData2 } = useQuery({
-    queryKey: ['/api/benchmarks/historical-data', selectedBenchmark2],
+    queryKey: [`/api/benchmarks/historical-data?benchmark=${encodeURIComponent(selectedBenchmark2)}`],
     enabled: !!selectedBenchmark2 && selectedBenchmark2 !== 'none',
   });
 
