@@ -9,6 +9,7 @@ import sys
 import json
 import time
 import logging
+import glob
 from datetime import datetime, date
 from typing import Dict, List, Optional, Tuple
 import requests
@@ -91,11 +92,54 @@ class AdvisorKhojScraper:
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
+            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
             
-            self.driver = webdriver.Chrome(
-                service=Service(ChromeDriverManager().install()),
-                options=chrome_options
-            )
+            # Try to find chromium binary
+            chromium_paths = [
+                '/usr/bin/chromium',
+                '/usr/bin/chromium-browser',
+                '/nix/store/*/bin/chromium',
+                'chromium'
+            ]
+            
+            chromium_binary = None
+            for path in chromium_paths:
+                if os.path.exists(path):
+                    chromium_binary = path
+                    break
+                elif '*' in path:
+                    import glob
+                    matches = glob.glob(path)
+                    if matches:
+                        chromium_binary = matches[0]
+                        break
+            
+            if chromium_binary:
+                chrome_options.binary_location = chromium_binary
+                logger.info(f"Found chromium at: {chromium_binary}")
+            
+            # Use ChromeDriver for Chromium
+            try:
+                # Set page load timeout
+                self.driver = webdriver.Chrome(
+                    service=Service(ChromeDriverManager(chrome_type="chromium").install()),
+                    options=chrome_options
+                )
+                self.driver.set_page_load_timeout(10)
+            except:
+                try:
+                    # Fallback to regular Chrome
+                    self.driver = webdriver.Chrome(
+                        service=Service(ChromeDriverManager().install()),
+                        options=chrome_options
+                    )
+                    self.driver.set_page_load_timeout(10)
+                except Exception as e:
+                    logger.warning(f"Chrome/Chromium not available: {e}")
+                    return False
+                
             logger.info("✅ Selenium WebDriver initialized")
             return True
         except Exception as e:
@@ -245,7 +289,9 @@ class AdvisorKhojScraper:
         try:
             # This would require Selenium for dynamic content
             if not self.driver:
-                self.init_selenium()
+                if not self.init_selenium():
+                    logger.warning("⚠️ Selenium not available, skipping portfolio overlap data")
+                    return overlap_data
                 
             # Example overlap analysis page
             url = f"{self.base_url}/mutual-funds-research/portfolio-overlap"

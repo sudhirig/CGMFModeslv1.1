@@ -42,7 +42,7 @@ interface ScraperOptions {
 
 export class AdvisorKhojScraperService {
   private pythonPath = process.env.PYTHON_PATH || 'python3';
-  private scraperPath = path.join(__dirname, '../scrapers/advisorkhoj/scraper.py');
+  private scraperPath = path.join(__dirname, '../scrapers/advisorkhoj/simple_scraper.py');
 
   /**
    * Run the AdvisorKhoj scraper with options
