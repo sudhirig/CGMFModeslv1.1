@@ -56,8 +56,8 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
       // Determine the number of data points based on timeframe
       let numPoints = Math.min(30, nifty50Data.length); // Default for daily
       if (timeframe === "weekly") numPoints = Math.min(52, nifty50Data.length);
-      if (timeframe === "monthly") numPoints = Math.min(24, nifty50Data.length);
-      if (timeframe === "yearly") numPoints = Math.min(5, nifty50Data.length);
+      if (timeframe === "monthly") numPoints = Math.min(36, nifty50Data.length); // Show 3 years monthly
+      if (timeframe === "yearly") numPoints = nifty50Data.length; // Show all data for 5-year view
       
       // Get base value for normalization from authentic data - parse as float
       const niftyBase = parseFloat(nifty50Data[nifty50Data.length - 1]?.closeValue || nifty50Data[0]?.closeValue);
@@ -87,7 +87,7 @@ export default function MarketPerformanceChart({ timeframe }: MarketPerformanceC
         points.push({
           date: new Date(niftyPoint.indexDate).toLocaleDateString('en-US', { 
             month: 'short',
-            year: timeframe === 'yearly' ? 'numeric' : undefined,
+            year: timeframe === 'yearly' || timeframe === 'monthly' ? 'numeric' : undefined,
             day: timeframe === 'daily' || timeframe === 'weekly' ? 'numeric' : undefined,
           }),
           nifty50: parseFloat(niftyNorm.toFixed(2)),
