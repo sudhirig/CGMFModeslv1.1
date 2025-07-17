@@ -476,7 +476,7 @@ export default function FundAnalysis() {
                     <div className="text-sm font-bold text-blue-600">
                       {fundScores?.[fund.id]?.return_1y_absolute !== undefined && 
                        fundScores[fund.id].return_1y_absolute !== null
-                        ? `${fundScores[fund.id].return_1y_absolute >= 0 ? '+' : ''}${fundScores[fund.id].return_1y_absolute.toFixed(2)}%`
+                        ? `${parseFloat(fundScores[fund.id].return_1y_absolute) >= 0 ? '+' : ''}${parseFloat(fundScores[fund.id].return_1y_absolute).toFixed(2)}%`
                         : 'N/A'
                       }
                     </div>
