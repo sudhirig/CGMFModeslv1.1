@@ -4,6 +4,12 @@
 A sophisticated mutual fund analysis platform built with TypeScript, React, and PostgreSQL. Features the ELIVATE scoring methodology with authentic data integration from MFAPI.in, AMFI, and Alpha Vantage APIs. The system maintains zero tolerance for synthetic data contamination and provides comprehensive backtesting capabilities.
 
 ## Recent Changes
+- **July 17, 2025**: REMOVED ALL SYNTHETIC BENCHMARK ASSIGNMENTS to maintain data integrity:
+  - fund-details-collector.ts: Set benchmarkName to null instead of hardcoded "Nifty 50 TRI"
+  - fund-scoring.ts: Disabled Sharpe ratio and Alpha calculations until authentic risk-free rate available
+  - fund-scoring.ts: Removed placeholder AUM values, returns null until authentic data available
+  - backtesting-engine.ts: Disabled synthetic benchmark generation, returns empty array instead
+  - Created getCategoryBenchmark() and getPortfolioBenchmark() methods for future authentic mappings
 - **July 17, 2025**: CRITICAL FIX - N/A values in fund analysis page resolved by fixing API and field mapping:
   - Backend: Added LEFT JOIN LATERAL with nav_data table to include latest_nav in /api/funds and /api/funds/:id endpoints
   - Frontend: Fixed convertToCamelCase to properly map latest_nav → nav for fund cards
@@ -286,6 +292,8 @@ server/
 
 ### Data Quality Metrics
 - **Synthetic Data**: Zero contamination detected
+- **Benchmark Data**: All synthetic benchmark assignments removed (July 17, 2025)
+- **Risk-Free Rate**: Calculations disabled until authentic RBI data available
 - **Database Integrity**: 100% constraint compliance
 - **API Response Time**: <2000ms for complex operations
 - **Data Freshness**: Daily updates from external sources

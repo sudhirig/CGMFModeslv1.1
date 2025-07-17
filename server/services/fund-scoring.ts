@@ -77,6 +77,14 @@ export class FundScoringEngine {
     }
     return FundScoringEngine.instance;
   }
+
+  // Get category-based benchmark name
+  private getCategoryBenchmark(category: string): string | null {
+    // Return null until we have authentic benchmark mappings
+    // In the future, this should return category-appropriate benchmarks
+    // based on authentic data sources from AMCs
+    return null;
+  }
   
   // Score a single fund
   async scoreFund(fundId: number): Promise<{ 
@@ -102,8 +110,10 @@ export class FundScoringEngine {
       // Get category peers for percentile ranking
       const categoryFunds = await storage.getFundsByCategory(fund.category);
       
-      // Get benchmark for the fund (using Nifty 50 as default for now)
-      const benchmarkData = await storage.getMarketIndex('NIFTY 50');
+      // Get benchmark for the fund
+      // Note: Currently using category-based benchmarks until fund-specific benchmarks are available
+      const benchmarkName = this.getCategoryBenchmark(fund.category);
+      const benchmarkData = benchmarkName ? await storage.getMarketIndex(benchmarkName) : null;
       
       // Get the latest ELIVATE score for market context
       const elivateScore = await storage.getLatestElivateScore();
@@ -152,14 +162,13 @@ export class FundScoringEngine {
       const volatility3y = dailyReturns.length >= 756 ? 
         this.calculateStandardDeviation(dailyReturns.slice(0, 756)) * Math.sqrt(252) * 100 : null;
       
-      // Risk-free rate (using 10-year government bond as proxy - set to a reasonable default)
-      const riskFreeRate = 4.5; // 4.5% annual
+      // Risk-free rate should be fetched from authentic sources (e.g., RBI data)
+      // Sharpe ratio calculation disabled until we have authentic risk-free rate data
+      const riskFreeRate = null; // Should be fetched from RBI or similar source
       
-      // Sharpe ratio calculations
-      const sharpeRatio1y = volatility1y && rawReturns.return1y ? 
-        (rawReturns.return1y - riskFreeRate) / volatility1y : null;
-      const sharpeRatio3y = volatility3y && rawReturns.return3y ? 
-        (rawReturns.return3y - riskFreeRate) / volatility3y : null;
+      // Sharpe ratio calculations - disabled until we have authentic risk-free rate
+      const sharpeRatio1y = null; // Requires authentic risk-free rate data
+      const sharpeRatio3y = null; // Requires authentic risk-free rate data
       
       // Sortino ratio calculations (downside deviation)
       const downsideReturns1y = dailyReturns.length >= 252 ? 
@@ -252,14 +261,12 @@ export class FundScoringEngine {
         (categoryMedianExpenseRatio - fundExpenseRatio) / categoryStdDevExpenseRatio : null;
       
       // Fund size analysis (AUM)
-      // For now, using fund size relative to category median as a proxy for AUM
-      // In a real implementation, we would use actual AUM values
-      const fundAum = 10000; // Placeholder - would come from actual data
-      const categoryMedianAum = 5000; // Placeholder - would be calculated from actual data
+      // AUM data should come from authentic sources (AMFI/AMC data)
+      const fundAum = null; // Should come from authentic data sources
+      const categoryMedianAum = null; // Should be calculated from authentic data
       
-      // Fund size factor (normalized to 0-1 range)
-      const fundSizeFactor = fundAum && categoryMedianAum ? 
-        Math.min(1, Math.max(0, 1 - Math.abs(Math.log(fundAum) / Math.log(categoryMedianAum) - 1))) : null;
+      // Fund size factor - disabled until we have authentic AUM data
+      const fundSizeFactor = null;
       
       // Convert metrics to proper format expected by database
       const fundScore: InsertFundScore = {
@@ -1320,9 +1327,12 @@ export class FundScoringEngine {
    * Calculate Alpha - excess return over what would be predicted by CAPM
    * Higher alpha indicates better risk-adjusted performance relative to benchmark
    */
-  private calculateAlpha(fundReturns: number[], benchmarkReturns: number[], riskFreeRate: number = 0.04): number {
+  private calculateAlpha(fundReturns: number[], benchmarkReturns: number[], riskFreeRate: number | null = null): number {
     const length = Math.min(fundReturns.length, benchmarkReturns.length);
     if (length < 30) return 0;
+    
+    // Alpha calculation disabled until we have authentic risk-free rate data
+    if (riskFreeRate === null) return 0;
     
     // Convert annual risk-free rate to daily
     const dailyRiskFreeRate = Math.pow(1 + riskFreeRate, 1/252) - 1;

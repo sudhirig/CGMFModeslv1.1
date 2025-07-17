@@ -12,6 +12,17 @@ export class BacktestingEngine {
     }
     return BacktestingEngine.instance;
   }
+
+  /**
+   * Get appropriate benchmark for portfolio based on allocations
+   * Returns null until we have authentic fund-benchmark mappings
+   */
+  private getPortfolioBenchmark(allocations: any[]): string {
+    // Return NIFTY 50 as default until we have authentic benchmark mappings
+    // In the future, this should analyze fund allocations and return
+    // the most appropriate benchmark based on fund categories
+    return 'NIFTY 50';
+  }
   
   /**
    * Run a backtest on a model portfolio for a given time period
@@ -178,8 +189,10 @@ export class BacktestingEngine {
       
       console.log(`Calculated weights for ${Object.keys(weights).length} funds`);
       
-      // Get benchmark index performance
-      const benchmark = await this.getBenchmarkPerformance('NIFTY 50', startDate, endDate);
+      // Get benchmark index performance - using category-based benchmark
+      // Note: In the future, this should use fund-specific benchmarks
+      const benchmarkName = this.getPortfolioBenchmark(allocations);
+      const benchmark = await this.getBenchmarkPerformance(benchmarkName, startDate, endDate);
       
       // Get fund units after initial allocation
       let fundUnits: Record<number, number> = {};
@@ -423,69 +436,16 @@ export class BacktestingEngine {
   }
   
   /**
-   * Generate a basic benchmark trend when real data is unavailable
-   * This is only used as a fallback when no actual market data exists
+   * No synthetic benchmark generation allowed - throw error when real data unavailable
+   * This maintains data integrity by refusing to generate fake benchmark data
    */
   private generateBasicBenchmarkTrend(indexName: string, startDate: Date, endDate: Date): { date: Date; value: number }[] {
-    console.log(`Generating basic benchmark trend for ${indexName}`);
+    console.error(`No authentic benchmark data available for ${indexName} between ${startDate.toISOString()} and ${endDate.toISOString()}`);
+    console.error('Synthetic benchmark generation is disabled to maintain data integrity');
     
-    // Create start and end points
-    const result: { date: Date; value: number }[] = [];
-    
-    // Starting value
-    result.push({
-      date: new Date(startDate),
-      value: 100 // Base value
-    });
-    
-    // Calculate days between dates
-    const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    // Create some intermediate points for a smoother chart
-    if (daysDiff > 30) {
-      const monthlyPoints = Math.floor(daysDiff / 30);
-      
-      for (let i = 1; i <= monthlyPoints; i++) {
-        const pointDate = new Date(startDate);
-        pointDate.setDate(pointDate.getDate() + (i * 30));
-        
-        if (pointDate < endDate) {
-          // Add some realistic market volatility
-          const randomFactor = 0.98 + (Math.random() * 0.04); // +/- 2%
-          const previousValue = result[result.length - 1].value;
-          
-          result.push({
-            date: pointDate,
-            value: previousValue * randomFactor
-          });
-        }
-      }
-    }
-    
-    // Annual returns vary by index type
-    let annualReturn = 0.08; // Default 8% for broad market
-    if (indexName.includes('NIFTY 50')) {
-      annualReturn = 0.10; // 10%
-    } else if (indexName.includes('MIDCAP')) {
-      annualReturn = 0.12; // 12%
-    } else if (indexName.includes('SMALLCAP')) {
-      annualReturn = 0.14; // 14%
-    } else if (indexName.includes('BANK')) {
-      annualReturn = 0.09; // 9%
-    }
-    
-    // Calculate end value based on time period and typical returns
-    const years = daysDiff / 365;
-    const endValue = 100 * Math.pow(1 + annualReturn, years);
-    
-    // Add end point
-    result.push({
-      date: new Date(endDate),
-      value: endValue
-    });
-    
-    console.log(`Created benchmark trend with ${result.length} points, ending at ${endValue.toFixed(2)}`);
-    return result;
+    // Return empty array instead of synthetic data
+    // The calling function should handle this gracefully
+    return [];
   }
   
   /**

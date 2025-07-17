@@ -148,7 +148,7 @@ export class FundDetailsCollector {
           inceptionDate: new Date(inceptionYear, 0, 1),
           expenseRatio: parseFloat((0.75 + (fundId % 10) / 10).toFixed(2)),
           exitLoad: parseFloat((0.5 + (fundId % 10) / 10).toFixed(2)), // Store just the numeric value
-          benchmarkName: "Nifty 50 TRI",
+          benchmarkName: null, // No authentic benchmark data available
           minimumInvestment: 1000 * (1 + (fundId % 10)),
           fundManager: "Fund Manager Name",
           lockInPeriod: 1 + (fundId % 5)
@@ -309,11 +309,12 @@ export class FundDetailsCollector {
       // Add some basic fund details that would typically come from AMFI
       console.log(`Collecting enhanced details for fund: ${fundName} (${schemeCode})`);
       
-      // Adding synthetic data for testing purposes
+      // Note: Benchmark data is not available from AMFI directly
+      // Authentic benchmark assignments should come from AMC sources
       result.inceptionDate = new Date(2010, 0, 1);  // January 1, 2010
       result.expenseRatio = 1.25;  // 1.25%
       result.exitLoad = "1% if redeemed within 1 year of allotment";
-      result.benchmarkName = "Nifty 50 TRI";
+      result.benchmarkName = null;  // No authentic benchmark data available
       result.minimumInvestment = 5000;  // ₹5,000
       result.fundManager = "Fund Manager Name";
       result.lockInPeriod = 3;  // 3 years for ELSS funds
