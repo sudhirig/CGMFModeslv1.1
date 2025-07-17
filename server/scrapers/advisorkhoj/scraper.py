@@ -19,6 +19,7 @@ from psycopg2.extras import RealDictCursor
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -92,7 +93,7 @@ class AdvisorKhojScraper:
             chrome_options.add_argument('--disable-gpu')
             
             self.driver = webdriver.Chrome(
-                ChromeDriverManager().install(),
+                service=Service(ChromeDriverManager().install()),
                 options=chrome_options
             )
             logger.info("✅ Selenium WebDriver initialized")
@@ -484,16 +485,22 @@ class AdvisorKhojScraper:
                     # Insert into existing market_indices table
                     cursor.execute("""
                         INSERT INTO market_indices 
-                        (index_name, index_value, daily_return, index_date)
-                        VALUES (%s, %s, %s, %s)
+                        (index_name, close_value, index_date, pe_ratio, pb_ratio, dividend_yield, volume)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (index_name, index_date) DO UPDATE
-                        SET index_value = EXCLUDED.index_value,
-                            daily_return = EXCLUDED.daily_return
+                        SET close_value = EXCLUDED.close_value,
+                            pe_ratio = EXCLUDED.pe_ratio,
+                            pb_ratio = EXCLUDED.pb_ratio,
+                            dividend_yield = EXCLUDED.dividend_yield,
+                            volume = EXCLUDED.volume
                     """, (
                         index_data['index_name'],
-                        index_data['index_value'],
-                        index_data['daily_return'],
-                        index_data['index_date']
+                        index_data.get('index_value', 0),
+                        index_data['index_date'],
+                        index_data.get('pe_ratio'),
+                        index_data.get('pb_ratio'),
+                        index_data.get('dividend_yield'),
+                        index_data.get('volume')
                     ))
                     
                     saved_count += cursor.rowcount
