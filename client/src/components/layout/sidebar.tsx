@@ -94,6 +94,10 @@ export default function Sidebar() {
                 <span className="material-icons text-xl mr-3">show_chart</span>
                 <span>Benchmark Manager</span>
               </Link>
+              <Link href="/benchmark-rolling-returns" className={linkClass("/benchmark-rolling-returns")}>
+                <span className="material-icons text-xl mr-3">trending_up</span>
+                <span>Benchmark Rolling Returns</span>
+              </Link>
               <Link href="/nav-partitioning" className={linkClass("/nav-partitioning")}>
                 <span className="material-icons text-xl mr-3">table_chart</span>
                 <span>NAV Partitioning</span>

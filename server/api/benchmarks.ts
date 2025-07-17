@@ -126,4 +126,32 @@ router.get('/missing', async (req, res) => {
   }
 });
 
+// Get historical data for a benchmark
+router.get('/historical-data/:benchmarkName', async (req, res) => {
+  try {
+    const { benchmarkName } = req.params;
+    
+    const result = await pool.query(`
+      SELECT 
+        index_name,
+        index_date,
+        close_value
+      FROM market_indices
+      WHERE index_name = $1
+      AND close_value IS NOT NULL
+      ORDER BY index_date ASC
+    `, [benchmarkName]);
+    
+    res.json({
+      success: true,
+      benchmark: benchmarkName,
+      data: result.rows,
+      count: result.rowCount
+    });
+  } catch (error) {
+    console.error('Error fetching historical data:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch historical data' });
+  }
+});
+
 export default router;

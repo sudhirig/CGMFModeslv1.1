@@ -4,6 +4,12 @@
 A sophisticated mutual fund analysis platform built with TypeScript, React, and PostgreSQL. Features the ELIVATE scoring methodology with authentic data integration from MFAPI.in, AMFI, and Alpha Vantage APIs. The system maintains zero tolerance for synthetic data contamination and provides comprehensive backtesting capabilities.
 
 ## Recent Changes
+- **July 17, 2025**: Created comprehensive Benchmark Rolling Returns page modeled after AdvisorKhoj:
+  - benchmark-rolling-returns.tsx: Professional rolling returns analysis with 1Y/3Y/5Y/7Y/10Y periods
+  - benchmark-data-collector.ts: Service to fetch benchmark data from Alpha Vantage and other sources
+  - benchmark-collection.ts: API endpoints for collecting missing benchmark data
+  - Currently have data for 3 benchmarks (Nifty 50 TRI, Nifty 500 TRI, Nifty 100 TRI) with 25 missing
+  - Features: Period selection, statistics calculation, distribution analysis, comparison capability
 - **July 17, 2025**: REMOVED ALL SYNTHETIC BENCHMARK ASSIGNMENTS to maintain data integrity:
   - fund-details-collector.ts: Set benchmarkName to null instead of hardcoded "Nifty 50 TRI"
   - fund-scoring.ts: Disabled Sharpe ratio and Alpha calculations until authentic risk-free rate available
@@ -101,6 +107,7 @@ client/src/
 - `portfolio-builder.tsx` - Portfolio construction tools
 - `validation-dashboard.tsx` - Data integrity monitoring
 - `etl-pipeline.tsx` - ETL status monitoring
+- `benchmark-rolling-returns.tsx` - Benchmark rolling returns analysis
 - `AdvancedAnalyticsPage.tsx` - Advanced analytics and metrics
 - `automation-dashboard.tsx` - Automation and scheduling
 - `database-explorer.tsx` - Database exploration tools
