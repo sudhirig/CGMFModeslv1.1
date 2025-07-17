@@ -321,11 +321,31 @@ export class DatabaseStorage implements IStorage {
                ROW_NUMBER() OVER (PARTITION BY index_name ORDER BY index_date DESC) as rn
         FROM market_indices
       )
-      SELECT index_name, index_date, open_value, high_value, low_value, close_value, 
-             volume, market_cap, pe_ratio, pb_ratio, dividend_yield, created_at
-      FROM ranked_indices
-      WHERE rn = 1
-      ORDER BY index_name
+      SELECT 
+        r1.index_name, 
+        r1.index_date, 
+        r1.open_value, 
+        r1.high_value, 
+        r1.low_value, 
+        r1.close_value,
+        r1.volume, 
+        r1.market_cap, 
+        r1.pe_ratio, 
+        r1.pb_ratio, 
+        r1.dividend_yield, 
+        r1.created_at,
+        -- Calculate change percent
+        CASE 
+          WHEN r2.close_value IS NOT NULL AND r2.close_value > 0 
+          THEN ROUND(((r1.close_value - r2.close_value) / r2.close_value * 100)::numeric, 2)
+          ELSE NULL
+        END as change_percent
+      FROM ranked_indices r1
+      LEFT JOIN ranked_indices r2 
+        ON r1.index_name = r2.index_name 
+        AND r2.rn = 2  -- Previous day
+      WHERE r1.rn = 1
+      ORDER BY r1.index_name
     `;
     
     const result = await executeRawQuery(query);
@@ -343,7 +363,8 @@ export class DatabaseStorage implements IStorage {
       peRatio: row.pe_ratio,
       pbRatio: row.pb_ratio,
       dividendYield: row.dividend_yield,
-      createdAt: row.created_at
+      createdAt: row.created_at,
+      changePercent: row.change_percent ? parseFloat(row.change_percent) : null
     }));
   }
   
