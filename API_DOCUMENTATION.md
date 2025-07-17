@@ -36,12 +36,14 @@ All API responses follow a consistent format:
 
 ## Core APIs
 
-### ELIVATE Framework
+### Market Analysis (ELIVATE Framework)
 
-#### Get ELIVATE Market Score
+#### Get Market-Wide ELIVATE Score
 ```http
 GET /api/elivate/score
 ```
+
+**Description**: Returns the overall market macroeconomic score (NOT individual fund scores)
 
 **Response:**
 ```json
@@ -175,28 +177,9 @@ GET /api/funds/:id
 }
 ```
 
-### ELIVATE Scoring
+### Individual Fund Scoring
 
-#### Get Current ELIVATE Score
-```http
-GET /api/elivate/score
-```
-
-**Response:**
-```json
-{
-  "score": 63,
-  "interpretation": "NEUTRAL",
-  "scoreDate": "2025-06-07T00:00:00.000Z",
-  "components": {
-    "marketSentiment": "NEUTRAL",
-    "fundQuality": "GOOD",
-    "riskLevel": "MODERATE"
-  }
-}
-```
-
-#### Get Fund Performance Score Breakdown
+#### Get Fund Performance Score
 ```http
 GET /api/fund-score/breakdown/:fundId
 ```

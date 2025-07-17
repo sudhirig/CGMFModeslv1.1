@@ -63,16 +63,23 @@ External APIs → Data Validation → Database Storage → Index Updates
 ```
 
 ### 2. Scoring Engine Flow
-```
-NAV Data → Performance Calculation → Risk Analytics → ELIVATE Score
-    │              │                      │               │
-    │              │                      │               │
-Historical     Multi-year            Sharpe/Beta      Quartile
-Analysis       Returns               Calculations     Assignment
 
-Market Data → ELIVATE Framework → 6-Component Score → Market Stance
-     │              │                    │               │
-     │              │                    │               │
+#### Individual Fund Scoring
+```
+NAV Data → Performance Calculation → Risk Analytics → Performance Score
+    │              │                      │               │
+    │              │                      │               │
+Historical     Multi-year            Risk Grade       Quartile
+Analysis       Returns               (Low/Med/High)   Assignment
+```
+
+#### Market-Wide ELIVATE Scoring
+```
+Economic Data → ELIVATE Framework → 6-Component Score → Market Stance
+     │               │                    │                    │
+     │               │                    │                    │
+External APIs    Component           Aggregation          NEUTRAL/
+(FRED, Yahoo)    Scoring             (63/100)            BULLISH/BEARISH
 FRED/Yahoo     Component Calc      Weighted Score    NEUTRAL/BUY
 Sources        (External/Local)     (63.0/100)        Interpretation
 ```

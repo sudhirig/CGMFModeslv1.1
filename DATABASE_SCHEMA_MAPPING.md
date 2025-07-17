@@ -71,10 +71,53 @@ CREATE TABLE nav_data (
 - `nav_change`: Calculated as `current_nav - previous_nav`
 - `nav_change_pct`: Calculated as `((current_nav - previous_nav) / previous_nav) * 100`
 
-#### 3. `fund_scores_corrected` - ELIVATE Scoring System
+#### 3. `fund_scores_corrected` - Individual Fund Performance Scoring
 ```sql
 CREATE TABLE fund_scores_corrected (
   fund_id INTEGER PRIMARY KEY REFERENCES funds(id),
+  score_date DATE NOT NULL,
+  
+  -- Historical Returns (40 points max)
+  return_3m_absolute DECIMAL(10,4),
+  return_6m_absolute DECIMAL(10,4), 
+  return_1y_absolute DECIMAL(10,4),
+  return_3y_absolute DECIMAL(10,4),
+  return_5y_absolute DECIMAL(10,4),
+  historical_returns_total DECIMAL(5,2),
+  
+  -- Risk Grade (30 points max)
+  volatility DECIMAL(8,4),
+  risk_grade_total DECIMAL(5,2),
+  
+  -- Fundamentals (20 points max)
+  expense_ratio_score DECIMAL(5,2),
+  fund_age_score DECIMAL(5,2),
+  fundamentals_total DECIMAL(5,2),
+  
+  -- Other Metrics (10 points max)
+  other_metrics_total DECIMAL(5,2),
+  
+  -- Total Score & Recommendations
+  total_score DECIMAL(6,2),
+  quartile INTEGER CHECK (quartile IN (1,2,3,4)),
+  recommendation VARCHAR(20) CHECK (recommendation IN ('STRONG_BUY','BUY','HOLD','SELL')),
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Key Points:**
+- Total score: 0-100 points (not related to ELIVATE)
+- Quartile 1 = Top 25% performers
+- Risk levels: Low (≥25), Medium (≥20), High (<20)
+
+#### 4. `elivate_scores` - Market-Wide Macroeconomic Scoring
+```sql
+CREATE TABLE elivate_scores (
+  id SERIAL PRIMARY KEY,
+  index_name VARCHAR(100) NOT NULL,
+  score DECIMAL(5,2) NOT NULL CHECK (score >= 0 AND score <= 100),
   score_date DATE NOT NULL,
   
   -- ELIVATE Score Components (100 points total)
