@@ -4,6 +4,10 @@
 A sophisticated mutual fund analysis platform built with TypeScript, React, and PostgreSQL. Features the ELIVATE scoring methodology with authentic data integration from MFAPI.in, AMFI, and Alpha Vantage APIs. The system maintains zero tolerance for synthetic data contamination and provides comprehensive backtesting capabilities.
 
 ## Recent Changes
+- **July 17, 2025**: CRITICAL DATA POLICY - User requires NO demonstration data ever:
+  - Removed all manually inserted portfolio holdings data
+  - Policy: Display "Data not available" when authentic data is missing
+  - Never insert sample/demo data to show functionality
 - **July 17, 2025**: CRITICAL TERMINOLOGY CORRECTION - Fixed incorrect references to individual fund scores as "ELIVATE scores":
   - ELIVATE is a market-wide macroeconomic framework (6 components, 100 points total, current score: 63/100 NEUTRAL)
   - Individual funds use a separate 4-component Performance Scoring system (Historical Returns, Risk Grade, Fundamentals, Other Metrics)
@@ -85,6 +89,7 @@ A sophisticated mutual fund analysis platform built with TypeScript, React, and 
 - **Communication Style**: Professional, concise, technical when needed
 - **Code Style**: TypeScript throughout, functional components, proper error handling
 - **Data Integrity**: Zero tolerance for synthetic data - all calculations use authentic market data
+- **Demonstration Data**: NEVER add demonstration/sample data - display "Data not available" when real data is missing
 - **Documentation**: Comprehensive technical documentation preferred
 - **Architecture**: Clean, maintainable codebase with proper separation of concerns
 
