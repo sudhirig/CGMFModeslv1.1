@@ -42,9 +42,7 @@ export default function BenchmarkManager() {
   // Collect official data mutation
   const collectOfficialMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/benchmark-collection/collect-official', {
-        method: 'POST',
-      });
+      return await apiRequest('POST', '/api/benchmark-collection/collect-official');
     },
     onSuccess: (data) => {
       toast({
@@ -66,9 +64,7 @@ export default function BenchmarkManager() {
   // Import TRI data mutation
   const importTRIMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/benchmark-collection/import-tri', {
-        method: 'POST',
-      });
+      return await apiRequest('POST', '/api/benchmark-collection/import-tri');
     },
     onSuccess: (data) => {
       toast({
