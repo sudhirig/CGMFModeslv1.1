@@ -13,7 +13,16 @@ router.get('/list', async (req, res) => {
     const result = await pool.query(`
       SELECT DISTINCT 
         f.benchmark_name,
-        COUNT(*) as fund_count
+        COUNT(DISTINCT f.fund_id) as fund_count,
+        EXISTS(
+          SELECT 1 FROM market_indices mi 
+          WHERE mi.index_name = f.benchmark_name
+          LIMIT 1
+        ) as has_data,
+        (
+          SELECT COUNT(*) FROM market_indices mi 
+          WHERE mi.index_name = f.benchmark_name
+        ) as data_points
       FROM funds f
       WHERE f.benchmark_name IS NOT NULL
       GROUP BY f.benchmark_name

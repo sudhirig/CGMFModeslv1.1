@@ -238,6 +238,16 @@ export default function BenchmarkRollingReturns() {
                   {benchmarkList?.benchmarks?.map((benchmark: any) => (
                     <SelectItem key={benchmark.benchmark_name} value={benchmark.benchmark_name}>
                       {benchmark.benchmark_name} ({benchmark.fund_count} funds)
+                      {benchmark.has_data && benchmark.data_points > 0 && (
+                        <span className="ml-2 text-xs text-green-600">
+                          ✓ {benchmark.data_points.toLocaleString()} data points
+                        </span>
+                      )}
+                      {!benchmark.has_data && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (No data)
+                        </span>
+                      )}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -257,6 +267,11 @@ export default function BenchmarkRollingReturns() {
                     ?.map((benchmark: any) => (
                       <SelectItem key={benchmark.benchmark_name} value={benchmark.benchmark_name}>
                         {benchmark.benchmark_name}
+                        {benchmark.has_data && benchmark.data_points > 0 && (
+                          <span className="ml-2 text-xs text-green-600">
+                            ✓
+                          </span>
+                        )}
                       </SelectItem>
                     ))}
                 </SelectContent>
