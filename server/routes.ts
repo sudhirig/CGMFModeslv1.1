@@ -616,6 +616,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // We're not using any synthetic data for quartile ratings
   console.log("🚫 No synthetic quartile ratings will be used - only real data allowed");
   
+  // Test NAV partitioning endpoint
+  app.post('/api/nav/test-partitioning', async (req, res) => {
+    try {
+      console.log('🧪 Testing NAV partitioning...');
+      
+      const { testNavPartitioning } = await import('./migrations/test-nav-partitioning.js');
+      const result = await testNavPartitioning();
+      
+      res.json(result);
+    } catch (error) {
+      console.error('Test error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
+  // NAV table partitioning endpoint
+  app.post('/api/nav/partition-table', async (req, res) => {
+    try {
+      console.log('🔧 Starting NAV table partitioning...');
+      
+      const { runNavPartitioning } = await import('./migrations/run-nav-partitioning.js');
+      const result = await runNavPartitioning();
+      
+      if (result.success) {
+        res.json({
+          success: true,
+          message: 'NAV table partitioning completed successfully',
+          originalRows: result.originalCount,
+          partitionedRows: result.partitionedCount,
+          note: 'Run the final ALTER TABLE commands manually to complete migration'
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: result.error
+        });
+      }
+    } catch (error) {
+      console.error('Partitioning error:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message 
+      });
+    }
+  });
+
   // Endpoints for scheduled NAV data imports
   app.post('/api/schedule-import', async (req, res) => {
     try {
