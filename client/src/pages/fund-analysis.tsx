@@ -474,8 +474,9 @@ export default function FundAnalysis() {
                       <span className="text-sm font-medium text-gray-700">1Y Return</span>
                     </div>
                     <div className="text-sm font-bold text-blue-600">
-                      {fundScores?.[fund.id]?.return_1y_absolute !== undefined
-                        ? `${fundScores[fund.id].return_1y_absolute >= 0 ? '+' : ''}${safeToFixed(fundScores[fund.id].return_1y_absolute, 2)}%`
+                      {fundScores?.[fund.id]?.return_1y_absolute !== undefined && 
+                       fundScores[fund.id].return_1y_absolute !== null
+                        ? `${fundScores[fund.id].return_1y_absolute >= 0 ? '+' : ''}${fundScores[fund.id].return_1y_absolute.toFixed(2)}%`
                         : 'N/A'
                       }
                     </div>
@@ -486,7 +487,9 @@ export default function FundAnalysis() {
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Expense Ratio</span>
                       <span className="text-sm font-medium">
-                        {safeToFixed(fund.expenseRatio, 2)}%
+                        {fund.expenseRatio !== null && fund.expenseRatio !== undefined 
+                          ? `${fund.expenseRatio.toFixed(2)}%`
+                          : 'N/A'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
@@ -742,7 +745,9 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-blue-600">
-                              {fundDetails?.score?.return_6m_absolute ? safeToFixed(parseFloat(fundDetails.score.return_6m_absolute), 2) : 'N/A'}%
+                              {fundDetails?.score?.return_6m_absolute && parseFloat(fundDetails.score.return_6m_absolute) !== null
+                                ? `${parseFloat(fundDetails.score.return_6m_absolute).toFixed(2)}%`
+                                : 'N/A'}
                             </div>
                             <div className="text-sm text-gray-600">6M Return</div>
                           </CardContent>
@@ -750,7 +755,9 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-purple-600">
-                              {fundDetails?.score?.return_1y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_1y_absolute), 2) : 'N/A'}%
+                              {fundDetails?.score?.return_1y_absolute && parseFloat(fundDetails.score.return_1y_absolute) !== null
+                                ? `${parseFloat(fundDetails.score.return_1y_absolute).toFixed(2)}%`
+                                : 'N/A'}
                             </div>
                             <div className="text-sm text-gray-600">1Y Return</div>
                           </CardContent>
@@ -758,7 +765,9 @@ export default function FundAnalysis() {
                         <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
                           <CardContent className="p-4 text-center">
                             <div className="text-2xl font-bold text-orange-600">
-                              {fundDetails?.score?.return_3y_absolute ? safeToFixed(parseFloat(fundDetails.score.return_3y_absolute), 2) : 'N/A'}%
+                              {fundDetails?.score?.return_3y_absolute && parseFloat(fundDetails.score.return_3y_absolute) !== null
+                                ? `${parseFloat(fundDetails.score.return_3y_absolute).toFixed(2)}%`
+                                : 'N/A'}
                             </div>
                             <div className="text-sm text-gray-600">3Y Return</div>
                           </CardContent>
