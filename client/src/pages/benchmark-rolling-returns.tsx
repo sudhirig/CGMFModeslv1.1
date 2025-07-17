@@ -35,7 +35,7 @@ interface RollingReturn {
 
 export default function BenchmarkRollingReturns() {
   const [selectedBenchmark, setSelectedBenchmark] = useState<string>("Nifty 50 TRI");
-  const [selectedBenchmark2, setSelectedBenchmark2] = useState<string>("");
+  const [selectedBenchmark2, setSelectedBenchmark2] = useState<string>("none");
   const [rollingPeriod, setRollingPeriod] = useState<string>("1Y");
   const [chartType, setChartType] = useState<string>("returns");
 
@@ -53,7 +53,7 @@ export default function BenchmarkRollingReturns() {
   // Fetch historical data for comparison benchmark
   const { data: benchmarkData2, isLoading: isLoadingData2 } = useQuery({
     queryKey: ['/api/benchmarks/historical-data', selectedBenchmark2],
-    enabled: !!selectedBenchmark2,
+    enabled: !!selectedBenchmark2 && selectedBenchmark2 !== 'none',
   });
 
   // Calculate rolling returns
@@ -251,7 +251,7 @@ export default function BenchmarkRollingReturns() {
                   <SelectValue placeholder="Select benchmark to compare" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {benchmarkList?.benchmarks
                     ?.filter((b: any) => b.benchmark_name !== selectedBenchmark)
                     ?.map((benchmark: any) => (

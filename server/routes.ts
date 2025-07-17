@@ -98,6 +98,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const benchmarkCollectionRoutes = await import('./api/benchmark-collection');
   app.use('/api/benchmark-collection', benchmarkCollectionRoutes.default);
 
+  // Register Benchmark Population routes
+  const benchmarkPopulateRoutes = await import('./api/benchmark-populate');
+  app.use('/api/benchmark-populate', benchmarkPopulateRoutes.default);
+
   // Critical System Fixes endpoint
   app.post('/api/system/execute-critical-fixes', async (req, res) => {
     try {
