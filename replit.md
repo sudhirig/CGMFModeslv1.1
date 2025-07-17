@@ -4,6 +4,12 @@
 A sophisticated mutual fund analysis platform built with TypeScript, React, and PostgreSQL. Features the ELIVATE scoring methodology with authentic data integration from MFAPI.in, AMFI, and Alpha Vantage APIs. The system maintains zero tolerance for synthetic data contamination and provides comprehensive backtesting capabilities.
 
 ## Recent Changes
+- **July 17, 2025**: CRITICAL FIX - N/A values in fund analysis page resolved by fixing API and field mapping:
+  - Backend: Added LEFT JOIN LATERAL with nav_data table to include latest_nav in /api/funds and /api/funds/:id endpoints
+  - Frontend: Fixed convertToCamelCase to properly map latest_nav → nav for fund cards
+  - Dashboard: Removed all hardcoded values (16,766 → 0) to show real data or "Loading..."
+  - Sidebar: Fixed Math.random() in skeleton loader to use consistent 70% width
+  - ETL Status: Removed hardcoded totals ("/42", "/12") from progress indicators
 - **July 17, 2025**: Complete frontend synthetic data elimination - replaced ALL Math.random() calls with real API data across fund-analysis.tsx and model-portfolio.tsx
 - **July 17, 2025**: Created new data fetching hooks - use-fund-score.ts and use-fund-scores.ts for retrieving authentic fund performance data
 - **July 17, 2025**: Portfolio allocation fix - replaced hardcoded asset/sector allocations with dynamic data or clear "Data not available" indicators

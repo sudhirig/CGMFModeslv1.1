@@ -131,7 +131,7 @@ export default function EtlStatus() {
                   <div className="text-xs text-neutral-500">Indices Processed</div>
                   <div className="flex justify-between items-center">
                     <div className="text-base font-medium text-neutral-900">
-                      {nseRun?.recordsProcessed ? `${nseRun.recordsProcessed} / 42` : "0 / 42"}
+                      {nseRun?.recordsProcessed ? `${nseRun.recordsProcessed}` : "0"}
                     </div>
                     <div className={`text-xs ${
                       !nseRun || nseRun.status === "Failed"
@@ -184,7 +184,7 @@ export default function EtlStatus() {
                   <div className="text-xs text-neutral-500">Indicators Processed</div>
                   <div className="flex justify-between items-center">
                     <div className="text-base font-medium text-neutral-900">
-                      {rbiRun?.recordsProcessed ? `${rbiRun.recordsProcessed} / 12` : "0 / 12"}
+                      {rbiRun?.recordsProcessed ? `${rbiRun.recordsProcessed}` : "0"}
                     </div>
                     <div className={`text-xs ${
                       !rbiRun || rbiRun.status === "Failed"

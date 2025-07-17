@@ -139,7 +139,7 @@ export default function ModelPortfolio() {
                   <div className="mt-4">
                     <div className="text-sm font-medium text-neutral-700 mb-2">Risk Profile</div>
                     <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning bg-opacity-10 text-warning">
-                      {portfolio.riskProfile || "Balanced"}
+                      {portfolio.riskProfile || "Loading..."}
                     </div>
                   </div>
                   

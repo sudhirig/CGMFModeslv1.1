@@ -1148,9 +1148,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid fund ID format" });
       }
       
-      // Using raw query to avoid parameter format issues
+      // Using raw query to avoid parameter format issues with latest NAV data
       const result = await executeRawQuery(`
-        SELECT * FROM funds WHERE id = $1
+        SELECT 
+          f.*,
+          ln.nav_value as latest_nav,
+          ln.nav_date as latest_nav_date
+        FROM funds f
+        LEFT JOIN LATERAL (
+          SELECT nav_value, nav_date
+          FROM nav_data
+          WHERE fund_id = f.id
+          ORDER BY nav_date DESC
+          LIMIT 1
+        ) ln ON true
+        WHERE f.id = $1
       `, [fundId]);
       
       if (!result.rows.length) {
