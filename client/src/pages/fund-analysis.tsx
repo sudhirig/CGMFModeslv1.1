@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,6 +14,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { Loader2, Search, Filter, BarChart3, TrendingUp, Target, Star, Eye, Zap, PieChart as PieChartIcon, Activity, DollarSign, Shield, Award, ArrowUpRight, ArrowDownRight, Clock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useLocation } from "wouter";
 
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
@@ -27,6 +28,28 @@ export default function FundAnalysis() {
   const [sortBy, setSortBy] = useState("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [chartPeriod, setChartPeriod] = useState<'1M' | '3M' | '6M' | '1Y' | '3Y' | 'ALL'>('1Y');
+  const [location] = useLocation();
+  
+  // Extract fundId from URL query parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const fundIdParam = urlParams.get('fundId');
+    
+    if (fundIdParam) {
+      const fundId = parseInt(fundIdParam);
+      if (!isNaN(fundId)) {
+        // We need to fetch the fund data first
+        fetch(`/api/funds/${fundId}`)
+          .then(res => res.json())
+          .then(fundData => {
+            if (fundData && fundData.id) {
+              setSelectedFund(fundData);
+            }
+          })
+          .catch(err => console.error('Error fetching fund:', err));
+      }
+    }
+  }, [location]);
   
   // Helper function to safely format numbers
   const safeToFixed = (value: number | null | undefined, decimals: number = 1): string => {
