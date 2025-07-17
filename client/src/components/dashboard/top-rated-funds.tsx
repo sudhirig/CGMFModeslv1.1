@@ -6,9 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Star, TrendingUp, TrendingDown, Filter, ExternalLink, Award, Shield } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 
 export default function TopRatedFunds() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
+  const [, setLocation] = useLocation();
   
   const categoryParam = selectedCategory === "All Categories" ? "" : selectedCategory;
   const apiUrl = categoryParam ? `/api/funds/top-rated/${categoryParam}` : '/api/funds/top-rated';
@@ -24,8 +26,8 @@ export default function TopRatedFunds() {
   console.log('Error:', error);
   
   const handleViewFund = (fundId: number) => {
-    // In a full implementation, this would navigate to a fund detail page
-    console.log(`View fund: ${fundId}`);
+    // Navigate to fund analysis page
+    setLocation(`/fund-analysis?fundId=${fundId}`);
   };
   
   return (

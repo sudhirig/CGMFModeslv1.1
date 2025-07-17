@@ -1107,9 +1107,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           f.category, 
           f.subcategory, 
           f.amc_name,
-          fs.return_1y_absolute as return_1y
+          fs.return_1y_absolute as return_1y,
+          latest_nav.aum_cr
         FROM fund_scores_corrected fs
         JOIN funds f ON fs.fund_id = f.id
+        LEFT JOIN LATERAL (
+          SELECT aum_cr 
+          FROM nav_data 
+          WHERE fund_id = f.id 
+          ORDER BY nav_date DESC 
+          LIMIT 1
+        ) latest_nav ON true
         WHERE fs.score_date = '2025-06-05'
       `;
       
@@ -1142,7 +1150,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fundName: row.fund_name,
           category: row.category,
           subcategory: row.subcategory,
-          amcName: row.amc_name
+          amcName: row.amc_name,
+          aumCr: row.aum_cr ? parseFloat(row.aum_cr) : null
         },
         totalScore: parseFloat(row.total_score),
         quartile: row.quartile,
