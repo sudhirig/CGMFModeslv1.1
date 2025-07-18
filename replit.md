@@ -31,6 +31,7 @@ A sophisticated mutual fund analysis platform built with TypeScript, React, and 
     - Fixed all API endpoints to fetch AUM from aum_analytics table
     - Fixed manager performance component field mappings (managerName, totalAumManaged, avgPerformance1y/3y)
   - **Portfolio Holdings Data Policy**: Removed all synthetic holdings data, frontend now correctly displays "No holdings data available" message
+  - **Benchmark Data Cleanup (July 18)**: Removed 8,758 synthetic benchmark assignments where debt funds had equity benchmarks. Kept only valid CRISIL indices for debt funds and appropriate benchmarks for each category
 
 ### July 17, 2025 - Fund Analysis Enhancement Session
 - **Enhanced Fund Analysis Cards with Key Performance Metrics**:
