@@ -286,9 +286,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fsc.return_5y_score,
           fsc.calmar_ratio_1y,
           fsc.sortino_ratio_1y,
-          fsc.recommendation
+          fsc.recommendation,
+          f.expense_ratio,
+          aa.aum_crores
         FROM fund_scores_corrected fsc
         JOIN funds f ON fsc.fund_id = f.id
+        LEFT JOIN aum_analytics aa ON f.fund_name = aa.fund_name
         WHERE fsc.score_date = '2025-06-05'
       `;
       

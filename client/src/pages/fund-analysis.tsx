@@ -15,6 +15,9 @@ import { Loader2, Search, Filter, BarChart3, TrendingUp, Target, Star, Eye, Zap,
 import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useLocation } from "wouter";
+import PortfolioOverlapCard from "@/components/fund/portfolio-overlap-card";
+import ManagerPerformanceCard from "@/components/fund/manager-performance-card";
+import CategoryPerformanceCard from "@/components/fund/category-performance-card";
 
 export default function FundAnalysis() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All Categories");
@@ -898,6 +901,17 @@ export default function FundAnalysis() {
                           </div>
                         </CardContent>
                       </Card>
+                      
+                      {/* Additional AdvisorKhoj Data */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <PortfolioOverlapCard fundName={selectedFund.fundName} />
+                        <CategoryPerformanceCard 
+                          category={selectedFund.category} 
+                          subcategory={selectedFund.subcategory} 
+                        />
+                      </div>
+                      
+                      <ManagerPerformanceCard fundManager={fundDetails?.basicData?.fund_manager} />
                     </div>
                   </TabsContent>
 
