@@ -960,9 +960,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await pool.query(`
           SELECT 
             f.*,
+            aa.aum_crores as aum_crores,
             ln.nav_value as latest_nav,
             ln.nav_date as latest_nav_date
           FROM funds f
+          LEFT JOIN aum_analytics aa ON f.fund_name = aa.fund_name
           LEFT JOIN LATERAL (
             SELECT nav_value, nav_date
             FROM nav_data
@@ -1112,18 +1114,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           f.subcategory, 
           f.amc_name,
           f.expense_ratio,
-          f.aum_crores,
-          fs.return_1y_absolute as return_1y,
-          latest_nav.aum_cr
+          aa.aum_crores
         FROM fund_scores_corrected fs
         JOIN funds f ON fs.fund_id = f.id
-        LEFT JOIN LATERAL (
-          SELECT aum_cr 
-          FROM nav_data 
-          WHERE fund_id = f.id 
-          ORDER BY nav_date DESC 
-          LIMIT 1
-        ) latest_nav ON true
+        LEFT JOIN aum_analytics aa ON f.fund_name = aa.fund_name
         WHERE fs.score_date = '2025-06-05'
       `;
       
@@ -1157,7 +1151,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           category: row.category,
           subcategory: row.subcategory,
           amcName: row.amc_name,
-          aumCr: row.aum_cr ? parseFloat(row.aum_cr) : (row.aum_crores ? parseFloat(row.aum_crores) : null),
+          aumCr: row.aum_crores ? parseFloat(row.aum_crores) : null,
           expenseRatio: row.expense_ratio ? parseFloat(row.expense_ratio) : null
         },
         totalScore: parseFloat(row.total_score),
@@ -1190,9 +1184,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await executeRawQuery(`
         SELECT 
           f.*,
+          aa.aum_crores as aum_crores,
           ln.nav_value as latest_nav,
           ln.nav_date as latest_nav_date
         FROM funds f
+        LEFT JOIN aum_analytics aa ON f.fund_name = aa.fund_name
         LEFT JOIN LATERAL (
           SELECT nav_value, nav_date
           FROM nav_data

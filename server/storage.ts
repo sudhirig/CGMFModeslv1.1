@@ -133,11 +133,15 @@ export class DatabaseStorage implements IStorage {
   }
   
   async searchFunds(query: string, limit: number = 10): Promise<Fund[]> {
-    return db.select().from(funds)
-      .where(
-        sql`${funds.fundName} ILIKE ${'%' + query + '%'} OR ${funds.amcName} ILIKE ${'%' + query + '%'}`
-      )
-      .limit(limit);
+    const result = await executeRawQuery(`
+      SELECT f.*, aa.aum_crores 
+      FROM funds f
+      LEFT JOIN aum_analytics aa ON f.fund_name = aa.fund_name
+      WHERE f.fund_name ILIKE $1 OR f.amc_name ILIKE $2
+      LIMIT $3
+    `, [`%${query}%`, `%${query}%`, limit]);
+    
+    return result.rows;
   }
   
   // NAV data methods
