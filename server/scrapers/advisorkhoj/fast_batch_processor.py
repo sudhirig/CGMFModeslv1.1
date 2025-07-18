@@ -212,7 +212,7 @@ class FastBatchProcessor:
         # Get top 200 fund managers
         cursor.execute("""
             SELECT fund_manager, COUNT(*) as fund_count, 
-                   STRING_AGG(amc_name, ',' LIMIT 1) as amc_name
+                   MAX(amc_name) as amc_name
             FROM funds
             WHERE fund_manager IS NOT NULL AND fund_manager != ''
             GROUP BY fund_manager
@@ -250,11 +250,7 @@ class FastBatchProcessor:
             (manager_name, managed_funds_count, total_aum_managed, 
              avg_performance_1y, avg_performance_3y, analysis_date, source)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (manager_name, analysis_date) DO UPDATE
-            SET managed_funds_count = EXCLUDED.managed_funds_count,
-                total_aum_managed = EXCLUDED.total_aum_managed,
-                avg_performance_1y = EXCLUDED.avg_performance_1y,
-                avg_performance_3y = EXCLUDED.avg_performance_3y
+            ON CONFLICT DO NOTHING
         """, batch_data)
         
         count = cursor.rowcount
